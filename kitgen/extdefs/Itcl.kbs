@@ -1,0 +1,12 @@
+Version 3.3
+
+Sources cvs incrtcl.cvs.sourceforge.net:/cvsroot/incrtcl incrTcl
+
+Build {
+    Run sh [Srcdir]/itcl/configure --with-tcl=[Libdir]
+    Run make binaries ITCL_LIBRARY=
+    Run make install-binaries install-libraries
+    Run strip -x [Unglob ../lib/itcl3*/libitcl3*]
+}
+
+Result [Unglob ../lib/itcl3*]

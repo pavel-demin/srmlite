@@ -1,0 +1,194 @@
+# -*- Makefile -*-
+# NOTE: this file requires GNU Make.
+#
+#PLAT = unix
+#PRIV = install-private-headers
+#
+# Linux:
+#LDFLAGS = -L/usr/X11R6/lib -lX11 -ldl -lm # -lpthread
+#
+# Mac OS X:
+#LDFLAGS = -framework CoreFoundation -L/usr/X11R6/lib -lX11 -weak-lXss -lXext
+#LDFLAGS = -framework CoreFoundation -framework Carbon -framework IOKit
+#LDSTRIP = -x
+
+EXTDIR = ../../../../8.x
+STATIC = --disable-shared --enable-static
+OUTDIR = $(shell pwd)/build
+OBJ    = $(OUTDIR)/pwb$O $(OUTDIR)/rechan$O $(OUTDIR)/zlib$O \
+	 $(OUTDIR)/g2lite$O $(OUTDIR)/gtlite$O
+CLIOBJ ?= $(OBJ) $(OUTDIR)/tclAppInit$O
+DYNOBJ ?= $(CLIOBJ)
+GUIOBJ ?= $(CLIOBJ)
+TCLDIR = --with-tcl=../lib --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR)
+STRIP ?= strip
+UPX   ?= :
+O     ?=.o
+A     ?=.a
+SO    ?=.so
+
+GLOBUS_OPTS     = --prefix=$(OUTDIR) --with-buildopts="--static"
+GLOBUS_FLAVOR   = gcc64dbg
+
+TLS_OPTS = --disable-threads --with-ssl-dir=$(OUTDIR)
+TCLX_OPTS = --disable-threads
+DICT_OPTS = --disable-threads
+
+globus-url-copy: build/globus
+	cp build/bin/$@ . && $(STRIP) $@
+
+globus-gridftp-server: build/globus
+	cp build/sbin/$@ . && $(STRIP) $@
+
+tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
+	cp kit-cli$(EXE) $@ && $(STRIP) $@ && $(UPX) $@
+	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ cli
+
+kit-cli$(EXE): build/tcl build/tclvfs build/vqtcl build/zlib \
+	build/globus build/tls build/tdom build/starfish \
+	build/tcllib build/tclx build/dict $(CLIOBJ)
+	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
+	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
+	  build/lib/vfs1*/*vfs1*$A build/lib/vqtcl4*/*vqtcl4*$A \
+	  build/lib/libz$A build/lib/*tcl8*$A \
+	  build/lib/tdom0*/libtdom0*$A \
+	  build/lib/starfish0*/libstarfish0*$A \
+	  build/lib/tclx8*/libtclx8*$A \
+	  build/lib/dict8*/libdict8*$A \
+	  build/lib/tls1*/libtls1*$A \
+	  build/lib/libglobus_gss_assist_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_gssapi_gsi_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_gsi_proxy_core_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_gsi_credential_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_gsi_callback_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_oldgaa_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_gsi_sysconfig_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_gsi_cert_utils_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_openssl_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_openssl_error_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_callout_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_proxy_ssl_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libglobus_common_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libssl_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libcrypto_$(GLOBUS_FLAVOR)$A \
+	  build/lib/libltdl_$(GLOBUS_FLAVOR)$A \
+	  $(LDFLAGS)
+
+
+build/files:
+	mkdir -p $@ && cd $@ && ln -s ../../../../files/* .
+
+build/tcl:
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh ../../../tcl/$(PLAT)/configure $(STATIC) $(TCL_OPTS) \
+	    --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) && \
+	  $(MAKE) install-binaries install-libraries $(PRIV)
+
+build/tclvfs: build/tcl
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/tclvfs/configure $(STATIC) $(TCLDIR) $(VFS_OPTS) && \
+	  $(MAKE) install
+
+build/vqtcl: build/tcl
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/vqtcl/configure $(STATIC) $(TCLDIR) $(VLERQ_OPTS) && \
+	  $(MAKE) install
+
+build/zlib: build/tcl
+	cp -R ../../8.x/zlib/. $@
+	cd $@ && $(MAKE) install prefix=.. CC="$(CC)" CFLAGS="-O $(CFLAGS)"
+
+build/globus: build/tcl
+	mkdir -p $@ && cd ../../8.x/globus && \
+	  sh ./configure $(GLOBUS_OPTS) && \
+          $(MAKE) globus_gridftp_server globus_gass_copy install
+
+build/globus_include:
+	touch $@ && cd build/include && \
+	ls -d $(GLOBUS_FLAVOR)/* | \
+          grep -v $(GLOBUS_FLAVOR)/$(GLOBUS_FLAVOR) | xargs -l ln -sf
+
+build/tls: build/tcl build/globus build/globus_include
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/tls/configure $(STATIC) $(TCLDIR) $(TLS_OPTS) && \
+	  $(MAKE) install
+
+build/tdom: build/tcl
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/tdom/configure $(STATIC) $(TCLDIR) $(TDOM_OPTS) && \
+	  $(MAKE) install
+
+build/tcllib: build/tcl
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/tcllib/configure $(STATIC) $(TCLDIR) $(TCLLIB_OPTS) && \
+	  $(MAKE) install-libraries
+
+build/tclx: build/tcl
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/tclx/configure $(STATIC) $(TCLDIR) $(TCLX_OPTS) && \
+	  $(MAKE) install
+
+build/dict: build/tcl
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh ../../../tclDict/configure $(STATIC) $(TCLDIR) $(DICT_OPTS) && \
+	  $(MAKE) install
+
+build/starfish: build/tcl
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/starfish/configure $(STATIC) $(TCLDIR) $(STARFISH_OPTS) && \
+	  $(MAKE) install && cd $(OUTDIR)/lib && mkdir -p starfish0.9 && \
+	  mv libstarfish0*$A starfish0.9/ && \
+	  cp -r $(EXTDIR)/starfish/tcl/*.tcl starfish0.9/
+
+base: build/tcl build/tk
+	ls -l build/bin
+
+tidy: cleanext
+	rm -rf build/tcl build/tk build/tkdyn
+
+cleanext:
+	rm -rf build/tclvfs build/thread build/vqtcl build/zlib build/*.o
+	rm -rf build/lib/vfs* build/lib/thread* build/lib/vqtcl*
+
+clean:
+	rm -rf build kit-cli$(EXE) kit-gui$(EXE) kit-dyn$(EXE)
+
+distclean: clean
+	rm -f tclkit-cli$(EXE) tclkit-dyn$(EXE) tclkit-gui$(EXE)
+
+.PHONY: all base clean distclean threaded tidy
+
+$(OUTDIR)/pwb$O:  ../../pwb.c
+	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
+
+$(OUTDIR)/rechan$O: ../../rechan.c
+	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
+
+$(OUTDIR)/zlib$O: ../../zlib.c
+	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
+
+$(OUTDIR)/g2lite$O: ../../g2lite.c
+	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
+
+$(OUTDIR)/gtlite$O: ../../gtlite.c
+	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
+
+
+$(OUTDIR)/tclAppInit$O: ../tcl/$(PLAT)/tclAppInit.c
+	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
+	  -DTCL_LOCAL_APPINIT=TclKit_AppInit -c $<
+
+$(OUTDIR)/winMain$O: ../tk/$(PLAT)/winMain.c
+	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
+	  -DTK_LOCAL_APPINIT=TclKit_AppInit -c $<
+
+$(OUTDIR)/tclkit.res.o: ../../tclkit.rc
+	cp $< build/tk/tclkit.rc
+	windres -o $@ --define STATIC_BUILD --define TCLKIT_WITH_TK \
+	  --define BASE_NO_TK_ICON --include build/include \
+	  --include build/tk --include ../../files --include ../tk/win/rc \
+	  build/tk/tclkit.rc
+
+$(OUTDIR)/tclkitsh.res.o: ../../tclkit.rc
+	windres -o $@ --define STATIC_BUILD --include build/include \
+	  --include ../../files $<

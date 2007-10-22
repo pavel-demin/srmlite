@@ -1,0 +1,11 @@
+Version 4.1
+
+Sources fetch http://www.equi4.com/pub/vq/vqtcl.tgz
+
+Build {
+    Run sh [Srcdir]/configure --with-tcl=[Libdir]
+    Run make install-binaries
+    Run strip -x [Unglob ../lib/vqtcl4*/libvqtcl4*]
+}
+
+Result [Unglob ../lib/vqtcl4*]
