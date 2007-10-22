@@ -1,0 +1,139 @@
+package require tdom
+
+# -------------------------------------------------------------------------
+
+# Description:
+#   Return a list of all the immediate children of domNode that are element
+#   nodes.
+# Parameters:
+#   node - a reference to a node in a dom tree
+#
+proc SoapElements {node} {
+    set result {}
+    foreach childNode [$node childNodes] {
+        if {[$childNode nodeType] == {ELEMENT_NODE}} {
+            lappend result $childNode
+        }
+    }
+    return $result
+}
+
+# -------------------------------------------------------------------------
+
+proc SoapElementNames {node} {
+    set result {}
+    set elementNodes [SoapElements $node]
+    if {$elementNodes == {}} {
+        set result [$node nodeName]
+    } else {
+        foreach element $elementNodes {
+            lappend result [$element nodeName]
+        }
+    }
+    return $result
+}
+
+# -------------------------------------------------------------------------
+
+# for extracting the parameters from a SOAP packet.
+# Arrays -> list
+# Structs -> list of name/value pairs.
+# a methods parameter list comes out looking like a struct where the member
+# names == parameter names. This allows us to check the param name if we need
+# to.
+
+proc SoapIsArray {node} {
+    # Look for "xsi:type"="soapenc:Array"
+    # FIX ME
+    # This code should check the namespace using namespaceURI code (CGI)
+    #
+
+    if {[$node hasAttribute soapenc:arrayType]} {
+        return 1
+    }
+
+    if {[$node hasAttribute xsi:type]} {
+        set type [$node getAttribute xsi:type]
+        if {[string match -nocase {*:Array} $type]} {
+            return 1
+        }
+    }
+
+    # If all the child element names are the same, it's an array
+    # but of there is only one element???
+    set names [SoapElementNames $node]
+    if {[llength $names] > 1 && [llength [lsort -unique $names]] == 1} {
+        return 1
+    }
+
+    return 0
+}
+
+# -------------------------------------------------------------------------
+
+# Description:
+#   Merge together all the child node values under a given dom element
+#   This procedure will also cope with elements whose data is elsewhere
+#   using the href attribute. We currently expect the data to be a local
+#   reference.
+# Params:
+#   node - a reference to an element node in a dom tree
+# Result:
+#   A string containing the elements value
+#
+proc SoapElementValue {node} {
+    set result {}
+
+    if {[$node hasAttribute href]} {
+        set href [$node getAttribute href]
+        if {[string match "\#*" $href]} {
+            set href [string trimleft $href "\#"]
+        } else {
+            return -code error "cannot follow non-local href"
+        }
+        set ns {soap http://schemas.xmlsoap.org/soap/envelope/}
+        append path {/soap:Envelope/soap:Body/*[@id='} $href {']}
+
+        set result [SoapDecompose [$node selectNodes -namespaces $ns $path]]
+    } else {
+        foreach dataNode [$node childNodes] {
+            append result [$dataNode nodeValue]
+        }
+    }
+
+    return $result
+}
+
+# -------------------------------------------------------------------------
+
+# Description:
+#   Break down a SOAP packet into a Tcl list of the data.
+#
+proc SoapDecompose {node} {
+    set result {}
+
+    # get a list of the child elements of this base element.
+    set elementNodes [SoapElements $node]
+
+    # if no child element - return the value.
+    if {$elementNodes == {}} {
+        set result [SoapElementValue $node]
+    } else {
+        # decide if this is an array or struct
+        if {[SoapIsArray $node] == 1} {
+            foreach element $elementNodes {
+                lappend result [SoapDecompose $element]
+            }
+        } else {
+            foreach element $elementNodes {
+                lappend result [$element nodeName] [SoapDecompose $element]
+            }
+        }
+    }
+
+    return $result
+}
+
+# -------------------------------------------------------------------------
+
+package provide srmlite::soap 0.1

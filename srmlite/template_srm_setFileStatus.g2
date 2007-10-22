@@ -1,0 +1,12 @@
+@@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:setFileStatus soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://tempuri.org/diskCacheV111.srm.server.SRMServerV1">
+      <arg0 xsi:type="xsd:int">$${requestId}</arg0>
+      <arg1 xsi:type="xsd:int">$${fileId}</arg1>
+      <arg2 xsi:type="xsd:string">$${fileState}</arg2>
+    </ns1:setFileStatus>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

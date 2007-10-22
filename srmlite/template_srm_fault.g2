@@ -1,0 +1,14 @@
+@@
+<?xml version='1.0' encoding='UTF-8'?>
+<soap:Envelope xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/' xmlns:soapenc='http://schemas.xmlsoap.org/soap/encoding/' soap:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:ns5='http://www.themindelectric.com/package/java.rmi/' xmlns:ns6='http://www.themindelectric.com/package/java.lang/'>
+  <soap:Body>
+    <soap:Fault>
+      <faultcode>soap:Server</faultcode>
+      <faultstring>$${faultString}</faultstring>
+      <detail>
+        <stacktrace>$${stackTrace}</stacktrace>
+      </detail>
+    </soap:Fault>
+  </soap:Body>
+</soap:Envelope>
+@@
