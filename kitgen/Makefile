@@ -1,4 +1,5 @@
 TAR_URL	     = http://www.equi4.com/pub/tk/tars
+DICT_URL     = http://pascal.scheffers.net/software/tclDict-8.5.2.tar.gz
 STARFISH_URL = http://www.starfishsystems.ca/cgi-bin/download?name=starfish
 
 GLOBUS_URL   = http://www-unix.globus.org/ftppub/gt4/4.0/4.0.5/installers/src/gt4.0.5-all-source-installer.tar.gz
@@ -37,6 +38,9 @@ tars:
 	  mv starfish-0.9/src/starfish ./ && \
 	  mv starfish-0.9/tcl starfish/ && \
 	  patch -p 0 < ../starfish-noyp.patch && rm -rf starfish-0.9
+	mkdir -p 8.4 && cd 8.4 && \
+	  wget -q $(DICT_URL) && tar xfz tclDict-8.5.2.tar.gz && \
+	  mv tclDict-8.5.2 tclDict && rm *gz
 
 configs:
 	sh config.sh 8.4/base-std
