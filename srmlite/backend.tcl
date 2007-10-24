@@ -21,7 +21,7 @@ proc ExtractHostFile {url} {
 
 proc SrmGet {requestType requestId fileId userName certProxy SURL} {
 
-    set command "su -c \"./url_get.sh [ExtractHostFile $SURL]\" $userName"
+    set command "./setuid $userName ./url_get.sh [ExtractHostFile $SURL]"
 #    set command "./url_get.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $requestId $fileId $command
 }
@@ -30,7 +30,7 @@ proc SrmGet {requestType requestId fileId userName certProxy SURL} {
 
 proc SrmPut {requestType requestId fileId userName certProxy SURL} {
 
-    set command "su -c \"./url_put.sh [ExtractHostFile $SURL]\" $userName"
+    set command "./setuid $userName ./url_put.sh [ExtractHostFile $SURL]"
 #    set command "./url_put.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $requestId $fileId $command
 }
@@ -44,7 +44,7 @@ proc SrmCopy {requestType requestId fileId userName certProxy srcTURL dstTURL} {
     file copy $certProxyOrig $certProxy
     chown $userName $certProxy
 
-    set command "su -c \"./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxy\" $userName"
+    set command "./setuid $userName ./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxy"
 #    set command "./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxy"
 
     SubmitCommand $requestType $requestId $fileId $command

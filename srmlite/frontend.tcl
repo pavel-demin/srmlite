@@ -349,7 +349,11 @@ proc SrmGetRequestStatus {userName certProxy requestId {requestType getRequestSt
     }
 
     set counter [incr request(counter)]
-    if {$counter > 9} {
+    if {$counter > 15} {
+        set request(retryDeltaTime) 16
+    } elseif {$counter > 12} {
+        set request(retryDeltaTime) 13
+    } elseif {$counter > 9} {
         set request(retryDeltaTime) 10
     } elseif {$counter > 6} {
         set request(retryDeltaTime) 7
@@ -510,7 +514,7 @@ proc GetInput {chan} {
         }
         Ready,get {
             set permMode [string map $PermDict [lindex $output 0]]
-            set stat [lreplace 0 1 $permMode]
+            set stat [lreplace $output 0 1 $permMode]
             SrmReadyToGet $requestId $fileId $stat false
         }
         Ready,put {
