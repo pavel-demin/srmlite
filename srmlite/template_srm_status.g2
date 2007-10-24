@@ -1,16 +1,20 @@
-set requestTypeUpper [string toupper $requestType 0 0]
+global SrmRequests SrmFiles
 
+dict with SrmRequests($requestId) {
+
+    set requestTypeUpper [string toupper $requestType 0 0]
+    set filesLength [llength $fileIds]
 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <soap:Envelope xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/' xmlns:soapenc='http://schemas.xmlsoap.org/soap/encoding/' soap:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:ns5='http://www.themindelectric.com/package/diskCacheV111.srm/'>
   <soap:Body>
-    <n:$${requestType}Response xmlns:n='http://tempuri.org/diskCacheV111.srm.server.SRMServerV1'>
+    <n:$${responseType}Response xmlns:n='http://tempuri.org/diskCacheV111.srm.server.SRMServerV1'>
       <Result href='#id0'></Result>
-    </n:$${requestType}Response>
+    </n:$${responseType}Response>
     <id0 id='id0' soapenc:root='0' xsi:type='ns5:RequestStatus'>
       <requestId xsi:type='xsd:int'>$${requestId}</requestId>
       <type xsi:type='xsd:string'>$${requestTypeUpper}</type>
-      <state xsi:type='xsd:string'>$${requestState}</state>
+      <state xsi:type='xsd:string'>$${state}</state>
       <submitTime href='#id1'></submitTime>
       <startTime href='#id2'></startTime>
       <finishTime href='#id3'></finishTime>
@@ -22,10 +26,26 @@ set requestTypeUpper [string toupper $requestType 0 0]
     <id1 id='id1' soapenc:root='0' xsi:type='xsd:dateTime'>$${submitTime}</id1>
     <id2 id='id2' soapenc:root='0' xsi:type='xsd:dateTime'>$${startTime}</id2>
     <id3 id='id3' soapenc:root='0' xsi:type='xsd:dateTime'>$${finishTime}</id3>
-    <id4 id='id4' soapenc:root='0' xsi:type='soapenc:Array' soapenc:arrayType='ns5:RequestFileStatus[1]'>
-      <i href='#id5'></i>
+    <id4 id='id4' soapenc:root='0' xsi:type='soapenc:Array' soapenc:arrayType='ns5:RequestFileStatus[$${filesLength}]'>
+@@
+    set id 4
+    foreach fileId $fileIds {
+
+        incr id
+@@
+      <i href='#id$${id}'></i>
+@@
+    }
+@@
     </id4>
-    <id5 id='id5' soapenc:root='0' xsi:type='ns5:RequestFileStatus'>
+@@
+    set id 4
+    foreach fileId $fileIds {
+
+        incr id
+        dict with SrmFiles($fileId) {
+@@
+    <id$${id} id='id$${id}' soapenc:root='0' xsi:type='ns5:RequestFileStatus'>
       <SURL xsi:type='xsd:string'>$${SURL}</SURL>
       <size xsi:type='xsd:long'>$${size}</size>
       <owner xsi:type='xsd:string'>$${owner}</owner>
@@ -36,20 +56,25 @@ set requestTypeUpper [string toupper $requestType 0 0]
       <isPinned xsi:type='xsd:boolean'>$${isPinned}</isPinned>
       <isPermanent xsi:type='xsd:boolean'>$${isPermanent}</isPermanent>
       <isCached xsi:type='xsd:boolean'>$${isCached}</isCached>
-      <state xsi:type='xsd:string'>$${fileState}</state>
+      <state xsi:type='xsd:string'>$${state}</state>
       <fileId xsi:type='xsd:int'>$${fileId}</fileId>
 @@
-if {![string equal $TURL {}]} {
+        }
+        if {![string equal $TURL {}]} {
 @@
       <TURL xsi:type='xsd:string'>$${TURL}</TURL>
 @@
-}
+        }
 @@
       <estSecondsToStart xsi:type='xsd:int'>0</estSecondsToStart>
       <sourceFilename xsi:type='xsd:string'></sourceFilename>
       <destFilename xsi:type='xsd:string'></destFilename>
       <queueOrder xsi:type='xsd:int'>0</queueOrder>
-    </id5>
+    </id$${id}>
+@@
+    }
+@@
   </soap:Body>
 </soap:Envelope>
 @@
+}

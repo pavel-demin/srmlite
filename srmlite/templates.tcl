@@ -28,11 +28,7 @@ proc InitTemplateStatus {} {
   set content [read $fid]
   close $fid
 
-  proc SrmStatusBody {requestType requestId requestState
-                      retryDeltaTime submitTime startTime finishTime
-                      SURL size owner group permMode isPinned isPermanent isCached
-                      fileState fileId {TURL {}} {errorMessage {}}} [g2lite $content]
-
+  proc SrmStatusBody {responseType requestId} [g2lite $content]
 
 }
 

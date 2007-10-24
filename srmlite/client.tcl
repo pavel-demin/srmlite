@@ -8,7 +8,7 @@ package require srmlite::soap
 
 # -------------------------------------------------------------------------
 
-proc SrmCall {requestId fileId certProxy serviceURL requestType args} {
+proc SrmCall {fileId certProxy serviceURL requestType args} {
 
     log::log debug "SrmCall $requestId $fileId $serviceURL $requestType $args"
 
@@ -36,30 +36,29 @@ proc SrmCall {requestId fileId certProxy serviceURL requestType args} {
         -query $query \
         -type {text/xml; charset=utf-8} \
         -headers [SrmHeaders $requestType] \
-        -command [list SrmCallCommand $requestId $fileId $certProxy]
+        -command [list SrmCallCommand $fileId $certProxy]
 
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmCallCommand {requestId fileId certProxy token} {
+proc SrmCallCommand {fileId certProxy token} {
 
     global errorInfo
 
-    if {[catch {SrmCallDone $requestId $fileId $certProxy $token} result]} {
+    if {[catch {SrmCallDone $fileId $certProxy $token} result]} {
          log::log error $result
     }
 }
 # -------------------------------------------------------------------------
 
-proc SrmCallDone {requestId fileId certProxy token} {
+proc SrmCallDone {fileId certProxy token} {
 
     global State
     upvar #0 $token http
-    upvar #0 SrmRequest$requestId request
     upvar #0 SrmFile$fileId file
 
-    log::log debug "SrmCallDone $requestId $fileId"
+    log::log debug "SrmCallDone $fileId"
 
     set serviceURL $http(url)
     set content [::http::data $token]
@@ -76,7 +75,7 @@ proc SrmCallDone {requestId fileId certProxy token} {
     ::http::cleanup $token
 
     if {$hadError} {
-        SrmFailed $requestId $fileId "Error while connecting remote SRM: $faultString"
+        SrmFailed $fileId "Error while connecting remote SRM: $faultString"
         return
     }
 
@@ -85,9 +84,9 @@ proc SrmCallDone {requestId fileId certProxy token} {
     }
 
     if {[catch {dom parse $content} document]} {
-         log::log error $document
-         SrmFailed $requestId $fileId "Error while parsing SOAP XML from remote SRM"
-         return
+        log::log error $document
+        SrmFailed $fileId "Error while parsing SOAP XML from remote SRM"
+        return
     }
 
     set root [$document documentElement]
@@ -120,38 +119,38 @@ proc SrmCallDone {requestId fileId certProxy token} {
     switch -glob -- $localFileState,$remoteFileState {
         *,Ready {
             # set state to Running
-            log::log debug "SrmCallDone $requestId $fileId setFileStatus $remoteRequestId $remoteFileId Running"
-            set call [list SrmCall $requestId $fileId $certProxy $serviceURL setFileStatus $remoteRequestId $remoteFileId Running]
-            set request(afterId) [after [expr $retryDeltaTime * 800] $call]
+            log::log debug "SrmCallDone $fileId setFileStatus $remoteRequestId $remoteFileId Running"
+            set call [list SrmCall $fileId $certProxy $serviceURL setFileStatus $remoteRequestId $remoteFileId Running]
+            set file(afterId) [after [expr $retryDeltaTime * 800] $call]
             switch -- $remoteRequestType {
                 get {
                     set stat [list $fileStatus(permMode) \
                                    $fileStatus(owner) \
                                    $fileStatus(group) \
                                    $fileStatus(size)]
-                    SrmReadyToGet $requestId $fileId $stat true $fileStatus(TURL)
+                    SrmReadyToGet $fileId $stat true $fileStatus(TURL)
                 }
                 put {
-                    SrmReadyToPut $requestId $fileId true $fileStatus(TURL)
+                    SrmReadyToPut $fileId true $fileStatus(TURL)
                 }
             }
         }
         *,Done {
-            puts $State(in) [list stop $requestId $fileId $request(userName) $request(certProxy)]
+            puts $State(in) [list stop $fileId]
         }
         *,Failed {
-            SrmFailed $requestId $fileId "Request to remote SRM failed: $result(errorMessage)"
+            SrmFailed $fileId "Request to remote SRM failed: $result(errorMessage)"
         }
         Failed,* -
         Done,* {
             # set state to Done
-            log::log debug "SrmCallDone $requestId $fileId setFileStatus $remoteRequestId $remoteFileId Done"
-            set call [list SrmCall $requestId $fileId $certProxy $serviceURL setFileStatus $remoteRequestId $remoteFileId Done]
-            set request(afterId) [after 0 $call]
+            log::log debug "SrmCallDone $fileId setFileStatus $remoteRequestId $remoteFileId Done"
+            set call [list SrmCall $fileId $certProxy $serviceURL setFileStatus $remoteRequestId $remoteFileId Done]
+            set file(afterId) [after 0 $call]
         }
         default {
-            set call [list SrmCall $requestId $fileId $certProxy $serviceURL getRequestStatus $remoteRequestId]
-            set request(afterId) [after [expr $retryDeltaTime * 800] $call]
+            set call [list SrmCall $fileId $certProxy $serviceURL getRequestStatus $remoteRequestId]
+            set file(afterId) [after [expr $retryDeltaTime * 800] $call]
         }
     }
 }

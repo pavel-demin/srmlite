@@ -23,21 +23,21 @@ proc SrmGet {requestType requestId fileId userName certProxy SURL} {
 
     set command "./setuid $userName ./url_get.sh [ExtractHostFile $SURL]"
 #    set command "./url_get.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $requestId $fileId $command
+    SubmitCommand $requestType $fileId $command
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmPut {requestType requestId fileId userName certProxy SURL} {
+proc SrmPut {requestType fileId userName certProxy SURL} {
 
     set command "./setuid $userName ./url_put.sh [ExtractHostFile $SURL]"
 #    set command "./url_put.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $requestId $fileId $command
+    SubmitCommand $requestType $fileId $command
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmCopy {requestType requestId fileId userName certProxy srcTURL dstTURL} {
+proc SrmCopy {requestType fileId userName certProxy srcTURL dstTURL} {
 
     set certProxyOrig $certProxy
     append certProxy {.copy}
@@ -47,13 +47,13 @@ proc SrmCopy {requestType requestId fileId userName certProxy srcTURL dstTURL} {
     set command "./setuid $userName ./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxy"
 #    set command "./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxy"
 
-    SubmitCommand $requestType $requestId $fileId $command
+    SubmitCommand $requestType $fileId $command
 }
 
 # -------------------------------------------------------------------------
 
 
-proc SrmStop {requestType requestId fileId userName certProxy} {
+proc SrmStop {requestType fileId userName certProxy} {
 
     global State SrmProcessIndex
 
@@ -65,7 +65,7 @@ proc SrmStop {requestType requestId fileId userName certProxy} {
     } else {
         set faultString "Unknown file ID $fileId"
         log::log error $faultString
-        puts $State(out) [list Failed $requestType $requestId $fileId $faultString]
+        puts $State(out) [list Failed $requestType $fileId $faultString]
     }
 }
 
@@ -106,7 +106,7 @@ proc KillCommand {processId} {
 
 # -------------------------------------------------------------------------
 
-proc SubmitCommand {requestType requestId fileId command} {
+proc SubmitCommand {requestType fileId command} {
 
     global State SrmProcessIndex SrmProcessTimer
 
@@ -115,7 +115,7 @@ proc SubmitCommand {requestType requestId fileId command} {
     if {[catch {open "| $command" {RDONLY NONBLOCK}} pipe]} {
         set faultString "Failed to execute '$command'"
         log::log error $faultString
-        puts $State(out) [list Failed $requestType $requestId $fileId $faultString]
+        puts $State(out) [list Failed $requestType $fileId $faultString]
         return
     }
 
@@ -123,7 +123,7 @@ proc SubmitCommand {requestType requestId fileId command} {
     log::log debug "\[process: $processId\] $command"
     upvar #0 SrmProcess$processId process
 
-    array set process [list requestType $requestType requestId $requestId fileId $fileId output {}]
+    array set process [list requestType $requestType fileId $fileId output {}]
     set SrmProcessIndex($fileId) $processId
     set SrmProcessTimer($processId) -1
 
@@ -200,7 +200,6 @@ proc Finish {processId pipe} {
     }
 
     set requestType $process(requestType)
-    set requestId $process(requestId)
     set fileId $process(fileId)
     set output $process(output)
 
@@ -214,7 +213,7 @@ proc Finish {processId pipe} {
         set state Ready
     }
 
-    puts $State(out) [list $state $requestType $requestId $fileId $output]
+    puts $State(out) [list $state $requestType $fileId $output]
 }
 
 # -------------------------------------------------------------------------
