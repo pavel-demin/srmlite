@@ -187,58 +187,47 @@ proc NewRequestId {} {
 
 # -------------------------------------------------------------------------
 
-proc SrmFailed {fileId errorMessage} {
-
-    upvar #0 SrmFile$fileId file
-    set requestId $file(requestId)
-    upvar #0 SrmRequest$requestId request
-
-    log::log error $errorMessage
-
-    set request(state) Failed
-    set request(errorMessage) $errorMessage
-    set file(state) Failed
-}
-
-# -------------------------------------------------------------------------
-
 proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
 
     global State
-    upvar #0 SrmFile$fileId file
-    set requestId $file(requestId)
-    upvar #0 SrmRequest$requestId request
 
-    set requestType $request(requestType)
+    upvar #0 SrmFiles($fileId) file
 
-    set permMode [lindex $stat 0]
-    set owner [lindex $stat 1]
-    set group [lindex $stat 2]
-    set size [lindex $stat 3]
+    set SURL [dict get $file SURL]
+    set TURL [dict get $file TURL]
+    set requestId [dict get $file requestId]
+
+    upvar #0 SrmRequests($requestId) request
+
+    set requestType [dict get $request requestType]
+    set userName [dict get $request userName]
+    set certProxy [dict get $request certProxy]
 
     switch -- $requestType,$isRemote {
         copy,false {
-            set dstSURL $file(TURL)
+            set dstSURL $TURL
             regexp {srm://.*/srm/managerv1} $dstSURL serviceURL
-            set call [list SrmCall $fileId $request(certProxy) $serviceURL put $dstSURL $size]
-            set request(afterId) [after 0 $call]
+            set call [list SrmCall $fileId $certProxy $serviceURL put $dstSURL $size]
+            dict set request afterId [after 0 $call]
         }
         copy,true {
-#            set request(state) Active
-#            set file(state) Ready
-            set dstTURL [ConvertSURL2TURL $file(TURL)]
-            puts $State(in) [list copy $fileId $request(userName) $request(certProxy) $srcTURL $dstTURL]
+#            SrmSetStatus $requestId $fileId Ready
+            set dstTURL [ConvertSURL2TURL $TURL]
+            puts $State(in) [list copy $fileId $userName $certProxy $srcTURL $dstTURL]
         }
         get,false {
-            set request(state) Active
-            set file(state) Ready
-            set file(TURL) [ConvertSURL2TURL $file(SURL)]
-            array set file [list isPinned true isPermanent true isCached true]
+            dict set file TURL [ConvertSURL2TURL $SURL]
+            dict set file isPinned true
+            dict set file isPermanent true
+            dict set file isCached true
+            SrmSetStatus $requestId $fileId Ready
         }
     }
 
-    set request(retryDeltaTime) 4
-    array set file [list size $size owner $owner group $group permMode $permMode]
+    dict set file permMode [lindex $stat 0]
+    dict set file owner [lindex $stat 1]
+    dict set file group [lindex $stat 2]
+    dict set file size [lindex $stat 3]
 }
 
 # -------------------------------------------------------------------------
@@ -246,56 +235,58 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
 proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
 
     global State
-    upvar #0 SrmFile$fileId file
-    set requestId $file(requestId)
-    upvar #0 SrmRequest$requestId request
 
-    set requestType $request(requestType)
+    upvar #0 SrmFiles($fileId) file
+
+    set SURL [dict get $file SURL]
+    set TURL [dict get $file TURL]
+    set requestId [dict get $file requestId]
+
+    upvar #0 SrmRequests($requestId) request
+
+    set requestType [dict get $request requestType]
+    set userName [dict get $request userName]
+    set certProxy [dict get $request certProxy]
 
     switch -- $requestType,$isRemote {
         copy,false {
-            set srcSURL $file(SURL)
+            set srcSURL $SURL
             regexp {srm://.*/srm/managerv1} $srcSURL serviceURL
-            set call [list SrmCall $fileId $request(certProxy) $serviceURL get $srcSURL]
-            set request(afterId) [after 0 $call]
+            set call [list SrmCall $fileId $certProxy $serviceURL get $srcSURL]
+            dict set request afterId [after 0 $call]
         }
         copy,true {
-#            set request(state) Active
-#            set file(state) Ready
-            set srcTURL [ConvertSURL2TURL $file(SURL)]
-            puts $State(in) [list copy $fileId $request(userName) $request(certProxy) $srcTURL $dstTURL]
+#            SrmSetStatus $requestId $fileId Ready
+            set srcTURL [ConvertSURL2TURL $SURL]
+            puts $State(in) [list copy $fileId $userName $certProxy $srcTURL $dstTURL]
         }
         put,false {
-            set request(state) Active
-            set file(state) Ready
-            set file(TURL) [ConvertSURL2TURL $file(srcSURL)]
+            dict set file TURL [ConvertSURL2TURL $SURL]
+            SrmSetStatus $requestId $fileId Ready
         }
     }
-
-    set request(retryDeltaTime) 4
 }
 
 # -------------------------------------------------------------------------
 
 proc SrmCopyDone {fileId} {
 
-    upvar #0 SrmFile$fileId file
-    set requestId $file(requestId)
-    upvar #0 SrmRequest$requestId request
+    upvar #0 SrmFiles($fileId) file
 
-    set request(state) Done
-    set file(state) Done
+    set requestId [dict get $file requestId]
+
+    SrmSetStatus $requestId $fileId Done
 }
 
 # -------------------------------------------------------------------------
 
 proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}}} {
 
-    global State SrmRequestTimer
-    global SrmRequests SrmFiles
+    global State
 
     set requestId [NewRequestId]
-    set request [dict create]
+    upvar #0 SrmRequests($requestId) request
+    upvar #0 SrmRequestTimer($requestId) timer
 
     set clockStart [clock seconds]
     set clockFinish [clock scan {1 hour} -base $clockStart]
@@ -312,7 +303,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
     foreach SURL $SURLS dstSURL $dstSURLS size $sizes {
 
         set fileId [NewRequestId]
-        set file [dict create]
+        upvar #0 SrmFiles($fileId) file
 
         if {$size == {}} {
             set size 0
@@ -324,7 +315,6 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
             SURL $SURL TURL $dstSURL]
 
         dict lappend request fileIds $fileId
-        set SrmFiles($fileId) $file
 
         switch -- $requestType {
             get -
@@ -335,16 +325,15 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
                 if {[IsLocalHost $SURL] && ![IsLocalHost $dstSURL]} {
                     puts $State(in) [list get $requestId $fileId $userName $certProxy $SURL]
                 } elseif {![IsLocalHost $SURL] && [IsLocalHost $dstSURL]} {
-                    puts $State(in) [list put $requestId $fileId $userName $certProxy $dstSURL]
+                    puts $State(in) [list put $fileId $userName $certProxy $dstSURL]
                 } else {
-                    SrmFailed $requestId $fileId {copying between two local or two remote SURLs is not allowed}
+                    SrmFailed $fileId {copying between two local or two remote SURLs is not allowed}
                 }
             }
         }
     }
 
-    set SrmRequests($requestId) $request
-    set SrmRequestTimer($requestId) -1
+    set timer -1
 
     return [SrmGetRequestStatus $userName $certProxy $requestId $requestType]
 }
@@ -354,62 +343,145 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
 proc SrmGetRequestStatus {userName certProxy requestId {requestType getRequestStatus}} {
 
     global State
-    upvar #0 SrmRequest$requestId request
+    upvar #0 SrmRequests($requestId) request
 
-    log::log debug "SrmGetRequestStatus $requestId [info exists request]"
     if {![info exists request]} {
         set faultString "Unknown request id $requestId"
+        log::log error $faultString
         return [SrmFaultBody $faultString $faultString]
     }
 
-    set fileId $request(fileId)
-    upvar #0 SrmFile$fileId file
+    set requestUserName [dict get $request userName]
 
-    if {![string equal $request(userName) $userName]} {
-        SrmFailed $requestId $fileId "user $userName does not have permission to access request $requestId"
+    if {![string equal $requestUserName $userName]} {
+        set faultString "User $userName does not have permission to access request $requestId"
+        log::log error $faultString
+        return [SrmFaultBody $faultString $faultString]
     }
 
     set counter [incr request(counter)]
 
-    set request(retryDeltaTime) [expr {$counter / 4 * 4}]
+    dict set request retryDeltaTime [expr {$counter / 4 * 5 + 1}]
 
     return [SrmStatusBody $requestType $requestId]
-
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmSetFileStatus {userName certProxy requestId fileId fileState} {
+proc SrmSetFileStatus {userName certProxy requestId fileId newState} {
 
-    global State
-    upvar #0 SrmRequest$requestId request
+    global SrmRequests SrmFiles
+    upvar #0 SrmRequests($requestId) request
+    upvar #0 SrmFiles($fileId) file
 
     if {![info exists request]} {
-       set faultString "Unknown request id $requestId"
-       return [SrmFaultBody $faultString $faultString]
+        set faultString "Unknown request id $requestId"
+        log::log error $faultString
+        return [SrmFaultBody $faultString $faultString]
     }
-
-    upvar #0 SrmFile$fileId file
 
     if {![info exists file]} {
-       set faultString "Unknown file id $fileId"
-       return [SrmFaultBody $faultString $faultString]
+        set faultString "Unknown file id $fileId"
+        log::log error $faultString
+        return [SrmFaultBody $faultString $faultString]
     }
 
-    set requestType $request(requestType)
+    set fileIds [dict get $request fileIds]
 
-    set request(state) $fileState
-    set file(state) $fileState
-
-    if {[string equal $request(userName) $userName]} {
-        if {$fileState == "Done" && $requestType != "copy"} {
-            puts $State(in) [list stop $fileId $request(userName) $request(certProxy)]
-        }
-    } else {
-        SrmFailed $fileId "user $userName does not have permission to update request $requestId"
+    if {[lsearch $fileIds $fileId] == -1} {
+        set faultString "File $fileId is not part of request $requestId"
+        log::log error $faultString
+        return [SrmFaultBody $faultString $faultString]
     }
+
+    set requestUserName [dict get $request userName]
+
+    if {![string equal $requestUserName $userName]} {
+        set faultString "User $userName does not have permission to update request $requestId"
+        log::log error $faultString
+        return [SrmFaultBody $faultString $faultString]
+    }
+
+    SrmSetStatus $requestId $fileId $newState
 
     return [SrmStatusBody setFileStatus $requestId]
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmSetStatus {requestId fileId newState} {
+
+    global State
+    upvar #0 SrmRequests($requestId) request
+    upvar #0 SrmFiles($fileId) file
+
+
+    set requestType [dict get $request requestType]
+    set requestState [dict get $request state]
+    set currentState [dict get $file state]
+
+    switch -glob -- $requestState,$currentState,$fileState {
+        Pending,Ready,Running -
+        Active,Ready,Running {
+            dict set request state Active
+            dict set file state Running
+        }
+        Pending,Pending,Done -
+        Pending,Ready,Done -
+        Active,Pending,Done -
+        Active,Running,Done -
+        Active,Ready,Done {
+            dict set file state Done
+            if {[SrmIsRequestDone $requestId]} {
+                dict set request state Done
+            }
+            puts $State(in) [list stop $fileId]
+            if {$requestType == "copy"} {
+                SrmCallStop $fileId
+            }
+        }
+        *,*,Failed {
+            dict set request state Failed
+            dict set file state Failed
+            puts $State(in) [list stop $fileId]
+            if {$requestType == "copy"} {
+                SrmCallStop $fileId
+            }
+        }
+        default {
+            log::log error "Unexpected state $requestState,$currentState,$fileState"
+        }
+    }
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmFailed {fileId errorMessage} {
+
+    upvar #0 SrmFiles($fileId) file
+    set requestId [dict get $file requestId]
+    upvar #0 SrmRequests($requestId) request
+
+    log::log error $errorMessage
+
+    dict set request errorMessage $errorMessage
+    dict set request state Failed
+    dict set file state Failed
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmIsRequestDone {requestId} {
+
+    global SrmFiles SrmRequests
+
+    foreach fileId [dict get $SrmRequests($requestId) fileIds] {
+        if {[dict get $SrmFiles($fileId) state] != "Done"} {
+            return 0
+        }
+    }
+
+    return 1
 }
 
 # -------------------------------------------------------------------------
@@ -453,16 +525,17 @@ proc SrmTimeout {seconds} {
 
 proc KillSrmRequest {requestId} {
 
-    global State SrmRequestTimer
-    upvar #0 SrmRequest$requestId request
+    global State
+    upvar #0 SrmRequests($requestId) request
+    upvar #0 SrmRequestTimer($requestId) timer
 
-    if {[info exists SrmRequestTimer($requestId)]} {
-        unset SrmRequestTimer($requestId)
+    if {[info exists timer]} {
+        unset timer
     }
 
     if {[info exists request]} {
-        set fileId $request(fileId)
-        upvar #0 SrmFile$fileId file
+        set fileId [dict get $request fileId]
+        upvar #0 SrmFiles($fileId) file
 
         puts $State(in) [list stop $requestId $fileId $request(userName) $request(certProxy)]
 
