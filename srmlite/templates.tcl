@@ -62,7 +62,7 @@ proc InitTemplateGet {} {
   set content [read $fid]
   close $fid
 
-  proc SrmGetBody {srcSURL} [g2lite $content]
+  proc SrmGetBody {srcSURLS} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
