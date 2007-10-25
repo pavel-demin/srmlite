@@ -359,8 +359,10 @@ proc SrmGetRequestStatus {userName certProxy requestId {requestType getRequestSt
         return [SrmFaultBody $faultString $faultString]
     }
 
-    set counter [incr request(counter)]
+    set counter [dict get $request counter]
+    incr counter
 
+    dict set request counter $counter
     dict set request retryDeltaTime [expr {$counter / 4 * 5 + 1}]
 
     return [SrmStatusBody $requestType $requestId]
@@ -420,7 +422,14 @@ proc SrmSetStatus {requestId fileId newState} {
     set requestState [dict get $request state]
     set currentState [dict get $file state]
 
-    switch -glob -- $requestState,$currentState,$fileState {
+    log::log debug "SrmSetStatus $requestId $fileId $requestState,$currentState,$newState"
+
+    switch -glob -- $requestState,$currentState,$newState {
+        Pending,Pending,Ready -
+        Active,Pending,Ready {
+            dict set request state Active
+            dict set file state Ready
+        }
         Pending,Ready,Running -
         Active,Ready,Running {
             dict set request state Active
@@ -449,7 +458,7 @@ proc SrmSetStatus {requestId fileId newState} {
             }
         }
         default {
-            log::log error "Unexpected state $requestState,$currentState,$fileState"
+            log::log error "Unexpected state $requestState,$currentState,$newState"
         }
     }
 }
@@ -537,7 +546,7 @@ proc KillSrmRequest {requestId} {
         set fileId [dict get $request fileId]
         upvar #0 SrmFiles($fileId) file
 
-        puts $State(in) [list stop $requestId $fileId $request(userName) $request(certProxy)]
+        puts $State(in) [list stop $fileId]
 
         if {[info exists file]} {
             unset file

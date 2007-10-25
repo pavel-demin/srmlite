@@ -53,7 +53,7 @@ proc SrmCopy {requestType fileId userName certProxy srcTURL dstTURL} {
 # -------------------------------------------------------------------------
 
 
-proc SrmStop {requestType fileId userName certProxy} {
+proc SrmStop {fileId} {
 
     global State SrmProcessIndex
 
@@ -65,7 +65,7 @@ proc SrmStop {requestType fileId userName certProxy} {
     } else {
         set faultString "Unknown file ID $fileId"
         log::log error $faultString
-        puts $State(out) [list Failed $requestType $fileId $faultString]
+        puts $State(out) [list Failed {} $fileId $faultString]
     }
 }
 
