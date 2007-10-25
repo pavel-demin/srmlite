@@ -10,7 +10,7 @@ package require srmlite::soap
 
 proc SrmCall {fileId certProxy serviceURL requestType args} {
 
-    log::log debug "SrmCall $requestId $fileId $serviceURL $requestType $args"
+    log::log debug "SrmCall $fileId $serviceURL $requestType $args"
 
     switch -- $requestType {
         get {

@@ -19,7 +19,7 @@ proc ExtractHostFile {url} {
 
 # -------------------------------------------------------------------------
 
-proc SrmGet {requestType requestId fileId userName certProxy SURL} {
+proc SrmGet {requestType fileId userName certProxy SURL} {
 
     set command "./setuid $userName ./url_get.sh [ExtractHostFile $SURL]"
 #    set command "./url_get.sh [ExtractHostFile $SURL]"
@@ -53,7 +53,7 @@ proc SrmCopy {requestType fileId userName certProxy srcTURL dstTURL} {
 # -------------------------------------------------------------------------
 
 
-proc SrmStop {fileId} {
+proc SrmStop {requestType fileId} {
 
     global State SrmProcessIndex
 
@@ -238,6 +238,8 @@ proc GetInput {chan} {
         return
     }
 
+    log::log debug $line
+
     set requestType [lindex $line 0]
 
     switch -- $requestType {
@@ -257,8 +259,6 @@ proc GetInput {chan} {
             log::log error "Unknown request type $requestType"
         }
     }
-
-    log::log debug $line
 }
 
 # -------------------------------------------------------------------------

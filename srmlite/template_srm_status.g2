@@ -14,7 +14,7 @@ dict with SrmRequests($requestId) {
     <id0 id='id0' soapenc:root='0' xsi:type='ns5:RequestStatus'>
       <requestId xsi:type='xsd:int'>$${requestId}</requestId>
       <type xsi:type='xsd:string'>$${requestTypeUpper}</type>
-      <state xsi:type='xsd:string'>$${state}</state>
+      <state xsi:type='xsd:string'>$${reqState}</state>
       <submitTime href='#id1'></submitTime>
       <startTime href='#id2'></startTime>
       <finishTime href='#id3'></finishTime>

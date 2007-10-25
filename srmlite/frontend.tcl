@@ -211,7 +211,7 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
             dict set request afterId [after 0 $call]
         }
         copy,true {
-#            SrmSetStatus $requestId $fileId Ready
+#            SrmSetState $requestId $fileId Ready
             set dstTURL [ConvertSURL2TURL $TURL]
             puts $State(in) [list copy $fileId $userName $certProxy $srcTURL $dstTURL]
         }
@@ -220,7 +220,7 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
             dict set file isPinned true
             dict set file isPermanent true
             dict set file isCached true
-            SrmSetStatus $requestId $fileId Ready
+            SrmSetState $requestId $fileId Ready
         }
     }
 
@@ -256,13 +256,13 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
             dict set request afterId [after 0 $call]
         }
         copy,true {
-#            SrmSetStatus $requestId $fileId Ready
+#            SrmSetState $requestId $fileId Ready
             set srcTURL [ConvertSURL2TURL $SURL]
             puts $State(in) [list copy $fileId $userName $certProxy $srcTURL $dstTURL]
         }
         put,false {
             dict set file TURL [ConvertSURL2TURL $SURL]
-            SrmSetStatus $requestId $fileId Ready
+            SrmSetState $requestId $fileId Ready
         }
     }
 }
@@ -275,7 +275,7 @@ proc SrmCopyDone {fileId} {
 
     set requestId [dict get $file requestId]
 
-    SrmSetStatus $requestId $fileId Done
+    SrmSetState $requestId $fileId Done
 }
 
 # -------------------------------------------------------------------------
@@ -295,7 +295,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
     set startTime $submitTime
     set finishTime [clock format $clockFinish -format {%Y-%m-%dT%H:%M:%SZ} -gmt yes]
 
-    set request [dict create state Pending requestType $requestType \
+    set request [dict create reqState Pending requestType $requestType \
         submitTime $submitTime startTime $startTime finishTime $finishTime \
         errorMessage {} retryDeltaTime 1 fileIds {} counter 1 \
         afterId {} userName $userName certProxy $certProxy]
@@ -319,11 +319,11 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
         switch -- $requestType {
             get -
             put {
-                puts $State(in) [list $requestType $requestId $fileId $userName $certProxy $SURL]
+                puts $State(in) [list $requestType $fileId $userName $certProxy $SURL]
             }
             copy {
                 if {[IsLocalHost $SURL] && ![IsLocalHost $dstSURL]} {
-                    puts $State(in) [list get $requestId $fileId $userName $certProxy $SURL]
+                    puts $State(in) [list get $fileId $userName $certProxy $SURL]
                 } elseif {![IsLocalHost $SURL] && [IsLocalHost $dstSURL]} {
                     puts $State(in) [list put $fileId $userName $certProxy $dstSURL]
                 } else {
@@ -404,14 +404,14 @@ proc SrmSetFileStatus {userName certProxy requestId fileId newState} {
         return [SrmFaultBody $faultString $faultString]
     }
 
-    SrmSetStatus $requestId $fileId $newState
+    SrmSetState $requestId $fileId $newState
 
     return [SrmStatusBody setFileStatus $requestId]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmSetStatus {requestId fileId newState} {
+proc SrmSetState {requestId fileId newState} {
 
     global State
     upvar #0 SrmRequests($requestId) request
@@ -419,20 +419,20 @@ proc SrmSetStatus {requestId fileId newState} {
 
 
     set requestType [dict get $request requestType]
-    set requestState [dict get $request state]
+    set requestState [dict get $request reqState]
     set currentState [dict get $file state]
 
-    log::log debug "SrmSetStatus $requestId $fileId $requestState,$currentState,$newState"
+    log::log debug "SrmSetState $requestId $fileId $requestState,$currentState,$newState"
 
     switch -glob -- $requestState,$currentState,$newState {
         Pending,Pending,Ready -
         Active,Pending,Ready {
-            dict set request state Active
+            dict set request reqState Active
             dict set file state Ready
         }
         Pending,Ready,Running -
         Active,Ready,Running {
-            dict set request state Active
+            dict set request reqState Active
             dict set file state Running
         }
         Pending,Pending,Done -
@@ -442,7 +442,7 @@ proc SrmSetStatus {requestId fileId newState} {
         Active,Ready,Done {
             dict set file state Done
             if {[SrmIsRequestDone $requestId]} {
-                dict set request state Done
+                dict set request reqState Done
             }
             puts $State(in) [list stop $fileId]
             if {$requestType == "copy"} {
@@ -450,7 +450,7 @@ proc SrmSetStatus {requestId fileId newState} {
             }
         }
         *,*,Failed {
-            dict set request state Failed
+            dict set request reqState Failed
             dict set file state Failed
             puts $State(in) [list stop $fileId]
             if {$requestType == "copy"} {
@@ -474,7 +474,7 @@ proc SrmFailed {fileId errorMessage} {
     log::log error $errorMessage
 
     dict set request errorMessage $errorMessage
-    dict set request state Failed
+    dict set request reqState Failed
     dict set file state Failed
 }
 

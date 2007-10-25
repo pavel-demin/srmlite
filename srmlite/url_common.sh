@@ -65,7 +65,7 @@ checkFileDst()
   else
     if [ ! -w "$tmp" ]
     then
-      echo "Permission to mkdir denied"
+      echo "Permission to write denied"
       exit 9
     fi
 
