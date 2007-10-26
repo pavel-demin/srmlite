@@ -116,6 +116,8 @@ proc SrmCallDone {fileId certProxy token} {
     set remoteFileState $fileStatus(state)
     set remoteFileId $fileStatus(fileId)
 
+    log::log debug "SrmCallDone $fileId $remoteRequestId $remoteFileId $localFileState,$remoteFileState"
+
     switch -glob -- $localFileState,$remoteFileState {
         *,Ready {
             # set state to Running
