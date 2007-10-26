@@ -7,12 +7,12 @@ package require starfish
 array set CfgValidators {
     logLevel ValidateLogLevel
     ftpHosts ValidateFtpHosts
-    backendLog ValidateBackendLog
-    frontendLog ValidateFrontendLog
+    chrootDir ValidateChrootDir
+    daemonize ValidateBoolean
     frontendUser ValidateUser
     frontendPort ValidatePort
-    frontendChrootDir ValidateChrootDir
-    backendChrootDir ValidateChrootDir
+    frontendLog ValidateFrontendLog
+    backendLog ValidateBackendLog
     gridMapDir ValidateGridMapDir
     gridMapFile ValidateGridMapFile
     srmv1Prefix ValidateEverything
@@ -22,12 +22,12 @@ array set CfgValidators {
 array set Cfg {
     logLevel notice
     ftpHosts ingrid-phedex.cism.ucl.ac.be
-    backendLog backend.log
-    frontendLog frontend.log
-    frontendUser globus
+    chrootDir .
+    daemonize false
+    frontendUser edguser
     frontendPort 8443
-    frontendChrootDir .
-    backendChrootDir .
+    frontendLog frontend.log
+    backendLog backend.log
     gridMapDir /etc/grid-security/gridmapdir
     gridMapFile /etc/grid-security/grid-mapfile
     srmv1Prefix /srm/managerv1
@@ -92,6 +92,14 @@ proc ValidateFtpHosts {ftpHosts} {
             [catch {::starfish::netdb hosts address $host} result]} {
             return -code error $result
         }
+    }
+}
+
+# -------------------------------------------------------------------------
+
+proc ValidateBoolean {value} {
+    if {[lsearch {true false} $value] == -1} {
+        return -code error "unknown boolean value (should be true or false) in\n$data"
     }
 }
 
