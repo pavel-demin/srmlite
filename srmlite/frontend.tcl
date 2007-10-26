@@ -208,7 +208,7 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
             set dstSURL $TURL
             regexp {srm://.*/srm/managerv1} $dstSURL serviceURL
             set call [list SrmCall $fileId $certProxy $serviceURL put $dstSURL $size]
-            dict set request afterId [after 0 $call]
+            dict set file afterId [after 0 $call]
         }
         copy,true {
 #            SrmSetState $requestId $fileId Ready
@@ -253,7 +253,7 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
             set srcSURL $SURL
             regexp {srm://.*/srm/managerv1} $srcSURL serviceURL
             set call [list SrmCall $fileId $certProxy $serviceURL get $srcSURL]
-            dict set request afterId [after 0 $call]
+            dict set file afterId [after 0 $call]
         }
         copy,true {
 #            SrmSetState $requestId $fileId Ready
@@ -298,7 +298,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
     set request [dict create reqState Pending requestType $requestType \
         submitTime $submitTime startTime $startTime finishTime $finishTime \
         errorMessage {} retryDeltaTime 1 fileIds {} counter 1 \
-        afterId {} userName $userName certProxy $certProxy]
+        userName $userName certProxy $certProxy]
 
     foreach SURL $SURLS dstSURL $dstSURLS size $sizes {
 
@@ -312,7 +312,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
         set file [dict create state Pending requestId $requestId \
             size $size owner {} group {} permMode 0 \
             isPinned false isPermanent false isCached false \
-            SURL $SURL TURL $dstSURL]
+            SURL $SURL TURL $dstSURL afterId {}]
 
         dict lappend request fileIds $fileId
 

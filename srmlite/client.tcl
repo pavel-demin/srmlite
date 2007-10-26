@@ -1,5 +1,6 @@
 package require g2lite
 package require gtlite
+package require dict
 package require tdom
 package require http
 
@@ -54,9 +55,8 @@ proc SrmCallCommand {fileId certProxy token} {
 
 proc SrmCallDone {fileId certProxy token} {
 
-    global State
     upvar #0 $token http
-    upvar #0 SrmFile$fileId file
+    upvar #0 SrmFiles($fileId) file
 
     log::log debug "SrmCallDone $fileId"
 
@@ -112,7 +112,7 @@ proc SrmCallDone {fileId certProxy token} {
 
     array set fileStatus [lindex $result(fileStatuses) 0]
 
-    set localFileState $file(state)
+    set localFileState [dict get file state]
     set remoteFileState $fileStatus(state)
     set remoteFileId $fileStatus(fileId)
 
@@ -121,7 +121,7 @@ proc SrmCallDone {fileId certProxy token} {
             # set state to Running
             log::log debug "SrmCallDone $fileId setFileStatus $remoteRequestId $remoteFileId Running"
             set call [list SrmCall $fileId $certProxy $serviceURL setFileStatus $remoteRequestId $remoteFileId Running]
-            set file(afterId) [after [expr $retryDeltaTime * 800] $call]
+            dict set file afterId [after [expr $retryDeltaTime * 800] $call]
             switch -- $remoteRequestType {
                 get {
                     set stat [list $fileStatus(permMode) \
@@ -136,7 +136,7 @@ proc SrmCallDone {fileId certProxy token} {
             }
         }
         *,Done {
-            puts $State(in) [list stop $fileId]
+            log::log debug "SrmCallDone $remoteRequestId $remoteFileId is Done"
         }
         *,Failed {
             SrmFailed $fileId "Request to remote SRM failed: $result(errorMessage)"
@@ -146,11 +146,11 @@ proc SrmCallDone {fileId certProxy token} {
             # set state to Done
             log::log debug "SrmCallDone $fileId setFileStatus $remoteRequestId $remoteFileId Done"
             set call [list SrmCall $fileId $certProxy $serviceURL setFileStatus $remoteRequestId $remoteFileId Done]
-            set file(afterId) [after 0 $call]
+            dict set file afterId [after 0 $call]
         }
         default {
             set call [list SrmCall $fileId $certProxy $serviceURL getRequestStatus $remoteRequestId]
-            set file(afterId) [after [expr $retryDeltaTime * 800] $call]
+            dict set file afterId [after [expr $retryDeltaTime * 800] $call]
         }
     }
 }
