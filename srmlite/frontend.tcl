@@ -543,15 +543,16 @@ proc KillSrmRequest {requestId} {
     }
 
     if {[info exists request]} {
-        set fileId [dict get $request fileId]
-        upvar #0 SrmFiles($fileId) file
+        foreach fileId [dict get $request fileIds] {
+            upvar #0 SrmFiles($fileId) file
 
-        puts $State(in) [list stop $fileId]
+            puts $State(in) [list stop $fileId]
 
-        if {[info exists file]} {
-            unset file
+            if {[info exists file]} {
+                unset file
+            }
+            unset request
         }
-        unset request
     }
 }
 
