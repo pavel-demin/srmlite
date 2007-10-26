@@ -48,7 +48,7 @@ proc FormatLogMessage {level message} {
 
 proc SetupTimer {seconds command} {
     signal unblock {ALRM}
-    signal trap -restart {ALRM} $command
+    signal -restart trap {ALRM} $command
     alarm $seconds
 }
 
