@@ -48,7 +48,7 @@ proc FormatLogMessage {level message} {
 
 proc SetupTimer {seconds command} {
     signal unblock {ALRM}
-    signal trap    {ALRM} $command
+    signal trap -restart {ALRM} $command
     alarm $seconds
 }
 
@@ -213,7 +213,7 @@ SetLogLevel $Cfg(logLevel)
 #daemonize
 signal ignore  SIGHUP
 signal unblock {INT QUIT TERM}
-signal trap    {INT QUIT TERM} shutdown
+signal -restart trap {INT QUIT TERM} shutdown
 
 
 set State(pipein) [pipe]
