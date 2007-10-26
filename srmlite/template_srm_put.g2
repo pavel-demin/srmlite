@@ -4,10 +4,10 @@
   <soapenv:Body>
     <ns1:put soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://tempuri.org/diskCacheV111.srm.server.SRMServerV1">
       <arg0 soapenc:arrayType="xsd:string[1]" xsi:type="soapenc:Array" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/">
-        <arg0 xsi:type="xsd:string">$${SURL}</arg0>
+        <arg0 xsi:type="xsd:string">$${dstSURL}</arg0>
       </arg0>
       <arg1 soapenc:arrayType="xsd:string[1]" xsi:type="soapenc:Array" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/">
-        <arg1 xsi:type="xsd:string">$${SURL}</arg1>
+        <arg1 xsi:type="xsd:string">$${dstSURL}</arg1>
       </arg1>
       <arg2 soapenc:arrayType="xsd:long[1]" xsi:type="soapenc:Array" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/">
         <arg2 xsi:type="xsd:long">${size}</arg2>
