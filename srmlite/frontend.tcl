@@ -542,11 +542,17 @@ proc KillSrmRequest {requestId} {
         unset timer
     }
 
+    set requestType [dict get $request requestType]
+
     if {[info exists request]} {
         foreach fileId [dict get $request fileIds] {
             upvar #0 SrmFiles($fileId) file
 
             puts $State(in) [list stop $fileId]
+
+            if {$requestType == "copy"} {
+                SrmCallStop $fileId
+            }
 
             if {[info exists file]} {
                 unset file

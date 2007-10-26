@@ -63,7 +63,7 @@ proc SrmCallDone {fileId responseType token} {
     upvar #0 $token http
     upvar #0 SrmClients($fileId) client
 
-    log::log debug "SrmCallDone $fileId"
+    log::log debug "SrmCallDone: $fileId"
 
     set serviceURL $http(url)
     set content [::http::data $token]
@@ -125,12 +125,12 @@ proc SrmCallDone {fileId responseType token} {
             remoteRequestId $remoteRequestId remoteFileId $remoteFileId]
     }
 
-    log::log debug "SrmCallDone $fileId $remoteRequestId $remoteFileId $remoteFileState"
+    log::log debug "SrmCallDone: $fileId $remoteRequestId $remoteFileId $remoteFileState"
 
     switch -- $remoteFileState {
         Ready {
             # set state to Running
-            log::log debug "SrmCallDone $fileId setFileStatus $remoteRequestId $remoteFileId Running"
+            log::log debug "SrmCallDone: $fileId setFileStatus $remoteRequestId $remoteFileId Running"
             set call [list SrmCall $fileId $serviceURL setFileStatus $remoteRequestId $remoteFileId Running]
             dict set client afterId [after [expr $retryDeltaTime * 800] $call]
             switch -- $remoteRequestType {
@@ -147,9 +147,11 @@ proc SrmCallDone {fileId responseType token} {
             }
         }
         Done {
-            log::log debug "SrmCallDone $remoteRequestId $remoteFileId is Done"
+            unset client
+            log::log debug "SrmCallDone: $remoteRequestId $remoteFileId is Done"
         }
         Failed {
+            unset client
             SrmFailed $fileId "Request to remote SRM failed: $remoteErrorMessage"
         }
         default {
@@ -164,6 +166,11 @@ proc SrmCallDone {fileId responseType token} {
 SrmCallStop {fileId} {
 
     upvar #0 SrmClients($fileId) client
+    
+    if {![info exists client]} {
+        log::log error "SrmCallStop: Unknown file id $fileId"
+        return
+    }
 
     dict with client {
         if {$afterId != {}} {
@@ -171,7 +178,7 @@ SrmCallStop {fileId} {
         }
 
         # set state to Done
-        log::log debug "SrmCallStop $fileId setFileStatus $remoteRequestId $remoteFileId Done"
+        log::log debug "SrmCallStop: $fileId setFileStatus $remoteRequestId $remoteFileId Done"
         set call [list SrmCall $fileId $serviceURL setFileStatus $remoteRequestId $remoteFileId Done]
         after 0 $call
     }
