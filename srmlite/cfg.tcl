@@ -7,6 +7,7 @@ package require starfish
 array set CfgValidators {
     logLevel ValidateLogLevel
     ftpHosts ValidateFtpHosts
+    workDir ValidateWorkDir
     chrootDir ValidateChrootDir
     daemonize ValidateBoolean
     frontendUser ValidateUser
@@ -22,6 +23,7 @@ array set CfgValidators {
 array set Cfg {
     logLevel notice
     ftpHosts ingrid-phedex.cism.ucl.ac.be
+    workDir .
     chrootDir .
     daemonize false
     frontendUser edguser

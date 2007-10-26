@@ -9,7 +9,12 @@ package require srmlite::soap
 
 # -------------------------------------------------------------------------
 
-proc SrmCall {fileId certProxy serviceURL requestType args} {
+proc SrmCall {fileId serviceURL requestType args} {
+
+    upvar #0 SrmFiles($fileId) file
+    set requestId [dict get $file requestId]
+    upvar #0 SrmRequests($requestId) request
+    set certProxy [dict get $request certProxy]
 
     log::log debug "SrmCall $fileId $serviceURL $requestType $args"
 
@@ -37,26 +42,26 @@ proc SrmCall {fileId certProxy serviceURL requestType args} {
         -query $query \
         -type {text/xml; charset=utf-8} \
         -headers [SrmHeaders $requestType] \
-        -command [list SrmCallCommand $fileId $certProxy]
+        -command [list SrmCallCommand $fileId $requestType]
 
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmCallCommand {fileId certProxy token} {
+proc SrmCallCommand {fileId responseType token} {
 
     global errorInfo
 
-    if {[catch {SrmCallDone $fileId $certProxy $token} result]} {
+    if {[catch {SrmCallDone $fileId $responseType $token} result]} {
          log::log error $result
     }
 }
 # -------------------------------------------------------------------------
 
-proc SrmCallDone {fileId certProxy token} {
+proc SrmCallDone {fileId responseType token} {
 
     upvar #0 $token http
-    upvar #0 SrmFiles($fileId) file
+    upvar #0 SrmClients($fileId) client
 
     log::log debug "SrmCallDone $fileId"
 
@@ -99,57 +104,76 @@ proc SrmCallDone {fileId certProxy token} {
 
     $document delete
 
-    array set result [lindex $argValues 0]
+    set result [eval dict create [lindex $argValues 0]]
 
-    set remoteRequestId $result(requestId)
-    set remoteRequestType [string tolower $result(type)]
-    set remoteState $result(state)
-    set retryDeltaTime $result(retryDeltaTime)
+    dict with result {
 
-    array set fileStatus [lindex $result(fileStatuses) 0]
+        set remoteRequestId $requestId
+        set remoteRequestType [string tolower $type)]
+        set remoteErrorMessage $errorMessage
+        set remoteRetryDeltaTime
 
-    set localFileState [dict get $file state]
-    set remoteFileState $fileStatus(state)
-    set remoteFileId $fileStatus(fileId)
+        set remoteFile [eval dict create [lindex $fileStatuses 0]]
 
-    log::log debug "SrmCallDone $fileId $remoteRequestId $remoteFileId $localFileState,$remoteFileState"
+        set remoteFileState [dict get $remoteFile state]
+        set remoteFileId [dict get $remoteFile fileId]
+    }
 
-    switch -glob -- $localFileState,$remoteFileState {
-        *,Ready {
+    if {$responseType != "getRequestStatus" &&
+        $responseType != "setFileStatus"} {
+        set client [dict create afterId {} serviceURL $serviceURL \
+            remoteRequestId $remoteRequestId remoteFileId $remoteFileId]
+    }
+
+    log::log debug "SrmCallDone $fileId $remoteRequestId $remoteFileId $remoteFileState"
+
+    switch -- $remoteFileState {
+        Ready {
             # set state to Running
             log::log debug "SrmCallDone $fileId setFileStatus $remoteRequestId $remoteFileId Running"
-            set call [list SrmCall $fileId $certProxy $serviceURL setFileStatus $remoteRequestId $remoteFileId Running]
-            dict set file afterId [after [expr $retryDeltaTime * 800] $call]
+            set call [list SrmCall $fileId $serviceURL setFileStatus $remoteRequestId $remoteFileId Running]
+            dict set client afterId [after [expr $retryDeltaTime * 800] $call]
             switch -- $remoteRequestType {
                 get {
-                    set stat [list $fileStatus(permMode) \
-                                   $fileStatus(owner) \
-                                   $fileStatus(group) \
-                                   $fileStatus(size)]
-                    SrmReadyToGet $fileId $stat true $fileStatus(TURL)
+                    set stat [list [dict get $remoteFile permMode)] \
+                                   [dict get $remoteFile owner] \
+                                   [dict get $remoteFile group] \
+                                   [dict get $remoteFile size]]
+                    SrmReadyToGet $fileId $stat true [dict get $remoteFile TURL]
                 }
                 put {
-                    SrmReadyToPut $fileId true $fileStatus(TURL)
+                    SrmReadyToPut $fileId true [dict get $remoteFile TURL]
                 }
             }
         }
-        *,Done {
+        Done {
             log::log debug "SrmCallDone $remoteRequestId $remoteFileId is Done"
         }
-        *,Failed {
-            SrmFailed $fileId "Request to remote SRM failed: $result(errorMessage)"
-        }
-        Failed,* -
-        Done,* {
-            # set state to Done
-            log::log debug "SrmCallDone $fileId setFileStatus $remoteRequestId $remoteFileId Done"
-            set call [list SrmCall $fileId $certProxy $serviceURL setFileStatus $remoteRequestId $remoteFileId Done]
-            dict set file afterId [after 0 $call]
+        Failed {
+            SrmFailed $fileId "Request to remote SRM failed: $remoteErrorMessage"
         }
         default {
-            set call [list SrmCall $fileId $certProxy $serviceURL getRequestStatus $remoteRequestId]
-            dict set file afterId [after [expr $retryDeltaTime * 800] $call]
+            set call [list SrmCall $fileId $serviceURL getRequestStatus $remoteRequestId]
+            dict set client afterId [after [expr $retryDeltaTime * 800] $call]
         }
+    }
+}
+
+# -------------------------------------------------------------------------
+
+SrmCallStop {fileId} {
+
+    upvar #0 SrmClients($fileId) client
+
+    dict with client {
+        if {$afterId != {}} {
+            after cancel $afterId
+        }
+
+        # set state to Done
+        log::log debug "SrmCallStop $fileId setFileStatus $remoteRequestId $remoteFileId Done"
+        set call [list SrmCall $fileId $serviceURL setFileStatus $remoteRequestId $remoteFileId Done]
+        after 0 $call
     }
 }
 
