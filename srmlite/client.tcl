@@ -89,6 +89,8 @@ proc SrmCallDone {fileId certProxy token} {
         return
     }
 
+    log::log debug "SrmCallDone $content"
+
     set root [$document documentElement]
 
     set ns {soap http://schemas.xmlsoap.org/soap/envelope/}
