@@ -111,7 +111,7 @@ proc SrmCallDone {fileId responseType token} {
         set remoteRequestId $requestId
         set remoteRequestType [string tolower $type)]
         set remoteErrorMessage $errorMessage
-        set remoteRetryDeltaTime
+        set remoteRetryDeltaTime $retryDeltaTime
 
         set remoteFile [eval dict create [lindex $fileStatuses 0]]
 
@@ -132,7 +132,7 @@ proc SrmCallDone {fileId responseType token} {
             # set state to Running
             log::log debug "SrmCallDone: $fileId setFileStatus $remoteRequestId $remoteFileId Running"
             set call [list SrmCall $fileId $serviceURL setFileStatus $remoteRequestId $remoteFileId Running]
-            dict set client afterId [after [expr $retryDeltaTime * 800] $call]
+            dict set client afterId [after [expr $remoteRetryDeltaTime * 800] $call]
             switch -- $remoteRequestType {
                 get {
                     set stat [list [dict get $remoteFile permMode)] \
@@ -156,7 +156,7 @@ proc SrmCallDone {fileId responseType token} {
         }
         default {
             set call [list SrmCall $fileId $serviceURL getRequestStatus $remoteRequestId]
-            dict set client afterId [after [expr $retryDeltaTime * 800] $call]
+            dict set client afterId [after [expr $remoteRetryDeltaTime * 800] $call]
         }
     }
 }
