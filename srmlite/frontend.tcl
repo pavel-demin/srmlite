@@ -206,6 +206,7 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
     switch -- $requestType,$isRemote {
         copy,false {
             set dstSURL $TURL
+            set size [lindex $stat 3]
             regexp {srm://.*/srm/managerv1} $dstSURL serviceURL
             set call [list SrmCall $fileId $serviceURL put $dstSURL $size]
             after 0 $call
