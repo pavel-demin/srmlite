@@ -79,17 +79,11 @@ proc SrmCallDone {fileId certProxy token} {
         return
     }
 
-    if {![info exists request]} {
-        return
-    }
-
     if {[catch {dom parse $content} document]} {
         log::log error $document
         SrmFailed $fileId "Error while parsing SOAP XML from remote SRM"
         return
     }
-
-    log::log debug "SrmCallDone $content"
 
     set root [$document documentElement]
 
@@ -114,7 +108,7 @@ proc SrmCallDone {fileId certProxy token} {
 
     array set fileStatus [lindex $result(fileStatuses) 0]
 
-    set localFileState [dict get file state]
+    set localFileState [dict get $file state]
     set remoteFileState $fileStatus(state)
     set remoteFileId $fileStatus(fileId)
 
