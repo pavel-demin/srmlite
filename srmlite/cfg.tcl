@@ -107,7 +107,7 @@ proc ValidateBoolean {value} {
 
 proc ValidateLogLevel {level} {
     if {[lsearch {error notice debug} $level] == -1} {
-        return -code error "unknown log level (should be error, info or debug) in\n$data"
+        return -code error "unknown log level (should be error, notice or debug) in\n$data"
     }
 }
 
