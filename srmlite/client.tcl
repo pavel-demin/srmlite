@@ -135,7 +135,7 @@ proc SrmCallDone {fileId responseType token} {
             dict set client afterId [after [expr $remoteRetryDeltaTime * 800] $call]
             switch -- $remoteRequestType {
                 get {
-                    set stat [list [dict get $remoteFile permMode)] \
+                    set stat [list [dict get $remoteFile permMode] \
                                    [dict get $remoteFile owner] \
                                    [dict get $remoteFile group] \
                                    [dict get $remoteFile size]]
