@@ -163,7 +163,7 @@ proc SrmCallDone {fileId responseType token} {
 
 # -------------------------------------------------------------------------
 
-SrmCallStop {fileId} {
+proc SrmCallStop {fileId} {
 
     upvar #0 SrmClients($fileId) client
     
