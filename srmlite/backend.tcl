@@ -1,5 +1,6 @@
 
 package require Tclx
+package require dict
 
 # -------------------------------------------------------------------------
 
@@ -55,17 +56,13 @@ proc SrmCopy {requestType fileId userName certProxy srcTURL dstTURL} {
 
 proc SrmStop {requestType fileId} {
 
-    global State SrmProcessIndex
+    upvar #0 SrmProcessIndex($fileId) index
 
-    if {[info exists SrmProcessIndex($fileId)]} {
-        set processId $SrmProcessIndex($fileId)
-
-        KillCommand $processId
-
+    if {[info exists index]} {
+        KillCommand $index
     } else {
         set faultString "Unknown file ID $fileId"
         log::log error $faultString
-        puts $State(out) [list Failed {} $fileId $faultString]
     }
 }
 
@@ -74,17 +71,22 @@ proc SrmStop {requestType fileId} {
 proc KillCommand {processId} {
 
     upvar #0 SrmProcesses($processId) process
-    upvar #0 SrmProcessTimer($processId) timer
+    if {[info exists process]} {
+        set fileId [dict get $process fileId]
+        upvar #0 SrmProcessIndex($fileId) index
+        if {[info exists index]} {
+            unset index
+        }
 
-    set fileId [dict get $process fileId]
-    upvar #0 SrmProcessIndex($fileId) index
+        set certProxy [dict get $process certProxy]
+        if {[file exists $certProxy]} {
+            file delete $certProxy
+        }
 
-    set certProxy [dict get $process certProxy]
-
-    if {[info exists index]} {
-        unset index
+        unset process
     }
 
+    upvar #0 SrmProcessTimer($processId) timer
     if {[info exists timer]} {
         unset timer
     }
@@ -95,10 +97,6 @@ proc KillCommand {processId} {
         log::log debug $message
     } elseif {[catch {kill 9 $processId} message]} {
         log::log debug $message
-    }
-
-    if {[file exists $certProxy]} {
-        file delete $certProxy
     }
 }
 
@@ -130,7 +128,7 @@ proc SubmitCommand {requestType fileId certProxy command} {
     set timer -1
 
     fconfigure $pipe -buffering none -blocking 0
-    fileevent $pipe readable [list GetCommandOutput $processId $pipe]
+    fileevent $pipe readable [list GetCommandOutput $requestType $fileId $processId $pipe]
 }
 
 # -------------------------------------------------------------------------
@@ -152,19 +150,19 @@ proc Timeout {seconds} {
 
 # -------------------------------------------------------------------------
 
-proc GetCommandOutput {processId pipe} {
+proc GetCommandOutput {requestType fileId processId pipe} {
 
     upvar #0 SrmProcesses($processId) process
 
     if {[catch {gets $pipe line} readCount]} {
         log::log error $readCount
-        Finish $processId $pipe
+        Finish $requestType $fileId $processId $pipe
         return
     }
 
     if {$readCount == -1} {
         if {[eof $pipe]} {
-            Finish $processId $pipe
+            Finish $requestType $fileId $processId $pipe
         } else {
             log::log warning "\[process: $processId\] No full line available, retrying..."
         }
@@ -179,11 +177,12 @@ proc GetCommandOutput {processId pipe} {
 
 # -------------------------------------------------------------------------
 
-proc Finish {processId pipe} {
+proc Finish {requestType fileId processId pipe} {
 
     global State
     upvar #0 SrmProcesses($processId) process
     upvar #0 SrmProcessTimer($processId) timer
+    upvar #0 SrmProcessIndex($fileId) index
 
     set hadError 0
     if {[file channels $pipe] != {}} {
@@ -194,29 +193,37 @@ proc Finish {processId pipe} {
         if {[catch {close $pipe} result]} {
             set hadError 1
             log::log error $result
-            log::log error [dict get $process output]
         }
+    }
+
+    if {$hadError} {
+        set state Failed
+    } elseif {[string equal $requestType copy]} {
+        set state Done
+    } else {
+        set state Ready
     }
 
     if {[info exists timer]} {
         unset timer
     }
 
-    dict with process {
-
-        if {$hadError} {
-            set state Failed
-        } elseif {[string equal $requestType copy]} {
-            set state Done
-        } else {
-            set state Ready
-        }
-
-        puts $State(out) [list $state $requestType $fileId $output]
+    if {[info exists index]} {
+        unset index
     }
 
-    unset process
+    set output {}
 
+    if {[info exists process]} {
+        set output [dict get $process output]
+        set certProxy [dict get $process certProxy]
+        if {[file exists $certProxy]} {
+            file delete $certProxy
+        }
+        unset process
+    }
+
+    puts $State(out) [list $state $requestType $fileId $output]
 }
 
 # -------------------------------------------------------------------------
