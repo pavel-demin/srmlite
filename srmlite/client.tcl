@@ -14,7 +14,7 @@ proc SrmCall {fileId serviceURL requestType args} {
     upvar #0 SrmFiles($fileId) file
     set certProxy [dict get $file certProxy]
 
-    log::log debug "SrmCall $fileId $serviceURL $requestType $args"
+    log::log debug "SrmCall: $fileId $serviceURL $requestType $args"
 
     switch -- $requestType {
         get {
@@ -40,7 +40,7 @@ proc SrmCall {fileId serviceURL requestType args} {
         -query $query \
         -type {text/xml; charset=utf-8} \
         -headers [SrmHeaders $requestType] \
-        -command [list SrmCallCommand $fileId $certProxy $requestType]
+        -command [list SrmCallCommand $fileId $requestType]
 
 }
 
@@ -129,7 +129,7 @@ proc SrmCallDone {fileId responseType token} {
     if {![string equal $responseType getRequestStatus] &&
         ![string equal $responseType setFileStatus]} {
         set client [dict create afterId {} serviceURL $serviceURL \
-            remoteRequestId $remoteRequestId remoteFileId $remoteFileId
+            remoteRequestId $remoteRequestId remoteFileId $remoteFileId \
             remoteFileState Pending]
     }
 
@@ -176,6 +176,8 @@ proc SrmCallStop {fileId} {
     upvar #0 SrmFiles($fileId) file
     set certProxy [dict get $file certProxy]
 
+    log::log debug "SrmCallStop: $fileId"
+
     upvar #0 SrmClients($fileId) client
 
     if {![info exists client]} {
@@ -202,7 +204,7 @@ proc SrmCallStop {fileId} {
 
 # -------------------------------------------------------------------------
 
-proc SrmCallStopCommand {fileId token} {
+proc SrmCallStopCommand {fileId certProxy token} {
 
     upvar #0 $token http
     ::http::cleanup $token
