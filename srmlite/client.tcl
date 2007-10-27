@@ -12,9 +12,7 @@ package require srmlite::soap
 proc SrmCall {fileId serviceURL requestType args} {
 
     upvar #0 SrmFiles($fileId) file
-    set requestId [dict get $file requestId]
-    upvar #0 SrmRequests($requestId) request
-    set certProxy [dict get $request certProxy]
+    set certProxy [dict get $file certProxy]
 
     log::log debug "SrmCall $fileId $serviceURL $requestType $args"
 
@@ -42,7 +40,7 @@ proc SrmCall {fileId serviceURL requestType args} {
         -query $query \
         -type {text/xml; charset=utf-8} \
         -headers [SrmHeaders $requestType] \
-        -command [list SrmCallCommand $fileId $requestType]
+        -command [list SrmCallCommand $fileId $certProxy $requestType]
 
 }
 
@@ -56,6 +54,7 @@ proc SrmCallCommand {fileId responseType token} {
          log::log error $result
     }
 }
+
 # -------------------------------------------------------------------------
 
 proc SrmCallDone {fileId responseType token} {
@@ -95,6 +94,14 @@ proc SrmCallDone {fileId responseType token} {
     set ns {soap http://schemas.xmlsoap.org/soap/envelope/}
 
     set methodNode [$root selectNodes -namespaces $ns {/soap:Envelope/soap:Body/*[1]}]
+    set methodName [$methodNode localName]
+
+    if {![string equal $methodName ${responseType}Response]} {
+        $document delete
+        set faultString "Unknown SOAP response from remote SRM: $methodName"
+        log::log error $faultString
+        SrmFailed $fileId $faultString
+    }
 
     # Extract the parameters.
     set argValues {}
@@ -119,17 +126,23 @@ proc SrmCallDone {fileId responseType token} {
         set remoteFileId [dict get $remoteFile fileId]
     }
 
-    if {$responseType != "getRequestStatus" &&
-        $responseType != "setFileStatus"} {
+    if {![string equal $responseType getRequestStatus] &&
+        ![string equal $responseType setFileStatus]} {
         set client [dict create afterId {} serviceURL $serviceURL \
-            remoteRequestId $remoteRequestId remoteFileId $remoteFileId]
+            remoteRequestId $remoteRequestId remoteFileId $remoteFileId
+            remoteFileState Pending]
     }
 
     log::log debug "SrmCallDone: $fileId $remoteRequestId $remoteFileId $remoteFileState"
 
     switch -- $remoteFileState {
+        Pending {
+            set call [list SrmCall $fileId $serviceURL getRequestStatus $remoteRequestId]
+            dict set client afterId [after [expr $remoteRetryDeltaTime * 800] $call]
+        }
         Ready {
             # set state to Running
+            dict set client remoteFileState Running
             log::log debug "SrmCallDone: $fileId setFileStatus $remoteRequestId $remoteFileId Running"
             set call [list SrmCall $fileId $serviceURL setFileStatus $remoteRequestId $remoteFileId Running]
             dict set client afterId [after [expr $remoteRetryDeltaTime * 800] $call]
@@ -148,16 +161,10 @@ proc SrmCallDone {fileId responseType token} {
             }
         }
         Done {
-            unset client
             log::log debug "SrmCallDone: $remoteRequestId $remoteFileId is Done"
         }
         Failed {
-            unset client
             SrmFailed $fileId "Request to remote SRM failed: $remoteErrorMessage"
-        }
-        default {
-            set call [list SrmCall $fileId $serviceURL getRequestStatus $remoteRequestId]
-            dict set client afterId [after [expr $remoteRetryDeltaTime * 800] $call]
         }
     }
 }
@@ -166,22 +173,47 @@ proc SrmCallDone {fileId responseType token} {
 
 proc SrmCallStop {fileId} {
 
+    upvar #0 SrmFiles($fileId) file
+    set certProxy [dict get $file certProxy]
+
     upvar #0 SrmClients($fileId) client
-    
+
     if {![info exists client]} {
-        log::log error "SrmCallStop: Unknown file id $fileId"
+        log::log warning "SrmCallStop: Unknown file id $fileId"
         return
     }
 
     dict with client {
-        if {$afterId != {}} {
+        if {![string equal $afterId {}]} {
             after cancel $afterId
         }
+        set query [SrmSetFileStatusBody $remoteRequestId $remoteFileId Done]
+    }
 
-        # set state to Done
-        log::log debug "SrmCallStop: $fileId setFileStatus $remoteRequestId $remoteFileId Done"
-        set call [list SrmCall $fileId $serviceURL setFileStatus $remoteRequestId $remoteFileId Done]
-        after 0 $call
+    set ::env(X509_USER_PROXY) $certProxy
+
+    ::http::geturl $serviceURL \
+        -query $query \
+        -type {text/xml; charset=utf-8} \
+        -headers [SrmHeaders setFileStatus] \
+        -command [list SrmCallStopCommand $fileId $certProxy]
+
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmCallStopCommand {fileId token} {
+
+    upvar #0 $token http
+    ::http::cleanup $token
+
+    upvar #0 SrmClients($fileId) client
+    if {[info exists client]} {
+        unset client
+    }
+    
+    if {[file exists $certProxy]} {
+        file delete $certProxy
     }
 }
 
