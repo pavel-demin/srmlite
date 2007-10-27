@@ -23,7 +23,7 @@ proc SrmGet {requestType fileId userName SURL} {
 
     set command "./setuid $userName ./url_get.sh [ExtractHostFile $SURL]"
 #    set command "./url_get.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $fileId $command
+    SubmitCommand $requestType $fileId {} $command
 }
 
 # -------------------------------------------------------------------------
@@ -32,7 +32,7 @@ proc SrmPut {requestType fileId userName SURL} {
 
     set command "./setuid $userName ./url_put.sh [ExtractHostFile $SURL]"
 #    set command "./url_put.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $fileId $command
+    SubmitCommand $requestType $fileId {} $command
 }
 
 # -------------------------------------------------------------------------
