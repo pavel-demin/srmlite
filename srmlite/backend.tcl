@@ -19,7 +19,7 @@ proc ExtractHostFile {url} {
 
 # -------------------------------------------------------------------------
 
-proc SrmGet {requestType fileId userName certProxy SURL} {
+proc SrmGet {requestType fileId userName SURL} {
 
     set command "./setuid $userName ./url_get.sh [ExtractHostFile $SURL]"
 #    set command "./url_get.sh [ExtractHostFile $SURL]"
@@ -28,7 +28,7 @@ proc SrmGet {requestType fileId userName certProxy SURL} {
 
 # -------------------------------------------------------------------------
 
-proc SrmPut {requestType fileId userName certProxy SURL} {
+proc SrmPut {requestType fileId userName SURL} {
 
     set command "./setuid $userName ./url_put.sh [ExtractHostFile $SURL]"
 #    set command "./url_put.sh [ExtractHostFile $SURL]"
@@ -39,15 +39,15 @@ proc SrmPut {requestType fileId userName certProxy SURL} {
 
 proc SrmCopy {requestType fileId userName certProxy srcTURL dstTURL} {
 
-    set certProxyOrig $certProxy
-    append certProxy {.copy}
-    file copy $certProxyOrig $certProxy
-    chown $userName $certProxy
+    set certProxyCopy $certProxy
+    append certProxyCopy {.copy}
+    file copy $certProxy $certProxyCopy
+    chown $userName $certProxyCopy
 
-    set command "./setuid $userName ./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxy"
-#    set command "./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxy"
+    set command "./setuid $userName ./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxyCopy"
+#    set command "./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxyCopy"
 
-    SubmitCommand $requestType $fileId $command
+    SubmitCommand $requestType $fileId $certProxyCopy $command
 }
 
 # -------------------------------------------------------------------------
@@ -73,18 +73,20 @@ proc SrmStop {requestType fileId} {
 
 proc KillCommand {processId} {
 
-    global SrmProcessIndex SrmProcessTimer
-    upvar #0 SrmProcess$processId process
+    upvar #0 SrmProcesses($processId) process
+    upvar #0 SrmProcessTimer($processId) timer
 
-    set fileId process(fileId)
-    set certProxy process(certProxy)
+    set fileId [dict get $process fileId]
+    upvar #0 SrmProcessIndex($fileId) index
 
-    if {[info exists SrmProcessIndex($fileId)]} {
-        unset SrmProcessIndex($fileId)
+    set certProxy [dict get $process certProxy]
+
+    if {[info exists index]} {
+        unset index
     }
 
-    if {[info exists SrmProcessTimer($processId)]} {
-        unset SrmProcessTimer($processId)
+    if {[info exists timer]} {
+        unset timer
     }
 
     if {[catch {kill $processId} message]} {
@@ -98,17 +100,13 @@ proc KillCommand {processId} {
     if {[file exists $certProxy]} {
         file delete $certProxy
     }
-    append certProxy {.copy}
-    if {[file exists $certProxy]} {
-        file delete $certProxy
-    }
 }
 
 # -------------------------------------------------------------------------
 
-proc SubmitCommand {requestType fileId command} {
+proc SubmitCommand {requestType fileId certProxy command} {
 
-    global State SrmProcessIndex SrmProcessTimer
+    global State
 
     log::log debug $command
 
@@ -121,11 +119,15 @@ proc SubmitCommand {requestType fileId command} {
 
     set processId [pid $pipe]
     log::log debug "\[process: $processId\] $command"
-    upvar #0 SrmProcess$processId process
 
-    array set process [list requestType $requestType fileId $fileId output {}]
-    set SrmProcessIndex($fileId) $processId
-    set SrmProcessTimer($processId) -1
+    upvar #0 SrmProcesses($processId) process
+    upvar #0 SrmProcessTimer($processId) timer
+    upvar #0 SrmProcessIndex($fileId) index
+
+    set process [dict create requestType $requestType fileId $fileId \
+        certProxy $certProxy output {}]
+    set index $processId
+    set timer -1
 
     fconfigure $pipe -buffering none -blocking 0
     fileevent $pipe readable [list GetCommandOutput $processId $pipe]
@@ -152,7 +154,7 @@ proc Timeout {seconds} {
 
 proc GetCommandOutput {processId pipe} {
 
-    upvar #0 SrmProcess$processId process
+    upvar #0 SrmProcesses($processId) process
 
     if {[catch {gets $pipe line} readCount]} {
         log::log error $readCount
@@ -170,7 +172,7 @@ proc GetCommandOutput {processId pipe} {
     }
 
     if {$line != {}} {
-        set process(output) $line
+        dict set process output $line
         log::log debug "+> $line"
     }
 }
@@ -179,8 +181,9 @@ proc GetCommandOutput {processId pipe} {
 
 proc Finish {processId pipe} {
 
-    global State SrmProcessTimer
-    upvar #0 SrmProcess$processId process
+    global State
+    upvar #0 SrmProcesses($processId) process
+    upvar #0 SrmProcessTimer($processId) timer
 
     set hadError 0
     if {[file channels $pipe] != {}} {
@@ -191,29 +194,29 @@ proc Finish {processId pipe} {
         if {[catch {close $pipe} result]} {
             set hadError 1
             log::log error $result
-            log::log error $process(output)
+            log::log error [dict get $process output]
         }
     }
 
-    if {[info exists SrmProcessTimer($processId)]} {
-        unset SrmProcessTimer($processId)
+    if {[info exists timer]} {
+        unset timer
     }
 
-    set requestType $process(requestType)
-    set fileId $process(fileId)
-    set output $process(output)
+    dict with process {
+
+        if {$hadError} {
+            set state Failed
+        } elseif {[string equal $requestType copy]} {
+            set state Done
+        } else {
+            set state Ready
+        }
+
+        puts $State(out) [list $state $requestType $fileId $output]
+    }
 
     unset process
 
-    if {$hadError} {
-        set state Failed
-    } elseif {[string equal $requestType copy]} {
-        set state Done
-    } else {
-        set state Ready
-    }
-
-    puts $State(out) [list $state $requestType $fileId $output]
 }
 
 # -------------------------------------------------------------------------
