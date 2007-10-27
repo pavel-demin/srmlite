@@ -141,6 +141,7 @@ proc backend {} {
 proc bgerror {msg} {
     global errorInfo
     log::log error "bgerror: $msg"
+    log::log error "bgerror: $errorInfo"
 }
 
 # -------------------------------------------------------------------------
