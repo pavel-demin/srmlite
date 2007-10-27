@@ -195,13 +195,13 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
 
     set SURL [dict get $file SURL]
     set TURL [dict get $file TURL]
+    set certProxy [dict get $file certProxy]
     set requestId [dict get $file requestId]
 
     upvar #0 SrmRequests($requestId) request
 
     set requestType [dict get $request requestType]
     set userName [dict get $request userName]
-    set certProxy [dict get $request certProxy]
 
     switch -- $requestType,$isRemote {
         copy,false {
@@ -241,13 +241,13 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
 
     set SURL [dict get $file SURL]
     set TURL [dict get $file TURL]
+    set certProxy [dict get $file certProxy]
     set requestId [dict get $file requestId]
 
     upvar #0 SrmRequests($requestId) request
 
     set requestType [dict get $request requestType]
     set userName [dict get $request userName]
-    set certProxy [dict get $request certProxy]
 
     switch -- $requestType,$isRemote {
         copy,false {
@@ -298,8 +298,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
 
     set request [dict create reqState Pending requestType $requestType \
         submitTime $submitTime startTime $startTime finishTime $finishTime \
-        errorMessage {} retryDeltaTime 1 fileIds {} counter 1 \
-        userName $userName certProxy $certProxy]
+        errorMessage {} retryDeltaTime 1 fileIds {} userName $userName counter 1]
 
     foreach SURL $SURLS dstSURL $dstSURLS size $sizes {
 
@@ -313,25 +312,35 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
         set file [dict create state Pending requestId $requestId \
             size $size owner {} group {} permMode 0 \
             isPinned false isPermanent false isCached false \
-            SURL $SURL TURL $dstSURL]
+            SURL $SURL TURL $dstSURL certProxy {}]
 
         dict lappend request fileIds $fileId
 
         switch -- $requestType {
             get -
             put {
-                puts $State(in) [list $requestType $fileId $userName $certProxy $SURL]
+                puts $State(in) [list $requestType $fileId $userName $SURL]
             }
             copy {
+                set certProxyCopy $certProxy
+                append certProxyCopy {.} $fileId
+                file copy $certProxy $certProxyCopy
+                dict set file certProxy $certProxyCopy
+
                 if {[IsLocalHost $SURL] && ![IsLocalHost $dstSURL]} {
-                    puts $State(in) [list get $fileId $userName $certProxy $SURL]
+                    puts $State(in) [list get $fileId $userName $SURL]
                 } elseif {![IsLocalHost $SURL] && [IsLocalHost $dstSURL]} {
-                    puts $State(in) [list put $fileId $userName $certProxy $dstSURL]
+                    puts $State(in) [list put $fileId $userName $dstSURL]
                 } else {
                     SrmFailed $fileId {copying between two local or two remote SURLs is not allowed}
                 }
             }
         }
+    }
+
+    if {[file exists $certProxy]} {
+        file delete $certProxy
+        set certProxy {}
     }
 
     set timer -1
@@ -440,13 +449,14 @@ proc SrmSetState {requestId fileId newState} {
         Pending,Ready,Done -
         Active,Pending,Done -
         Active,Running,Done -
-        Active,Ready,Done {
+        Active,Ready,Done -
+        Failed,Failed,Done {
             dict set file state Done
             if {[SrmIsRequestDone $requestId]} {
                 dict set request reqState Done
             }
             puts $State(in) [list stop $fileId]
-            if {$requestType == "copy"} {
+            if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
             }
         }
@@ -454,7 +464,7 @@ proc SrmSetState {requestId fileId newState} {
             dict set request reqState Failed
             dict set file state Failed
             puts $State(in) [list stop $fileId]
-            if {$requestType == "copy"} {
+            if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
             }
         }
