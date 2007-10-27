@@ -450,23 +450,26 @@ proc SrmSetState {requestId fileId newState} {
         Active,Pending,Done -
         Active,Running,Done -
         Active,Ready,Done -
+        Failed,Pending,Done -
+        Failed,Running,Done -
+        Failed,Ready,Done -
         Failed,Failed,Done {
             dict set file state Done
             if {[SrmIsRequestDone $requestId]} {
                 dict set request reqState Done
             }
-            puts $State(in) [list stop $fileId]
             if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
             }
+            puts $State(in) [list stop $fileId]
         }
         *,*,Failed {
             dict set request reqState Failed
             dict set file state Failed
-            puts $State(in) [list stop $fileId]
             if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
             }
+            puts $State(in) [list stop $fileId]
         }
         default {
             log::log error "Unexpected state $requestState,$currentState,$newState"
@@ -559,11 +562,11 @@ proc KillSrmRequest {requestId} {
         foreach fileId [dict get $request fileIds] {
             upvar #0 SrmFiles($fileId) file
 
-            puts $State(in) [list stop $fileId]
-
-            if {$requestType == "copy"} {
+            if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
             }
+
+            puts $State(in) [list stop $fileId]
 
             if {[info exists file]} {
                 unset file
