@@ -101,6 +101,7 @@ proc SrmCallDone {fileId responseType token} {
         set faultString "Unknown SOAP response from remote SRM: $methodName"
         log::log error $faultString
         SrmFailed $fileId $faultString
+        return
     }
 
     # Extract the parameters.
@@ -113,18 +114,15 @@ proc SrmCallDone {fileId responseType token} {
 
     set result [eval dict create [lindex $argValues 0]]
 
-    dict with result {
+    set remoteRequestId [dict get $result requestId]
+    set remoteRequestType [string tolower [dict get $result type]]
+    set remoteRetryDeltaTime [dict get $result retryDeltaTime]
 
-        set remoteRequestId $requestId
-        set remoteRequestType [string tolower $type]
-        set remoteErrorMessage $errorMessage
-        set remoteRetryDeltaTime $retryDeltaTime
+    set remoteFileStatuses [dict get $result fileStatuses]
+    set remoteFile [eval dict create [lindex $remoteFileStatuses 0]]
 
-        set remoteFile [eval dict create [lindex $fileStatuses 0]]
-
-        set remoteFileState [dict get $remoteFile state]
-        set remoteFileId [dict get $remoteFile fileId]
-    }
+    set remoteFileState [dict get $remoteFile state]
+    set remoteFileId [dict get $remoteFile fileId]
 
     if {![string equal $responseType getRequestStatus] &&
         ![string equal $responseType setFileStatus]} {
@@ -164,6 +162,7 @@ proc SrmCallDone {fileId responseType token} {
             log::log debug "SrmCallDone: $remoteRequestId $remoteFileId is Done"
         }
         Failed {
+            set remoteErrorMessage [dict get $result errorMessage]
             SrmFailed $fileId "Request to remote SRM failed: $remoteErrorMessage"
         }
     }
