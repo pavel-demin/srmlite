@@ -209,7 +209,7 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
             set size [lindex $stat 3]
             regexp {srm://.*/srm/managerv1} $dstSURL serviceURL
             set call [list SrmCall $fileId $serviceURL put $dstSURL $size]
-            after 0 $call
+            dict set file afterId [after 0 $call]
         }
         copy,true {
 #            SrmSetState $requestId $fileId Ready
@@ -254,7 +254,7 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
             set srcSURL $SURL
             regexp {srm://.*/srm/managerv1} $srcSURL serviceURL
             set call [list SrmCall $fileId $serviceURL get $srcSURL]
-            after 0 $call
+            dict set file afterId [after 0 $call]
         }
         copy,true {
 #            SrmSetState $requestId $fileId Ready
@@ -312,7 +312,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
         set file [dict create state Pending requestId $requestId \
             size $size owner {} group {} permMode 0 \
             isPinned false isPermanent false isCached false \
-            SURL $SURL TURL $dstSURL certProxy {}]
+            SURL $SURL TURL $dstSURL certProxy {} afterId {}]
 
         dict lappend request fileIds $fileId
 

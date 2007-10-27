@@ -175,8 +175,13 @@ proc SrmCallStop {fileId} {
 
     upvar #0 SrmFiles($fileId) file
     set certProxy [dict get $file certProxy]
+    set afterId [dict get $file afterId]
 
-    log::log debug "SrmCallStop: $fileId"
+    log::log debug "SrmCallStop: $fileId $afterId"
+
+    if {![string equal $afterId {}]} {
+        after cancel $afterId
+    }
 
     upvar #0 SrmClients($fileId) client
 
