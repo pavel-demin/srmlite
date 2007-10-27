@@ -571,8 +571,8 @@ proc KillSrmRequest {requestId} {
             if {[info exists file]} {
                 unset file
             }
-            unset request
         }
+        unset request
     }
 }
 
