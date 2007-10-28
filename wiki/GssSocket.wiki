@@ -15,7 +15,7 @@ The following links proved to be extremely helpful while developing this extensi
 
 = Details =
 
-The Globus Toolkit provides several layers of abstraction in its IO library:
+The Globus Toolkit provides several layers of abstraction in its IO stack:
 
 || Globus XIO || 
 || Globus IO  || 
@@ -24,3 +24,14 @@ The Globus Toolkit provides several layers of abstraction in its IO library:
 || TLS        || 
 || TCP        || 
 || IP         ||
+
+The developers of the [http://tclglobus.ligo.caltech.edu/ TclGlobus] project encountered some problems with Globus XIO:
+
+http://www-unix.globus.org/mail_archive/discuss/2006/12/msg00018.html
+
+It seems that globus_xio_read requires to know in advance the exact number of bytes to be read. For some applications this condition may. be too restrictive.
+
+Moreover, Tcl already provides already provides most of the Globus XIO functionality such as asynchronous IO and stackable IO drivers. So, we can bind to GSI at the GSSAPI level with effectively replacing XIO services with those from Tcl.
+
+
+
