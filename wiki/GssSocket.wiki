@@ -31,5 +31,4 @@ http://www-unix.globus.org/mail_archive/discuss/2006/12/msg00018.html
 
 It seems that globus_xio_read requires to know in advance the exact number of bytes to be read. For some applications this condition may be too restrictive.
 
-Moreover, Tcl already provides already provides most of the Globus XIO functionality such as asynchronous IO and stackable IO drivers. So, we can bind to GSI at the GSSAPI level with effectively replacing XIO services with those from Tcl.
-
+Moreover, Tcl already provides most of the Globus XIO functionality such as asynchronous IO and stackable IO drivers. So, we can bind to GSI at the GSSAPI level with effectively replacing XIO services with those from Tcl.
