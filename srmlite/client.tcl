@@ -36,12 +36,14 @@ proc SrmCall {fileId serviceURL requestType args} {
 
     set ::env(X509_USER_PROXY) $certProxy
 
-    ::http::geturl $serviceURL \
-        -query $query \
-        -type {text/xml; charset=utf-8} \
-        -headers [SrmHeaders $requestType] \
-        -command [list SrmCallCommand $fileId $requestType]
-
+    set type {text/xml; charset=utf-8}
+    set headers [SrmHeaders $requestType]
+    set command [list SrmCallCommand $fileId $requestType]
+    
+    if {[catch {::http::geturl $serviceURL -query $query \
+        -type $type -headers $headers -command $command} result]} {
+        SrmFailed $fileId "Error while connecting remote SRM: $result"
+    }
 }
 
 # -------------------------------------------------------------------------
@@ -198,12 +200,14 @@ proc SrmCallStop {fileId} {
 
     set ::env(X509_USER_PROXY) $certProxy
 
-    ::http::geturl $serviceURL \
-        -query $query \
-        -type {text/xml; charset=utf-8} \
-        -headers [SrmHeaders setFileStatus] \
-        -command [list SrmCallStopCommand $fileId $certProxy]
+    set type {text/xml; charset=utf-8}
+    set headers [SrmHeaders $requestType]
+    set command [list SrmCallStopCommand $fileId $certProxy]
 
+    if {[catch {::http::geturl $serviceURL -query $query \
+        -type $type -headers $headers -command $command} result]} {
+        SrmFailed $fileId "Error while connecting remote SRM: $result"
+    }
 }
 
 # -------------------------------------------------------------------------
