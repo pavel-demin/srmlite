@@ -1,0 +1,20 @@
+#summary Binding to GSI via GSSAPI and Tcl_StackChannel API for Tcl
+
+= Introduction =
+
+This extension provides a binding to Grid Security Infrastructure (GSI), utilizing the Globus GSSAPI and the new Tcl_StackChannel API for Tcl 8.2 and higher. The sockets behave exactly the same as channels created using Tcl's built-in socket command with additional options for controlling the GSI session.
+
+The following links proved to be extremely helpful while developing this extension:
+
+[http://www.oche.de/~akupries/soft/giot/HOWTO.txt How to write a transformation (channel)]
+
+[http://www.sensus.org/tcl/tls.htm TLS - binding to OpenSSL toolkit]
+
+[http://docs.sun.com/app/docs/doc/816-4863 Solaris Security for Developers Guide]
+
+= Details =
+
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
