@@ -481,15 +481,29 @@ proc SrmSetState {requestId fileId newState} {
 
 proc SrmFailed {fileId errorMessage} {
 
+    log::log error "SrmFailed: $errorMessage"
+
     upvar #0 SrmFiles($fileId) file
+
+    if {![info exists file]} {
+        set faultString "SrmFailed: unknown file id $fileId"
+        log::log error $faultString
+        return
+    }
+
+    dict set file state Failed
+
     set requestId [dict get $file requestId]
     upvar #0 SrmRequests($requestId) request
 
-    log::log error $errorMessage
+    if {![info exists request]} {
+        set faultString "SrmFailed: unknown request id $requestId"
+        log::log error $faultString
+        return
+    }
 
     dict set request errorMessage $errorMessage
     dict set request reqState Failed
-    dict set file state Failed
 }
 
 # -------------------------------------------------------------------------
