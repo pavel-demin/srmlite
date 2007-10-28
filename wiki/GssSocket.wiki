@@ -8,9 +8,10 @@ The following links proved to be extremely helpful while developing this extensi
 
 [http://www.oche.de/~akupries/soft/giot/HOWTO.txt How to write a transformation (channel)]
 
+[http://docs.sun.com/app/docs/doc/816-4863 Solaris Security for Developers Guide]
+
 [http://www.sensus.org/tcl/tls.htm TLS - binding to OpenSSL toolkit]
 
-[http://docs.sun.com/app/docs/doc/816-4863 Solaris Security for Developers Guide]
 
 = Details =
 
