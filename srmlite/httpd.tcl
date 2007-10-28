@@ -412,7 +412,7 @@ proc HttpdDate {seconds} {
 # This should be replaced as needed.
 
 proc HttpdLog {sock level args} {
-    set address [lindex [fconfigure $sock -sockname] 0]
+    set address [lindex [fconfigure $sock -peername] 0]
     log::log $level "\[client $address\] [join $args { }]"
 }
 
