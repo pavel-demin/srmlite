@@ -15,7 +15,12 @@ The following links proved to be extremely helpful while developing this extensi
 
 = Details =
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+The Globus Toolkit provides several layers of abstraction in its IO library:
+
+|| Globus XIO || 
+|| Globus IO  || 
+|| GSSAPI     || 
+|| GSI        || 
+|| TLS        || 
+|| TCP        || 
+|| IP         ||
