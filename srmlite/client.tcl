@@ -201,7 +201,7 @@ proc SrmCallStop {fileId} {
     set ::env(X509_USER_PROXY) $certProxy
 
     set type {text/xml; charset=utf-8}
-    set headers [SrmHeaders $requestType]
+    set headers [SrmHeaders setFileStatus]
     set command [list SrmCallStopCommand $fileId $certProxy]
 
     if {[catch {::http::geturl $serviceURL -query $query \
