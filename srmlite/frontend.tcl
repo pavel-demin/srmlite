@@ -290,7 +290,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
     upvar #0 SrmRequestTimer($requestId) timer
 
     set clockStart [clock seconds]
-    set clockFinish [clock scan {1 hour} -base $clockStart]
+    set clockFinish [clock scan {2 hours} -base $clockStart]
 
     set submitTime [clock format $clockStart -format {%Y-%m-%dT%H:%M:%SZ} -gmt yes]
     set startTime $submitTime
@@ -551,7 +551,7 @@ proc SrmTimeout {seconds} {
 
     foreach requestId [array names SrmRequestTimer] {
         set counter [incr SrmRequestTimer($requestId)]
-        if {$counter > 5} {
+        if {$counter > 15} {
             after 0 [list KillSrmRequest $requestId]
         }
     }

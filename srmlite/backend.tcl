@@ -141,7 +141,7 @@ proc Timeout {seconds} {
     foreach processId [array names SrmProcessTimer] {
         set counter [incr SrmProcessTimer($processId)]
         log::log debug "\[process: $processId\] $counter"
-        if {$counter > 5} {
+        if {$counter > 15} {
             after 0 [list KillCommand $processId]
         }
     }
