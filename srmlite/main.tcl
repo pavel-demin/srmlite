@@ -73,6 +73,7 @@ proc frontend {} {
 
     set State(ftpHosts) $Cfg(ftpHosts)
 
+    id group $Cfg(frontendUser)
     id user $Cfg(frontendUser)
 
     set ::env(GRIDMAP) $Cfg(gridMapFile)
