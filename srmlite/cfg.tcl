@@ -11,6 +11,7 @@ array set CfgValidators {
     chrootDir ValidateChrootDir
     daemonize ValidateBoolean
     frontendUser ValidateUser
+    frontendGroup ValidateGroup
     frontendPort ValidatePort
     frontendLog ValidateFrontendLog
     backendLog ValidateBackendLog
@@ -27,6 +28,7 @@ array set Cfg {
     chrootDir .
     daemonize false
     frontendUser edguser
+    frontendGroup edguser
     frontendPort 8443
     frontendLog frontend.log
     backendLog backend.log
@@ -119,6 +121,15 @@ proc ValidateUser {user} {
 
     if {[catch {id convert user $user} result]} {
         return -code error "unknown user $user"
+    }
+}
+
+# -------------------------------------------------------------------------
+
+proc ValidateGroup {group} {
+
+    if {[catch {id convert group $group} result]} {
+        return -code error "unknown group $group"
     }
 }
 
