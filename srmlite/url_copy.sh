@@ -19,4 +19,4 @@ checkCertProxy $certProxy
 
 export X509_USER_PROXY="$certProxy"
 
-./globus-url-copy -nodcau -p 5 ${proto}://${hostSrc}:${port}/${fileSrc} ${proto}://${hostDst}:${port}/${fileDst}
+./globus-url-copy -nodcau -p 8 -tcp-bs 1048576 ${proto}://${hostSrc}:${port}/${fileSrc} ${proto}://${hostDst}:${port}/${fileDst}
