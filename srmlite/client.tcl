@@ -106,22 +106,18 @@ proc SrmCallDone {fileId responseType token} {
         return
     }
 
-    # Extract the parameters.
-    set argValues {}
-    foreach arg [$methodNode childNodes] {
-        lappend argValues [SoapDecompose $arg]
-    }
+    set methodDict [SoapDecompose $methodNode]
 
     $document delete
 
-    set result [eval dict create [lindex $argValues 0]]
+    set result [dict get $methodDict Result]
 
     set remoteRequestId [dict get $result requestId]
     set remoteRequestType [string tolower [dict get $result type]]
     set remoteRetryDeltaTime [dict get $result retryDeltaTime]
 
     set remoteFileStatuses [dict get $result fileStatuses]
-    set remoteFile [eval dict create [lindex $remoteFileStatuses 0]]
+    set remoteFile [lindex $remoteFileStatuses 0]
 
     set remoteFileState [dict get $remoteFile state]
     set remoteFileId [dict get $remoteFile fileId]
