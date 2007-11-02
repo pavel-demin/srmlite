@@ -47,7 +47,7 @@ load {} dict
 load {} tdom
 load {} starfishLib
 load {} g2lite
-load {} gtlite
+load {} gss
 
 # map of proper version numbers to replace @ markers in paths given to vfscopy
 # this relies on having all necessary extensions already loaded at this point
@@ -59,7 +59,7 @@ set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   tdom0@ tdom[package require tdom] \
                   dict8@ dict[package require dict] \
                   g2lite0@ g2lite[package require g2lite] \
-                  gtlite0@ gtlite[package require gtlite]]
+                  gss_socket0@ gss_socket[package require gss::socket]]
                
 if {$debugOpt} {
   puts "Starting [info script]"
@@ -117,7 +117,7 @@ set clifiles {
   lib/tls1@/pkgIndex.tcl
   lib/tls1@/tls.tcl
   lib/g2lite0@/pkgIndex.tcl
-  lib/gtlite0@/pkgIndex.tcl
+  lib/gss_socket0@/pkgIndex.tcl
   lib/tcllib1.10/pkgIndex.tcl
   lib/tcllib1.10/asn
   lib/tcllib1.10/comm

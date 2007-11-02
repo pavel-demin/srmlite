@@ -13,7 +13,7 @@
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
  *
- * RCS: @(#) $Id: kitInit.c,v 1.1 2007-10-22 16:50:12 demin Exp $
+ * RCS: @(#) $Id: kitInit.c,v 1.2 2007-11-02 23:47:55 demin Exp $
  */
 
 #ifdef KIT_INCLUDES_TK
@@ -48,7 +48,8 @@ Tcl_AppInitProc	Dde_Init, Registry_Init;
 #endif
 
 Tcl_AppInitProc	Tls_Init, Tls_SafeInit, Tdom_Init, Tdom_SafeInit;
-Tcl_AppInitProc G2lite_Init, Gtlite_Init, Gtlite_SafeInit;
+Tcl_AppInitProc G2lite_Init, Gss_Init, Gss_SafeInit;
+Tcl_AppInitProc Gssctx_Init, Gssctx_SafeInit;
 Tcl_AppInitProc Dict_Init;
 Tcl_AppInitProc Tclx_Init, Tclx_SafeInit;
 Tcl_AppInitProc Starfish_Init, Starfish_SafeInit;
@@ -177,7 +178,8 @@ TclKit_AppInit(Tcl_Interp *interp)
 
     Tcl_StaticPackage(0, "dict", Dict_Init, NULL);
     Tcl_StaticPackage(0, "g2lite", G2lite_Init, NULL);
-    Tcl_StaticPackage(0, "gtlite", Gtlite_Init, Gtlite_SafeInit);
+    Tcl_StaticPackage(0, "gss", Gss_Init, Gss_SafeInit);
+    Tcl_StaticPackage(0, "gssctx", Gssctx_Init, Gssctx_SafeInit);
     Tcl_StaticPackage(0, "tls", Tls_Init, Tls_SafeInit);
     Tcl_StaticPackage(0, "tdom", Tdom_Init, Tdom_SafeInit);
     Tcl_StaticPackage(0, "starfishLib", Starfish_Init, Starfish_SafeInit);

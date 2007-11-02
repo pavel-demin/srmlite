@@ -16,7 +16,7 @@ EXTDIR = ../../../../8.x
 STATIC = --disable-shared --enable-static
 OUTDIR = $(shell pwd)/build
 OBJ    = $(OUTDIR)/pwb$O $(OUTDIR)/rechan$O $(OUTDIR)/zlib$O \
-	 $(OUTDIR)/g2lite$O $(OUTDIR)/gtlite$O
+	 $(OUTDIR)/g2lite$O
 CLIOBJ ?= $(OBJ) $(OUTDIR)/tclAppInit$O
 DYNOBJ ?= $(CLIOBJ)
 GUIOBJ ?= $(CLIOBJ)
@@ -28,8 +28,9 @@ A     ?=.a
 SO    ?=.so
 
 GLOBUS_OPTS     = --prefix=$(OUTDIR) --with-buildopts="--static"
-GLOBUS_FLAVOR   = gcc64dbg
+GLOBUS_FLAVOR   = gcc32dbg
 
+GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
 TLS_OPTS = --disable-threads --with-ssl-dir=$(OUTDIR)
 TCLX_OPTS = --disable-threads
 DICT_OPTS = --disable-threads
@@ -45,7 +46,7 @@ tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ cli
 
 kit-cli$(EXE): build/tcl build/tclvfs build/vqtcl build/zlib \
-	build/globus build/tls build/tdom build/starfish \
+	build/globus build/gss_socket build/tls build/tdom build/starfish \
 	build/tcllib build/tclx build/dict $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
@@ -56,6 +57,7 @@ kit-cli$(EXE): build/tcl build/tclvfs build/vqtcl build/zlib \
 	  build/lib/tclx8*/libtclx8*$A \
 	  build/lib/dict8*/libdict8*$A \
 	  build/lib/tls1*/libtls1*$A \
+	  build/lib/gss_socket0*/libgss_socket0*$A \
 	  build/lib/libglobus_gss_assist_$(GLOBUS_FLAVOR)$A \
 	  build/lib/libglobus_gssapi_gsi_$(GLOBUS_FLAVOR)$A \
 	  build/lib/libglobus_gsi_proxy_core_$(GLOBUS_FLAVOR)$A \
@@ -107,6 +109,11 @@ build/globus_include:
 	touch $@ && cd build/include && \
 	ls -d $(GLOBUS_FLAVOR)/* | \
           grep -v $(GLOBUS_FLAVOR)/$(GLOBUS_FLAVOR) | xargs -l ln -sf
+
+build/gss_socket: build/tcl build/globus
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/gss_socket/configure $(STATIC) $(TCLDIR) $(GSS_OPTS) && \
+	  $(MAKE) install
 
 build/tls: build/tcl build/globus build/globus_include
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
@@ -169,10 +176,6 @@ $(OUTDIR)/zlib$O: ../../zlib.c
 
 $(OUTDIR)/g2lite$O: ../../g2lite.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
-
-$(OUTDIR)/gtlite$O: ../../gtlite.c
-	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
-
 
 $(OUTDIR)/tclAppInit$O: ../tcl/$(PLAT)/tclAppInit.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
