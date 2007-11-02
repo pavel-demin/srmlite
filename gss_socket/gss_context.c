@@ -681,7 +681,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
 /* ----------------------------------------------------------------- */
 
 int
-Gsscxt_Init(Tcl_Interp *interp)
+Gssctx_Init(Tcl_Interp *interp)
 {
   Tcl_CreateObjCommand(interp, "gss::context", GssCreateContextObjCmd,
     (ClientData) 0, (Tcl_CmdDeleteProc *) NULL);
@@ -694,5 +694,5 @@ Gsscxt_Init(Tcl_Interp *interp)
 int
 Gssctx_SafeInit(Tcl_Interp *interp)
 {
-  return Gsscxt_Init(interp);
+  return Gssctx_Init(interp);
 }
