@@ -46,7 +46,6 @@ TEA_PREFIX
 TEA_SETUP_COMPILER
 
 #-----------------------------------------------------------------------
-# __CHANGE__
 # Specify the C source files to compile in TEA_ADD_SOURCES,
 # public headers that need to be installed in TEA_ADD_HEADERS,
 # stub library C source files to compile in TEA_ADD_STUB_SOURCES,
@@ -64,7 +63,6 @@ TEA_ADD_STUB_SOURCES([])
 TEA_ADD_TCL_SOURCES([])
 
 #--------------------------------------------------------------------
-# __CHANGE__
 # A few miscellaneous platform-specific items:
 #
 # Define a special symbol for Windows (BUILD_sample in this case) so
@@ -94,7 +92,6 @@ fi
 AC_SUBST(CLEANFILES)
 
 #--------------------------------------------------------------------
-# __CHANGE__
 # Choose which headers you need.  Extension authors should try very
 # hard to only rely on the Tcl public header files.  Internal headers
 # contain private data structures and are subject to change without
