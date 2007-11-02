@@ -1,5 +1,6 @@
-#
-# Tcl package index file
-#
-package ifneeded Tclsha1 @PACKAGE_VERSION@ \
-    [list load [file join $dir @PKG_LIB_FILE@] @PACKAGE_NAME@]
+package ifneeded gss::socket @PACKAGE_VERSION@ \
+  [list load [file join $dir lib@PACKAGE_NAME@@PACKAGE_VERSION@[info sharedlibext]] gss]
+
+package ifneeded gss::context @PACKAGE_VERSION@ \
+  [list load [file join $dir lib@PACKAGE_NAME@@PACKAGE_VERSION@[info sharedlibext]] gssctx]
+
