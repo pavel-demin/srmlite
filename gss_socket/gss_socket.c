@@ -42,17 +42,7 @@
 #include <gssapi.h>
 #include <globus_gss_assist.h>
 
-/* ----------------------------------------------------------------- */
-
-#define GSS_TCL_BLOCKING    (1<<0)  /* non-blocking mode */
-#define GSS_TCL_SERVER      (1<<1)  /* server-side */
-#define GSS_TCL_READHEADER  (1<<2)
-#define GSS_TCL_HANDSHAKE   (1<<3)
-#define GSS_TCL_INPUTERROR  (1<<4)
-#define GSS_TCL_OUTPUTERROR (1<<5)
-#define GSS_TCL_EOF         (1<<6)
-
-#define GSS_TCL_DELAY     (5)
+#include "gss_socket.h"
 
 /* ----------------------------------------------------------------- */
 
@@ -63,48 +53,6 @@ static int	GssOutputProc(ClientData instanceData, CONST char *buf, int toWrite, 
 static int	GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *optionName, Tcl_DString *dsPtr);
 static void	GssWatchProc(ClientData instanceData, int mask);
 static int	GssNotifyProc(ClientData instanceData, int mask);
-
-/* ----------------------------------------------------------------- */
-
-typedef struct GssState {
-  Tcl_Channel parent;
-  Tcl_Channel channel;
-  Tcl_TimerToken timer;
-  Tcl_DriverGetOptionProc *parentGetOptionProc;
-  Tcl_DriverBlockModeProc *parentBlockModeProc;
-  Tcl_DriverWatchProc *parentWatchProc;
-  ClientData parentInstData;
-
-  int flags;
-  int errorCode;
-  int intWatchMask;
-  int extWatchMask;
-
-  gss_cred_id_t gssCredential;
-  gss_cred_id_t gssDelegProxy;
-  gss_buffer_desc gssDelegProxyFileName;
-  int gssDelegProxyFileNamePos;
-  gss_ctx_id_t gssContext;
-  gss_name_t gssName;
-  gss_buffer_desc gssNameBuf;
-  OM_uint32 gssFlags;
-  OM_uint32 gssTime;
-  char *gssUser;
-
-  OM_uint32 readRawBufSize;
-  gss_buffer_desc readRawBuf; /* should be allocated in import */
-  gss_buffer_desc readOutBuf; /* allocated by gss */
-  int readRawBufPos;
-  int readOutBufPos;
-
-  OM_uint32 writeInBufSize;
-  unsigned char writeTokenSizeBuf[4];
-  gss_buffer_desc writeRawBuf; /* allocated by gss */
-  gss_buffer_desc writeInBuf;  /* should be allocated in import */
-  int writeRawBufPos;
-
-  Tcl_Interp *interp;	/* interpreter in which this resides */
-} GssState;
 
 /* ----------------------------------------------------------------- */
 
