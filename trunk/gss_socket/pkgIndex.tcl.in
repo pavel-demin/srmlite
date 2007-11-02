@@ -1,0 +1,6 @@
+package ifneeded gss::socket @PACKAGE_VERSION@ \
+  [list load [file join $dir lib@PACKAGE_NAME@@PACKAGE_VERSION@[info sharedlibext]] gss]
+
+package ifneeded gss::context @PACKAGE_VERSION@ \
+  [list load [file join $dir lib@PACKAGE_NAME@@PACKAGE_VERSION@[info sharedlibext]] gssctx]
+
