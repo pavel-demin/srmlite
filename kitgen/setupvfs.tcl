@@ -120,10 +120,13 @@ set clifiles {
   lib/gss_socket0@/pkgIndex.tcl
   lib/tcllib1.10/pkgIndex.tcl
   lib/tcllib1.10/asn
+  lib/tcllib1.10/base64
   lib/tcllib1.10/comm
   lib/tcllib1.10/ldap
   lib/tcllib1.10/log
   lib/tcllib1.10/math
+  lib/tcllib1.10/snit
+  lib/tcllib1.10/uri
   lib/tclx8.4/pkgIndex.tcl
   lib/tclx8.4/arrayprocs.tcl
   lib/tclx8.4/autoload.tcl
