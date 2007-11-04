@@ -46,6 +46,18 @@
 
 /* ----------------------------------------------------------------- */
 
+#define GSS_TCL_BLOCKING    (1<<0)  /* non-blocking mode */
+#define GSS_TCL_SERVER      (1<<1)  /* server-side */
+#define GSS_TCL_READHEADER  (1<<2)
+#define GSS_TCL_HANDSHAKE   (1<<3)
+#define GSS_TCL_INPUTERROR  (1<<4)
+#define GSS_TCL_OUTPUTERROR (1<<5)
+#define GSS_TCL_EOF         (1<<6)
+
+#define GSS_TCL_DELAY     (5)
+
+/* ----------------------------------------------------------------- */
+
 static int	GssBlockModeProc(ClientData instanceData, int mode);
 static int	GssCloseProc(ClientData instanceData, Tcl_Interp *interp);
 static int	GssInputProc(ClientData instanceData, char *buf, int bufSize, int *errorCodePtr);
@@ -53,6 +65,48 @@ static int	GssOutputProc(ClientData instanceData, CONST char *buf, int toWrite, 
 static int	GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *optionName, Tcl_DString *dsPtr);
 static void	GssWatchProc(ClientData instanceData, int mask);
 static int	GssNotifyProc(ClientData instanceData, int mask);
+
+/* ----------------------------------------------------------------- */
+
+typedef struct GssState {
+  Tcl_Channel parent;
+  Tcl_Channel channel;
+  Tcl_TimerToken timer;
+  Tcl_DriverGetOptionProc *parentGetOptionProc;
+  Tcl_DriverBlockModeProc *parentBlockModeProc;
+  Tcl_DriverWatchProc *parentWatchProc;
+  ClientData parentInstData;
+
+  int flags;
+  int errorCode;
+  int intWatchMask;
+  int extWatchMask;
+
+  gss_cred_id_t gssCredential;
+  gss_cred_id_t gssCredProxy;
+  gss_buffer_desc gssCredFileName;
+  int gssCredFileNamePos;
+  gss_ctx_id_t gssContext;
+  gss_name_t gssName;
+  gss_buffer_desc gssNameBuf;
+  OM_uint32 gssFlags;
+  OM_uint32 gssTime;
+  char *gssUser;
+
+  OM_uint32 readRawBufSize;
+  gss_buffer_desc readRawBuf; /* should be allocated in import */
+  gss_buffer_desc readOutBuf; /* allocated by gss */
+  int readRawBufPos;
+  int readOutBufPos;
+
+  OM_uint32 writeInBufSize;
+  unsigned char writeTokenSizeBuf[4];
+  gss_buffer_desc writeRawBuf; /* allocated by gss */
+  gss_buffer_desc writeInBuf;  /* should be allocated in import */
+  int writeRawBufPos;
+
+  Tcl_Interp *interp;	/* interpreter in which this resides */
+} GssState;
 
 /* ----------------------------------------------------------------- */
 
@@ -350,6 +404,16 @@ GssOutputProc(ClientData instanceData, CONST char *buf,	int bytesToWrite, int *e
 static void
 GssCredDestroy(ClientData clientData)
 {
+  OM_uint32 majorStatus, minorStatus;
+  GssCred *credPtr = (GssCred *) clientData;
+
+  if(credPtr->gssCredBuf.value != NULL)
+  {
+    majorStatus = gss_release_buffer(&minorStatus, &credPtr->gssCredBuf);
+    credPtr->gssCredBuf.value = NULL;
+  }
+
+  ckfree((char *)credPtr);
 
 }
 
@@ -417,7 +481,7 @@ int GssCredGet(Tcl_Interp *interp, char *credName, GssCred **credPtr)
     Tcl_AppendResult(interp, "Failed to acquire delegated credentials.", NULL);
 		return TCL_ERROR;
   }
-  
+
   return TCL_OK;
 }
 
@@ -517,6 +581,9 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
 
       credPtr = (GssCred *) ckalloc((unsigned int) sizeof(GssCred));
       memset(credPtr, 0, sizeof(GssCred));
+
+      credPtr->gssCredBuf.length = 0;
+      credPtr->gssCredBuf.value = NULL;
 
       majorStatus = gss_export_cred(&minorStatus,
                                      statePtr->gssCredProxy,
