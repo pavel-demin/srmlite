@@ -64,9 +64,9 @@ typedef struct GssState {
   int extWatchMask;
 
   gss_cred_id_t gssCredential;
-  gss_cred_id_t gssDelegProxy;
-  gss_buffer_desc gssDelegProxyFileName;
-  int gssDelegProxyFileNamePos;
+  gss_cred_id_t gssCredProxy;
+  gss_buffer_desc gssCredFileName;
+  int gssCredFileNamePos;
   gss_ctx_id_t gssContext;
   gss_name_t gssName;
   gss_buffer_desc gssNameBuf;
@@ -88,6 +88,17 @@ typedef struct GssState {
 
   Tcl_Interp *interp;	/* interpreter in which this resides */
 } GssState;
+
+/* ----------------------------------------------------------------- */
+
+typedef struct GssCred {
+  Tcl_Command token;
+  gss_buffer_desc gssCredBuf;
+} GssCred;
+
+/* ----------------------------------------------------------------- */
+
+int GssCredGet(Tcl_Interp *interp, char *credName, GssCred **credPtr);
 
 /* ----------------------------------------------------------------- */
 

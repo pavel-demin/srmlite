@@ -77,7 +77,6 @@ static unsigned char GssBase64CharIndex[256] = {
 typedef struct GssContext {
   Tcl_Command token;
   Tcl_Channel channel;
-  Tcl_Channel delegate;
 
   gss_cred_id_t gssCredential;
   gss_cred_id_t gssDelegProxy;
@@ -97,6 +96,8 @@ static int GssBase64Encode(CONST unsigned char *inputBuffer,
   int i, j;
   unsigned char character;
   unsigned char buffer[4];
+
+  character = 0;
 
   for(i = 0, j = 0; i < inputBufferSize; ++i)
   {
@@ -144,6 +145,8 @@ static int GssBase64Decode(CONST unsigned char *inputBuffer,
   int i, j;
   unsigned char index;
   unsigned char buffer[3];
+  
+  index = XX;
 
   for(i = 0, j = 0; inputBuffer[i] != GssBase64Pad && i < inputBufferSize; ++i)
   {
@@ -206,7 +209,7 @@ static int GssBase64Decode(CONST unsigned char *inputBuffer,
 /* ----------------------------------------------------------------- */
 
 static void
-GssDestroy(ClientData clientData)
+GssContextDestroy(ClientData clientData)
 {
   OM_uint32 majorStatus, minorStatus;
   GssContext *statePtr = (GssContext *) clientData;
@@ -538,12 +541,11 @@ GssContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
 static int
 GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-  char name[256];
+  char cmdName[256];
+  Tcl_CmdInfo cmdInfo;
+  int cmdCounter;
 
-  Tcl_Channel channel, delegate;
-  ClientData delegateInstData;
-  GssState *delegateStatePtr;
-  Tcl_ChannelType *delegateChannelTypePtr;
+  Tcl_Channel channel;
 
   GssContext *statePtr;
 
@@ -553,10 +555,12 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   Tcl_DString peerName;
   Tcl_Obj *peerNameObj;
   char *peerNameStr;
-  char *channelName;
   int peerNameLen;
 
-  int idx;
+  GssCred *credPtr;
+  char *credName;
+
+  int idx, rc;
 
   if(0) printf("---> GssCreateContextObjCmd -> 0\n");
   fflush(stdout);
@@ -575,8 +579,8 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
     return TCL_ERROR;
   }
 
-  channelName = NULL;
-  delegate = (Tcl_Channel) NULL;
+  credName = NULL;
+  credPtr = NULL;
 
   for(idx = 2; idx < objc; ++idx)
   {
@@ -584,64 +588,35 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
 
     if(option[0] != '-') break;
 
-    if(strcmp(option, "-delegate") == 0)
+    if(strcmp(option, "-gssimport") == 0)
     {
       if(++idx >= objc)
       {
-        Tcl_WrongNumArgs(interp, 1, objv, "channel -delegate channel");
+        Tcl_WrongNumArgs(interp, 1, objv, "channel -gssimport cred");
         return TCL_ERROR;
       }
 
-      channelName = Tcl_GetString(objv[idx]);
+      credName = Tcl_GetString(objv[idx]);
 
       continue;
     }
 
     Tcl_AppendResult(interp, "bad option \"", option,
-      "\": should be delegate", (char *) NULL);
+      "\": should be gssimport", (char *) NULL);
 
     return TCL_ERROR;
   }
 
-  if(channelName != NULL)
+  if(credName != NULL)
   {
-    delegate = Tcl_GetChannel(interp, channelName, NULL);
-    if(delegate == (Tcl_Channel) NULL)
-    {
-      Tcl_AppendResult(interp, "Cannot find channel ", channelName, NULL);
-      return TCL_ERROR;
-    }
-
-    delegateChannelTypePtr = Tcl_GetChannelType(delegate);
-
-    if(delegateChannelTypePtr == NULL)
-    {
-      Tcl_AppendResult(interp, "Cannot define type of channel ", channelName, NULL);
-      return TCL_ERROR;
-    }
-
-    if(strcmp(delegateChannelTypePtr->typeName, "gss"))
-    {
-      Tcl_AppendResult(interp, "Channel ", channelName, " is not of type gss.", NULL);
-      return TCL_ERROR;
-    }
-
-    delegateInstData = Tcl_GetChannelInstanceData(delegate);
-    delegateStatePtr = (GssState *) delegateInstData;
-
-    if(delegateStatePtr->gssDelegProxy == GSS_C_NO_CREDENTIAL)
-    {
-      Tcl_AppendResult(interp, "Failed to acquire delegated credentials.", NULL);
-  		return TCL_ERROR;
-    }
+    rc = GssCredGet(interp, credName, &credPtr);
+    if(rc != TCL_OK ) return rc;
   }
 
   statePtr = (GssContext *) ckalloc((unsigned int) sizeof(GssContext));
   memset(statePtr, 0, sizeof(GssContext));
 
   statePtr->channel = channel;
-
-  statePtr->delegate = delegate;
 
   statePtr->gssName = GSS_C_NO_NAME;
   statePtr->gssContext = GSS_C_NO_CONTEXT;
@@ -671,11 +646,11 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
       stderr, "Failed to determine server name: ",
       majorStatus, minorStatus, 0);
 
-    GssDestroy((ClientData) statePtr);
+    GssContextDestroy((ClientData) statePtr);
     return TCL_ERROR;
   }
 
-  if(delegate == (Tcl_Channel) NULL)
+  if(credPtr == NULL)
   {
     majorStatus = gss_acquire_cred(&minorStatus,     /* (out) minor status */
                                    GSS_C_NO_NAME,    /* (in) desired name */
@@ -695,20 +670,41 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
         stderr, "Failed to acquire credentials: ",
         majorStatus, minorStatus, 0);
 
-      GssDestroy((ClientData) statePtr);
+      GssContextDestroy((ClientData) statePtr);
       return TCL_ERROR;
     }
   }
   else
   {
-    statePtr->gssCredential = delegateStatePtr->gssDelegProxy;
+    majorStatus = gss_import_cred(&minorStatus,             /* (out) minor status */
+                                  &statePtr->gssCredential, /* (out) cred handle */
+                                  GSS_C_NO_OID,             /* (in) desired mechs */
+                                  1,                        /* (in) option_req used by gss_export_cred */
+                                  &credPtr->gssCredBuf,     /* (in) buffer produced by gss_export_cred */
+                                  GSS_C_INDEFINITE,         /* (in) desired time valid */
+                                  NULL);                    /* (out) actual time valid */
+
+    if (majorStatus == GSS_S_COMPLETE)
+    {
+      globus_gss_assist_display_status(
+        stderr, "Failed to import credentials: ",
+        majorStatus, minorStatus, 0);
+
+      GssContextDestroy((ClientData) statePtr);
+      return TCL_ERROR;
+    }
   }
 
-	sprintf(name, "gss::context%s", Tcl_GetChannelName(channel));
-  statePtr->token = Tcl_CreateObjCommand(interp, name, GssContextObjCmd,
-    (ClientData) statePtr, GssDestroy);
+  cmdCounter = 0;
+  do {
+    sprintf(cmdName, "gss::context_%s_%d", Tcl_GetChannelName(channel), cmdCounter);
+    cmdCounter++;
+  } while(Tcl_GetCommandInfo(interp, cmdName, &cmdInfo));
 
-  Tcl_SetResult(interp, name, TCL_VOLATILE);
+  statePtr->token = Tcl_CreateObjCommand(interp, cmdName, GssContextObjCmd,
+    (ClientData) statePtr, GssContextDestroy);
+
+  Tcl_SetResult(interp, cmdName, TCL_VOLATILE);
 	return TCL_OK;
 }
 
