@@ -1,6 +1,6 @@
 
+package require gss::socket
 package require g2lite
-package require gtlite
 package require dict
 package require tdom
 package require starfish
@@ -112,7 +112,7 @@ proc /srm/managerv1 {sock query} {
     set gssCert {}
 
     if {[string equal $methodName copy]} {
-        if {[catch {fconfigure $sock -gssproxy} result]} {
+        if {[catch {fconfigure $sock -gssexport} result]} {
             HttpdLog $sock error $result
             return [SrmFaultBody $result $errorInfo]
         } else {
@@ -214,7 +214,7 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
         copy,true {
 #            SrmSetState $requestId $fileId Ready
             set dstTURL [ConvertSURL2TURL $TURL]
-            puts $State(in) [list copy $fileId $userName $certProxy $srcTURL $dstTURL]
+            GridFtpCopy $fileId $certProxy $srcTURL $dstTURL
         }
         get,false {
             dict set file TURL [ConvertSURL2TURL $SURL]
@@ -259,7 +259,7 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
         copy,true {
 #            SrmSetState $requestId $fileId Ready
             set srcTURL [ConvertSURL2TURL $SURL]
-            puts $State(in) [list copy $fileId $userName $certProxy $srcTURL $dstTURL]
+            GridFtpCopy $fileId $certProxy $srcTURL $dstTURL
         }
         put,false {
             dict set file TURL [ConvertSURL2TURL $SURL]
@@ -312,7 +312,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
         set file [dict create state Pending requestId $requestId \
             size $size owner {} group {} permMode 0 \
             isPinned false isPermanent false isCached false \
-            SURL $SURL TURL $dstSURL certProxy {} afterId {}]
+            SURL $SURL TURL $dstSURL certProxy $certProxy afterId {}]
 
         dict lappend request fileIds $fileId
 
@@ -322,11 +322,6 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
                 puts $State(in) [list $requestType $fileId $userName $SURL]
             }
             copy {
-                set certProxyCopy $certProxy
-                append certProxyCopy {.} $fileId
-                file copy $certProxy $certProxyCopy
-                dict set file certProxy $certProxyCopy
-
                 if {[IsLocalHost $SURL] && ![IsLocalHost $dstSURL]} {
                     puts $State(in) [list get $fileId $userName $SURL]
                 } elseif {![IsLocalHost $SURL] && [IsLocalHost $dstSURL]} {
@@ -336,11 +331,6 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
                 }
             }
         }
-    }
-
-    if {[file exists $certProxy]} {
-        file delete $certProxy
-        set certProxy {}
     }
 
     set timer -1
@@ -460,16 +450,16 @@ proc SrmSetState {requestId fileId newState} {
             }
             if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
+                GridFtpStop $fileId
             }
-            puts $State(in) [list stop $fileId]
         }
         *,*,Failed {
             dict set request reqState Failed
             dict set file state Failed
             if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
+                GridFtpStop $fileId
             }
-            puts $State(in) [list stop $fileId]
         }
         default {
             log::log error "Unexpected state $requestState,$currentState,$newState"
@@ -578,9 +568,8 @@ proc KillSrmRequest {requestId} {
 
             if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
+                GridFtpStop $fileId
             }
-
-            puts $State(in) [list stop $fileId]
 
             if {[info exists file]} {
                 unset file

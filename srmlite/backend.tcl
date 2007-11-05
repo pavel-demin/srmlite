@@ -38,70 +38,6 @@ proc SrmPut {requestType fileId userName SURL} {
 
 # -------------------------------------------------------------------------
 
-proc SrmCopy {requestType fileId userName certProxy srcTURL dstTURL} {
-
-    set certProxyCopy $certProxy
-    append certProxyCopy {.copy}
-    file copy $certProxy $certProxyCopy
-    chown $userName $certProxyCopy
-
-    set command "./setuid $userName ./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxyCopy"
-#    set command "./url_copy.sh [ExtractHostFile $srcTURL] [ExtractHostFile $dstTURL] $certProxyCopy"
-
-    SubmitCommand $requestType $fileId $certProxyCopy $command
-}
-
-# -------------------------------------------------------------------------
-
-
-proc SrmStop {requestType fileId} {
-
-    upvar #0 SrmProcessIndex($fileId) index
-
-    if {[info exists index]} {
-        KillCommand $index
-    } else {
-        set faultString "Unknown file ID $fileId"
-        log::log error $faultString
-    }
-}
-
-# -------------------------------------------------------------------------
-
-proc KillCommand {processId} {
-
-    upvar #0 SrmProcesses($processId) process
-    if {[info exists process]} {
-        set fileId [dict get $process fileId]
-        upvar #0 SrmProcessIndex($fileId) index
-        if {[info exists index]} {
-            unset index
-        }
-
-        set certProxy [dict get $process certProxy]
-        if {[file exists $certProxy]} {
-            file delete $certProxy
-        }
-
-        unset process
-    }
-
-    upvar #0 SrmProcessTimer($processId) timer
-    if {[info exists timer]} {
-        unset timer
-    }
-
-    if {[catch {kill $processId} message]} {
-        log::log debug $message
-    } elseif {[catch {kill 1 $processId} message]} {
-        log::log debug $message
-    } elseif {[catch {kill 9 $processId} message]} {
-        log::log debug $message
-    }
-}
-
-# -------------------------------------------------------------------------
-
 proc SubmitCommand {requestType fileId certProxy command} {
 
     global State
@@ -119,33 +55,12 @@ proc SubmitCommand {requestType fileId certProxy command} {
     log::log debug "\[process: $processId\] $command"
 
     upvar #0 SrmProcesses($processId) process
-    upvar #0 SrmProcessTimer($processId) timer
-    upvar #0 SrmProcessIndex($fileId) index
 
     set process [dict create requestType $requestType fileId $fileId \
         certProxy $certProxy output {}]
-    set index $processId
-    set timer -1
 
     fconfigure $pipe -buffering none -blocking 0
     fileevent $pipe readable [list GetCommandOutput $requestType $fileId $processId $pipe]
-}
-
-# -------------------------------------------------------------------------
-
-proc Timeout {seconds} {
-    global SrmProcessTimer
-
-    log::log debug "Timeout $seconds"
-
-    foreach processId [array names SrmProcessTimer] {
-        set counter [incr SrmProcessTimer($processId)]
-        log::log debug "\[process: $processId\] $counter"
-        if {$counter > 15} {
-            after 0 [list KillCommand $processId]
-        }
-    }
-    alarm $seconds
 }
 
 # -------------------------------------------------------------------------
@@ -181,8 +96,6 @@ proc Finish {requestType fileId processId pipe} {
 
     global State
     upvar #0 SrmProcesses($processId) process
-    upvar #0 SrmProcessTimer($processId) timer
-    upvar #0 SrmProcessIndex($fileId) index
 
     set hadError 0
     if {[file channels $pipe] != {}} {
@@ -202,14 +115,6 @@ proc Finish {requestType fileId processId pipe} {
         set state Done
     } else {
         set state Ready
-    }
-
-    if {[info exists timer]} {
-        unset timer
-    }
-
-    if {[info exists index]} {
-        unset index
     }
 
     set output {}
@@ -258,12 +163,6 @@ proc GetInput {chan} {
         }
         put {
             eval SrmPut $line
-        }
-        copy {
-            eval SrmCopy $line
-        }
-        stop {
-            eval SrmStop $line
         }
         default {
             log::log error "Unknown request type $requestType"

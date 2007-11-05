@@ -1,3 +1,4 @@
+
 lappend auto_path .
 
 package require Tclx
@@ -128,8 +129,6 @@ proc backend {} {
     fconfigure $State(out) -blocking 0 -buffering line
 
     fileevent $State(in) readable [list GetInput $State(in)]
-
-    SetupTimer 600 [list Timeout 600]
 
     # start the Tcl event loop
     vwait forever

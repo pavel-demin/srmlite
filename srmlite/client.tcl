@@ -1,9 +1,10 @@
+
+package require gss::socket
 package require g2lite
-package require gtlite
 package require dict
 package require tdom
-package require http
 
+package require srmlite::gridhttp
 package require srmlite::templates
 package require srmlite::soap
 
@@ -34,13 +35,12 @@ proc SrmCall {fileId serviceURL requestType args} {
         }
     }
 
-    set ::env(X509_USER_PROXY) $certProxy
-
     set type {text/xml; charset=utf-8}
     set headers [SrmHeaders $requestType]
     set command [list SrmCallCommand $fileId $requestType]
     
     if {[catch {::http::geturl $serviceURL -query $query \
+        -gssimport $certProxy -timeout 30000 \
         -type $type -headers $headers -command $command} result]} {
         SrmFailed $fileId "Error while connecting remote SRM: $result"
     }
@@ -194,13 +194,12 @@ proc SrmCallStop {fileId} {
         set query [SrmSetFileStatusBody $remoteRequestId $remoteFileId Done]
     }
 
-    set ::env(X509_USER_PROXY) $certProxy
-
     set type {text/xml; charset=utf-8}
     set headers [SrmHeaders setFileStatus]
     set command [list SrmCallStopCommand $fileId $certProxy]
 
     if {[catch {::http::geturl $serviceURL -query $query \
+        -gssimport $certProxy -timeout 30000 \
         -type $type -headers $headers -command $command} result]} {
         SrmFailed $fileId "Error while connecting remote SRM: $result"
     }
@@ -217,9 +216,10 @@ proc SrmCallStopCommand {fileId certProxy token} {
     if {[info exists client]} {
         unset client
     }
-    
-    if {[file exists $certProxy]} {
-        file delete $certProxy
+
+    if {[info proc $certProxy] eq "$certProxy" &&
+        [string length $certProxy] != 0} {
+        $certProxy destroy
     }
 }
 
@@ -235,10 +235,6 @@ proc ::gss::socket {args} {
     } elseif {[catch {gss::import $result -server false} result]} {
         set hadError 1
         log::log error $result
-    }
-
-    if {[info exists ::env(X509_USER_PROXY)]} {
-        unset ::env(X509_USER_PROXY)
     }
 
     if {$hadError} {
