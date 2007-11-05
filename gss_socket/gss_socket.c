@@ -1252,7 +1252,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
         return TCL_ERROR;
       }
 
-      if (Tcl_GetBooleanFromObj(interp, objv[idx], &server) != TCL_OK)
+      if(Tcl_GetBooleanFromObj(interp, objv[idx], &server) != TCL_OK)
       {
         return TCL_ERROR;
       }

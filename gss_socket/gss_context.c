@@ -679,12 +679,12 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
     majorStatus = gss_import_cred(&minorStatus,             /* (out) minor status */
                                   &statePtr->gssCredential, /* (out) cred handle */
                                   GSS_C_NO_OID,             /* (in) desired mechs */
-                                  1,                        /* (in) option_req used by gss_export_cred */
+                                  0,                        /* (in) option_req used by gss_export_cred */
                                   &credPtr->gssCredBuf,     /* (in) buffer produced by gss_export_cred */
                                   GSS_C_INDEFINITE,         /* (in) desired time valid */
                                   NULL);                    /* (out) actual time valid */
 
-    if (majorStatus == GSS_S_COMPLETE)
+    if(majorStatus != GSS_S_COMPLETE)
     {
       globus_gss_assist_display_status(
         stderr, "Failed to import credentials: ",
