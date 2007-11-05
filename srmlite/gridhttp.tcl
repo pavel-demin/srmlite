@@ -8,7 +8,7 @@
 # See the file "license.terms" for information on usage and redistribution of
 # this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: gridhttp.tcl,v 1.1 2007-11-05 16:16:48 demin Exp $
+# RCS: @(#) $Id: gridhttp.tcl,v 1.2 2007-11-05 18:56:17 demin Exp $
 
 # Rough version history:
 # 1.0	Old http_get interface.
@@ -446,7 +446,7 @@ proc http::geturl { url args } {
     set state(url) $url
 
     if {$state(-gssimport) ne ""} {
-	set gssimport "-gssimport $state(-gssimport)"
+	set gssimport $state(-gssimport)
     } else {
 	set gssimport ""
     }	
@@ -466,9 +466,9 @@ proc http::geturl { url args } {
 
     if {[info exists phost] && [string length $phost]} {
 	set srvurl $url
-	set conStat [catch {eval $defcmd $async $gssimport {$phost $pport}} s]
+	set conStat [catch {eval $defcmd $gssimport $async {$phost $pport}} s]
     } else {
-	set conStat [catch {eval $defcmd $async $gssimport {$host $port}} s]
+	set conStat [catch {eval $defcmd $gssimport $async {$host $port}} s]
     }
 
     if {$conStat} {

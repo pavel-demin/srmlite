@@ -6,6 +6,7 @@ package require tdom
 package require starfish
 
 package require srmlite::templates
+package require srmlite::gridftp
 package require srmlite::client
 package require srmlite::soap
 
@@ -214,7 +215,7 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
         copy,true {
 #            SrmSetState $requestId $fileId Ready
             set dstTURL [ConvertSURL2TURL $TURL]
-            GridFtpCopy $fileId $certProxy $srcTURL $dstTURL
+            GridFtpCopy $fileId $srcTURL $dstTURL
         }
         get,false {
             dict set file TURL [ConvertSURL2TURL $SURL]
@@ -259,7 +260,7 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
         copy,true {
 #            SrmSetState $requestId $fileId Ready
             set srcTURL [ConvertSURL2TURL $SURL]
-            GridFtpCopy $fileId $certProxy $srcTURL $dstTURL
+            GridFtpCopy $fileId $srcTURL $dstTURL
         }
         put,false {
             dict set file TURL [ConvertSURL2TURL $SURL]

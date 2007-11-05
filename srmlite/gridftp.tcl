@@ -28,14 +28,18 @@ proc GridFtpGetInput {fileId chan} {
 
     if {[catch {gets $chan line} readCount]} {
         log::log error $readCount
+        GridFtpClose $chan
         GridFtpFailed $fileId $chan
         return
     }
 
     if {$readCount == -1} {
-        if {[eof $sock]} {
-            log::log error {Broken connection during gridftp transfer}
-            GridFtpFailed $fileId $chan
+        if {[eof $chan]} {
+            if {$data(state) != "quit"} {
+                log::log error {Broken connection during gridftp transfer}
+                GridFtpFailed $fileId $chan
+            }
+            GridFtpClose $chan
         } else {
             log::log warning {No full line available, retrying...}
         }
@@ -177,7 +181,7 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         }
         pasv,227 {
             regexp -- {\d+,\d+,\d+,\d+,\d+,\d+} $msg port
-            GridFtpRetr fileId $data(peerhost) $data(peerfile) $port
+            GridFtpRetr $fileId $data(srcTURL) $port
             puts $chan [$data(context) wrap "STOR $data(file)"]
             set data(state) stor
         }
@@ -192,6 +196,7 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         }
         stor,226 -
         retr,226 {
+            SrmCopyDone $fileId
             puts $chan [$data(context) wrap {QUIT}]
             set data(state) quit
         }
@@ -212,9 +217,14 @@ proc GridFtpProcessWrappedInput {fileId chan} {
 proc GridFtpQuit {chan} {
     upvar #0 GridFtp$chan data
 
-    puts $chan {QUIT}
-    set data(state) quit
-    set data(afterId) [after 30000 [list GridFtpClose $chan]]
+    if {[file channels $chan] != {}} {
+        puts $chan {QUIT}
+    }
+
+    if {[info exists data]} {
+        set data(state) quit
+        set data(afterId) [after 30000 [list GridFtpClose $chan]]
+    }
 }
 
 # -------------------------------------------------------------------------
@@ -222,9 +232,11 @@ proc GridFtpQuit {chan} {
 proc GridFtpClose {chan} {
     upvar #0 GridFtp$chan data
 
+    log::log debug "GridFtpClose: [file channels $chan]"
     if {[file channels $chan] != {}} {
         fileevent $chan readable {}
         ::close $chan
+        log::log debug "GridFtpClose: close $chan"
     }
 
     if {[info exists data]} {
@@ -245,15 +257,17 @@ proc GridFtpClose {chan} {
 
 # -------------------------------------------------------------------------
 
-proc GridFtpRetr {fileId host file port} {
+proc GridFtpRetr {fileId srcTURL port} {
 
     upvar #0 GridFtpIndex($fileId) index
     upvar #0 SrmFiles($fileId) file
     set certProxy [dict get $file certProxy]
 
-    set chan [socket -async $host 2811]
+    set hostfile [ExtractHostFile $srcTURL]
+
+    set chan [socket [lindex $hostfile 0] 2811]
     fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
-    fileevent $chan readable [list GridFtpGetInput $chan]
+    fileevent $chan readable [list GridFtpGetInput $fileId $chan]
     
     lappend index $chan
 
@@ -266,20 +280,22 @@ proc GridFtpRetr {fileId host file port} {
     set data(state) new
     set data(stor) 0
     set data(port) $port
-    set data(file) $file
+    set data(file) [lindex $hostfile 1]
 }
 
 # -------------------------------------------------------------------------
 
-proc GridFtpStor {fileId host file peerhost peerfile} {
+proc GridFtpStor {fileId dstTURL srcTURL} {
 
     upvar #0 GridFtpIndex($fileId) index
     upvar #0 SrmFiles($fileId) file
     set certProxy [dict get $file certProxy]
 
-    set chan [socket -async $host 2811]
+    set hostfile [ExtractHostFile $dstTURL]
+
+    set chan [socket [lindex $hostfile 0] 2811]
     fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
-    fileevent $chan readable [list GridFtpGetInput $chan]
+    fileevent $chan readable [list GridFtpGetInput $fileId $chan]
 
     lappend index $chan
 
@@ -292,16 +308,30 @@ proc GridFtpStor {fileId host file peerhost peerfile} {
     set data(state) new
     set data(stor) 1
     set data(port) {}
-    set data(file) $file
-    set data(peerfile) $peerfile
-    set data(peerhost) $peerhost
+    set data(file) [lindex $hostfile 1]
+    set data(srcTURL) $srcTURL
 }
 
 # -------------------------------------------------------------------------
 
-proc GridFtpCopy {fileId certProxy srcTURL dstTURL} {
+proc ExtractHostFile {url} {
 
-    eval GridFtpStor $certProxy [ExtractHostFile $dstTURL] [ExtractHostFile $srcTURL]
+    set exp {^(([^:]*)://)?([^@]+@)?([^/:]+)(:([0-9]+))?(/srm/managerv1\?SFN=)?(/.*)?$}
+    if {![regexp -nocase $exp $url x prefix proto user host y port z file]} {
+        log::log error "Unsupported URL $url"
+        return {}
+    }
+
+    set file [file normalize $file]
+
+    return [list $host $file]
+}
+
+# -------------------------------------------------------------------------
+
+proc GridFtpCopy {fileId srcTURL dstTURL} {
+
+    GridFtpStor $fileId $dstTURL $srcTURL
 }
 
 # -------------------------------------------------------------------------
@@ -317,6 +347,7 @@ proc GridFtpStop {fileId} {
     foreach indexChannel $index {
         GridFtpQuit $indexChannel
     }
+    set index {}
 }
 
 # -------------------------------------------------------------------------
@@ -333,6 +364,7 @@ proc GridFtpFailed {fileId chan} {
            GridFtpQuit $indexChannel
         }
     }
+    set index {}
 }
 
 # -------------------------------------------------------------------------
