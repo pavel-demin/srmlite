@@ -1260,7 +1260,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
       continue;
     }
 
-    if(strcmp(option, "-delegate") == 0)
+    if(strcmp(option, "-gssimport") == 0)
     {
       if(++idx >= objc)
       {
