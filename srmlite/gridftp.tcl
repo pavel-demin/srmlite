@@ -35,11 +35,12 @@ proc GridFtpGetInput {fileId chan} {
 
     if {$readCount == -1} {
         if {[eof $chan]} {
-            if {$data(state) != "quit"} {
+            set state $data(state)
+            GridFtpClose $chan
+            if {$state != "quit"} {
                 log::log error {Broken connection during gridftp transfer}
                 GridFtpFailed $fileId $chan
             }
-            GridFtpClose $chan
         } else {
             log::log warning {No full line available, retrying...}
         }
