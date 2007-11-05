@@ -468,18 +468,18 @@ int GssCredGet(Tcl_Interp *interp, char *credName, GssCred **credPtr)
     return TCL_ERROR;
   }
 
-  *credPtr = (GssCred*) cmdInfo.clientData;
+  *credPtr = (GssCred*) cmdInfo.objClientData;
 
-  if(credPtr == NULL)
+  if(*credPtr == NULL)
   {
     Tcl_AppendResult(interp, "Failed to acquire delegated credentials.", NULL);
-		return TCL_ERROR;
+    return TCL_ERROR;
   }
 
   if((*credPtr)->gssCredBuf.value == NULL)
   {
     Tcl_AppendResult(interp, "Failed to acquire delegated credentials.", NULL);
-		return TCL_ERROR;
+    return TCL_ERROR;
   }
 
   return TCL_OK;
@@ -543,7 +543,7 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
                                      NULL, 1,
                                      &statePtr->gssCredFileName);
 
-      if (majorStatus == GSS_S_COMPLETE)
+      if(majorStatus == GSS_S_COMPLETE)
       {
         statePtr->gssCredFileNamePos = 0;
         if(statePtr->gssCredFileName.length > 16)
@@ -590,7 +590,7 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
                                      NULL, 0,
                                      &credPtr->gssCredBuf);
 
-      if (majorStatus == GSS_S_COMPLETE)
+      if(majorStatus == GSS_S_COMPLETE)
       {
         cmdCounter = 0;
         do {
@@ -1374,18 +1374,19 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
     majorStatus = gss_import_cred(&minorStatus,             /* (out) minor status */
                                   &statePtr->gssCredential, /* (out) cred handle */
                                   GSS_C_NO_OID,             /* (in) desired mechs */
-                                  1,                        /* (in) option_req used by gss_export_cred */
+                                  0,                        /* (in) option_req used by gss_export_cred */
                                   &credPtr->gssCredBuf,     /* (in) buffer produced by gss_export_cred */
                                   GSS_C_INDEFINITE,         /* (in) desired time valid */
                                   NULL);                    /* (out) actual time valid */
 
-    if (majorStatus == GSS_S_COMPLETE)
+    if(majorStatus != GSS_S_COMPLETE)
     {
       globus_gss_assist_display_status(
         stderr, "Failed to import credentials: ",
         majorStatus, minorStatus, 0);
 
       GssClean((ClientData) statePtr);
+      Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
       return TCL_ERROR;
     }
   }
