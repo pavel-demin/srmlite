@@ -200,9 +200,9 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         }
         pasv,227 {
             regexp -- {\d+,\d+,\d+,\d+,\d+,\d+} $msg port
-            GridFtpRetr $fileId $data(srcTURL) $port
             puts $chan [$data(context) wrap "STOR $data(file)"]
             set data(state) stor
+            GridFtpRetr $fileId $data(srcTURL) $port
         }
         opts,200 -
         opts,500 {
