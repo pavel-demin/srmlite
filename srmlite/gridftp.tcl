@@ -38,7 +38,7 @@ proc ExtractHostFile {url} {
 
 # -------------------------------------------------------------------------
 
-proc GridFtpGetInput {fileId chan} {
+proc GridFtpGetInput {fileId certProxy chan} {
 
     upvar #0 GridFtp$chan data
 
@@ -66,14 +66,17 @@ proc GridFtpGetInput {fileId chan} {
     }
 
     if {![regexp -- {^-?(\d+)( |-)?(ADAT)?( |=)?(.*)$} $line -> rc ml adat eq msg]} {
-		    log::log error "Unsupported response from FTP server\n$line"
-	  }
+        log::log error "Unsupported response from FTP server\n$line"
+    }
 
-	  set data(rc) $rc
+    set data(rc) $rc
 
-	  if {[string match {63?} $rc]} {
-        set msg [$data(context) unwrap $msg]
-	  }
+    if {[string match {63?} $rc]} {
+        set context $data(context)
+        if {![string equal $context {}]} {
+            set msg [$context unwrap $msg]
+        }
+    }
 
     if {[string equal $ml {-}]} {
         append data(buffer) $msg
@@ -83,12 +86,21 @@ proc GridFtpGetInput {fileId chan} {
         append data(buffer) $msg
     }
 
-    GridFtpProcessClearInput $fileId $chan
+    GridFtpProcessClearInput $fileId $certProxy $chan
 }
 
 # -------------------------------------------------------------------------
 
-proc GridFtpProcessClearInput {fileId chan} {
+proc GridFtpCreateContext {fileId certProxy chan} {
+    upvar #0 GridFtp$chan data
+    if {[string equal $data(context) {}]} {
+        set data(context) [gss::context $chan -gssimport $certProxy]
+    }
+}
+
+# -------------------------------------------------------------------------
+
+proc GridFtpProcessClearInput {fileId certProxy chan} {
 
     upvar #0 GridFtp$chan data
 
@@ -101,6 +113,7 @@ proc GridFtpProcessClearInput {fileId chan} {
             set data(buffer) {}
         }
         auth,334 {
+            GridFtpCreateContext $fileId $certProxy $chan
             puts $chan [$data(context) handshake {}]
             set data(state) handshake
             set data(buffer) {}
@@ -240,15 +253,17 @@ proc GridFtpRetr {fileId srcTURL port} {
 
     set hostfile [ExtractHostFile $srcTURL]
 
+    log::log debug "GridFtpRetr: $hostfile"
+
     set chan [socket -async [lindex $hostfile 0] 2811]
     fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
-    fileevent $chan readable [list GridFtpGetInput $fileId $chan]
+    fileevent $chan readable [list GridFtpGetInput $fileId $certProxy $chan]
     
     dict set index $chan 1
 
     upvar #0 GridFtp$chan data
 
-    set data(context) [gss::context $chan -gssimport $certProxy]
+    set data(context) {}
     set data(afterId) {}
     set data(buffer) {}
     set data(bufcmd) 0
@@ -270,13 +285,13 @@ proc GridFtpCopy {fileId srcTURL dstTURL} {
 
     set chan [socket -async [lindex $hostfile 0] 2811]
     fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
-    fileevent $chan readable [list GridFtpGetInput $fileId $chan]
+    fileevent $chan readable [list GridFtpGetInput $fileId $certProxy $chan]
 
     dict set index $chan 1
 
     upvar #0 GridFtp$chan data
 
-    set data(context) [gss::context $chan -gssimport $certProxy]
+    set data(context) {}
     set data(afterId) {}
     set data(buffer) {}
     set data(bufcmd) 0
