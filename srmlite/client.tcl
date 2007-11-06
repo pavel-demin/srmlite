@@ -211,6 +211,8 @@ proc SrmCallStopCommand {fileId certProxy token} {
 
     upvar #0 $token http
     ::http::cleanup $token
+    
+    log::log debug "SrmCallStopCommand: $fileId"
 
     upvar #0 SrmClients($fileId) client
     if {[info exists client]} {
