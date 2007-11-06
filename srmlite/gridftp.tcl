@@ -1,5 +1,6 @@
 
 package require gss::context
+package require dict
 package require log
 
 # -------------------------------------------------------------------------
@@ -22,6 +23,21 @@ set sbufCommands {
 
 # -------------------------------------------------------------------------
 
+proc ExtractHostFile {url} {
+
+    set exp {^(([^:]*)://)?([^@]+@)?([^/:]+)(:([0-9]+))?(/srm/managerv1\?SFN=)?(/.*)?$}
+    if {![regexp -nocase $exp $url x prefix proto user host y port z file]} {
+        log::log error "Unsupported URL $url"
+        return {}
+    }
+
+    set file [file normalize $file]
+
+    return [list $host $file]
+}
+
+# -------------------------------------------------------------------------
+
 proc GridFtpGetInput {fileId chan} {
 
     upvar #0 GridFtp$chan data
@@ -29,7 +45,8 @@ proc GridFtpGetInput {fileId chan} {
     if {[catch {gets $chan line} readCount]} {
         log::log error $readCount
         GridFtpClose $chan
-        GridFtpFailed $fileId $chan
+        GridFtpStop $fileId
+        SrmFailed $fileId "Error during gridftp transfer"
         return
     }
 
@@ -39,7 +56,8 @@ proc GridFtpGetInput {fileId chan} {
             GridFtpClose $chan
             if {$state != "quit"} {
                 log::log error {Broken connection during gridftp transfer}
-                GridFtpFailed $fileId $chan
+                GridFtpStop $fileId
+                SrmFailed $fileId "Error during gridftp transfer"
             }
         } else {
             log::log warning {No full line available, retrying...}
@@ -106,7 +124,7 @@ proc GridFtpProcessClearInput {fileId chan} {
         default {
             log::log error "Unknown state $data(state),$data(rc)"
             log::log error $data(buffer)
-            GridFtpQuit $chan
+            GridFtpQuit $chan QUIT
         }
     }
 }
@@ -197,9 +215,8 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         }
         stor,226 -
         retr,226 {
+            GridFtpQuit $chan [$data(context) wrap {QUIT}]
             SrmCopyDone $fileId
-            puts $chan [$data(context) wrap {QUIT}]
-            set data(state) quit
         }
         *,1?? -
         *,2?? {
@@ -208,51 +225,8 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         default {
             log::log error "Unknown state $data(state),$data(rc)"
             log::log error $data(buffer)
-            GridFtpQuit $chan
+            GridFtpQuit $chan QUIT
         }
-    }
-}
-
-# -------------------------------------------------------------------------
-
-proc GridFtpQuit {chan} {
-    upvar #0 GridFtp$chan data
-
-    if {[file channels $chan] != {}} {
-        puts $chan {QUIT}
-    }
-
-    if {[info exists data]} {
-        set data(state) quit
-        set data(afterId) [after 30000 [list GridFtpClose $chan]]
-    }
-}
-
-# -------------------------------------------------------------------------
-
-proc GridFtpClose {chan} {
-    upvar #0 GridFtp$chan data
-
-    log::log debug "GridFtpClose: [file channels $chan]"
-    if {[file channels $chan] != {}} {
-        fileevent $chan readable {}
-        ::close $chan
-        log::log debug "GridFtpClose: close $chan"
-    }
-
-    if {[info exists data]} {
-        set context $data(context)
-        if {[info proc $context] eq "$context" &&
-            [string length $context] != 0} {
-            $context destroy
-        }
-        
-        set afterId $data(afterId)
-        if {$afterId != {}} {
-            after cancel $afterId
-        }
-
-        unset data
     }
 }
 
@@ -266,11 +240,11 @@ proc GridFtpRetr {fileId srcTURL port} {
 
     set hostfile [ExtractHostFile $srcTURL]
 
-    set chan [socket [lindex $hostfile 0] 2811]
+    set chan [socket -async [lindex $hostfile 0] 2811]
     fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
     fileevent $chan readable [list GridFtpGetInput $fileId $chan]
     
-    lappend index $chan
+    dict set index $chan 1
 
     upvar #0 GridFtp$chan data
 
@@ -286,7 +260,7 @@ proc GridFtpRetr {fileId srcTURL port} {
 
 # -------------------------------------------------------------------------
 
-proc GridFtpStor {fileId dstTURL srcTURL} {
+proc GridFtpCopy {fileId srcTURL dstTURL} {
 
     upvar #0 GridFtpIndex($fileId) index
     upvar #0 SrmFiles($fileId) file
@@ -294,11 +268,11 @@ proc GridFtpStor {fileId dstTURL srcTURL} {
 
     set hostfile [ExtractHostFile $dstTURL]
 
-    set chan [socket [lindex $hostfile 0] 2811]
+    set chan [socket -async [lindex $hostfile 0] 2811]
     fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
     fileevent $chan readable [list GridFtpGetInput $fileId $chan]
 
-    lappend index $chan
+    dict set index $chan 1
 
     upvar #0 GridFtp$chan data
 
@@ -315,24 +289,56 @@ proc GridFtpStor {fileId dstTURL srcTURL} {
 
 # -------------------------------------------------------------------------
 
-proc ExtractHostFile {url} {
+proc GridFtpClose {chan} {
+    upvar #0 GridFtpIndex($fileId) index
+    upvar #0 GridFtp$chan data
 
-    set exp {^(([^:]*)://)?([^@]+@)?([^/:]+)(:([0-9]+))?(/srm/managerv1\?SFN=)?(/.*)?$}
-    if {![regexp -nocase $exp $url x prefix proto user host y port z file]} {
-        log::log error "Unsupported URL $url"
-        return {}
+    log::log debug "GridFtpClose: [file channels $chan]"
+    if {[file channels $chan] != {}} {
+        fileevent $chan readable {}
+        ::close $chan
+        log::log debug "GridFtpClose: close $chan"
     }
 
-    set file [file normalize $file]
+    if {[info exists index]} {
+        if {[dict exists $index $chan]} {
+            dict unset index $chan
+        }
 
-    return [list $host $file]
+        if {[dict size $index] == 0} {
+            unset index
+        }
+    }
+
+    if {[info exists data]} {
+        set context $data(context)
+        if {[info proc $context] eq "$context" &&
+            [string length $context] != 0} {
+            $context destroy
+        }
+
+        set afterId $data(afterId)
+        if {$afterId != {}} {
+            after cancel $afterId
+        }
+
+        unset data
+    }
 }
 
 # -------------------------------------------------------------------------
 
-proc GridFtpCopy {fileId srcTURL dstTURL} {
+proc GridFtpQuit {chan command} {
+    upvar #0 GridFtp$chan data
 
-    GridFtpStor $fileId $dstTURL $srcTURL
+    if {[file channels $chan] != {}} {
+        puts $chan $command
+    }
+
+    if {[info exists data]} {
+        set data(state) quit
+        set data(afterId) [after 30000 [list GridFtpClose $chan]]
+    }
 }
 
 # -------------------------------------------------------------------------
@@ -345,27 +351,12 @@ proc GridFtpStop {fileId} {
         return
     }
 
-    foreach indexChannel $index {
-        GridFtpQuit $indexChannel
+    dict for {chan dummy} $index {
+        GridFtpQuit $chan QUIT
+        dict unset index $chan
     }
-    set index {}
-}
-
-# -------------------------------------------------------------------------
-
-proc GridFtpFailed {fileId chan} {
-    upvar #0 GridFtpIndex($fileId) index
-
-    SrmFailed $fileId "Error during gridftp transfer"
-
-    foreach indexChannel $index {
-        if {[string equal $indexChannel $chan]} {
-           GridFtpClose $indexChannel
-        } else {
-           GridFtpQuit $indexChannel
-        }
-    }
-    set index {}
+    
+    unset index
 }
 
 # -------------------------------------------------------------------------
