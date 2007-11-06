@@ -42,8 +42,10 @@ proc GridFtpGetInput {fileId certProxy chan} {
 
     upvar #0 GridFtp$chan data
 
+    set prefix "\[fileId $fileId\] \[server $data(host)\]"
+
     if {[catch {gets $chan line} readCount]} {
-        log::log error $readCount
+        log::log error "$prefix $readCount"
         GridFtpClose $fileId $chan
         GridFtpStop $fileId
         SrmFailed $fileId "Error during gridftp transfer"
@@ -55,18 +57,18 @@ proc GridFtpGetInput {fileId certProxy chan} {
             set state $data(state)
             GridFtpClose $fileId $chan
             if {$state != "quit"} {
-                log::log error {Broken connection during gridftp transfer}
+                log::log error "$prefix Broken connection during gridftp transfer"
                 GridFtpStop $fileId
-                SrmFailed $fileId "Error during gridftp transfer"
+                SrmFailed $fileId "$prefix Error during gridftp transfer"
             }
         } else {
-            log::log warning {No full line available, retrying...}
+            log::log warning "$prefix No full line available, retrying..."
         }
         return
     }
 
     if {![regexp -- {^-?(\d+)( |-)?(ADAT)?( |=)?(.*)$} $line -> rc ml adat eq msg]} {
-        log::log error "Unsupported response from FTP server\n$line"
+        log::log error "$prefix Unsupported response from FTP server\n$line"
     }
 
     set data(rc) $rc
@@ -80,7 +82,7 @@ proc GridFtpGetInput {fileId certProxy chan} {
 
     if {[string equal $ml {-}]} {
         append data(buffer) $msg
-        log::log debug {Multi-line mode, continue...}
+        log::log debug "$prefix Multi-line mode, continue..."
         return
     } else {
         append data(buffer) $msg
@@ -104,7 +106,9 @@ proc GridFtpProcessClearInput {fileId certProxy chan} {
 
     upvar #0 GridFtp$chan data
 
-    log::log debug $data(state),$data(rc)
+    set prefix "\[fileId $fileId\] \[server $data(host)\]"
+
+    log::log debug "$prefix $data(state),$data(rc)"
 
     switch -glob -- $data(state),$data(rc) {
         new,220 {
@@ -135,8 +139,8 @@ proc GridFtpProcessClearInput {fileId certProxy chan} {
             set data(buffer) {}
         }
         default {
-            log::log error "Unknown state $data(state),$data(rc)"
-            log::log error $data(buffer)
+            log::log error "$prefix Unknown state $data(state),$data(rc)"
+            log::log error "$prefix $data(buffer)"
             GridFtpStop $fileId
             SrmFailed $fileId $data(buffer)
         }
@@ -149,16 +153,18 @@ proc GridFtpProcessWrappedInput {fileId chan} {
     global sbufCommands rbufCommands
     upvar #0 GridFtp$chan data
 
+    set prefix "\[fileId $fileId\] \[server $data(host)\]"
+
     set line $data(buffer)
 
     if {![regexp -- {^-?(\d+)( |-)?(.*)$} $line -> rc ml msg]} {
-		    log::log error "Unsupported response from FTP server\n$line"
-		    return
-	  }
+        log::log error "$prefix Unsupported response from FTP server\n$line"
+        return
+    }
 
     set data(rc) $rc
     
-    log::log debug $data(state),$data(rc)
+    log::log debug "$prefix $data(state),$data(rc)"
 
     switch -glob -- $data(state),$data(rc) {
         login,200 -
@@ -184,7 +190,7 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         bufsize,500 {
             if {$data(stor)} {
                 if {$data(bufcmd) >= [llength $sbufCommands]} {
-                    log::log error "Failed to set STOR buffer size"
+                    log::log error "$prefix Failed to set STOR buffer size"
                     puts $chan [$data(context) wrap {PASV}]
                     set data(state) pasv
                     return
@@ -192,7 +198,7 @@ proc GridFtpProcessWrappedInput {fileId chan} {
                 set command [lindex $sbufCommands $data(bufcmd)]
             } else {
                 if {$data(bufcmd) >= [llength $rbufCommands]} {
-                    log::log error "Failed to set RETR buffer size"
+                    log::log error "$prefix Failed to set RETR buffer size"
                     puts $chan [$data(context) wrap {OPTS RETR Parallelism=8,8,8;}]
                     set data(state) opts
                     return
@@ -227,18 +233,22 @@ proc GridFtpProcessWrappedInput {fileId chan} {
             puts $chan [$data(context) wrap "RETR $data(file)"]
             set data(state) retr
         }
-        stor,226 -
         retr,226 {
+            log::log debug "$prefix $line"
+        }
+        stor,226 {
+            log::log debug "$prefix $line"
             GridFtpQuit $fileId $chan [$data(context) wrap {QUIT}]
+            GridFtpStop $fileId
             SrmCopyDone $fileId
         }
         *,1?? -
         *,2?? {
-            log::log debug $line
+            log::log debug "$prefix [lindex [split $line "\n"] 0]"
         }
         default {
-            log::log error "Unknown state $data(state),$data(rc)"
-            log::log error $data(buffer)
+            log::log error "$prefix Unknown state $data(state),$data(rc)"
+            log::log error "$prefix $data(buffer)"
             GridFtpStop $fileId
             SrmFailed $fileId $data(buffer)
         }
@@ -255,8 +265,6 @@ proc GridFtpRetr {fileId srcTURL port} {
 
     set hostfile [ExtractHostFile $srcTURL]
 
-    log::log debug "GridFtpRetr: $hostfile"
-
     set chan [socket -async [lindex $hostfile 0] 2811]
     fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
     fileevent $chan readable [list GridFtpGetInput $fileId $certProxy $chan]
@@ -272,6 +280,7 @@ proc GridFtpRetr {fileId srcTURL port} {
     set data(state) new
     set data(stor) 0
     set data(port) $port
+    set data(host) [lindex $hostfile 0]
     set data(file) [lindex $hostfile 1]
 }
 
@@ -300,6 +309,7 @@ proc GridFtpCopy {fileId srcTURL dstTURL} {
     set data(state) new
     set data(stor) 1
     set data(port) {}
+    set data(host) [lindex $hostfile 0]
     set data(file) [lindex $hostfile 1]
     set data(srcTURL) $srcTURL
 }
@@ -310,11 +320,14 @@ proc GridFtpClose {fileId chan} {
     upvar #0 GridFtpIndex($fileId) index
     upvar #0 GridFtp$chan data
 
-    log::log debug "GridFtpClose: [file channels $chan]"
-    if {[file channels $chan] != {}} {
+    set channels [file channels $chan]
+    set prefix "\[fileId $fileId\]"
+    log::log debug "$prefix GridFtpClose $chan => $channels"
+
+    if {![string equal $channels {}]} {
         fileevent $chan readable {}
         ::close $chan
-        log::log debug "GridFtpClose: close $chan"
+        log::log debug "$prefix close $chan"
     }
 
     if {[info exists index]} {
@@ -335,7 +348,7 @@ proc GridFtpClose {fileId chan} {
         }
 
         set afterId $data(afterId)
-        if {$afterId != {}} {
+        if {![string equal $afterId {}]} {
             after cancel $afterId
         }
 
@@ -346,15 +359,28 @@ proc GridFtpClose {fileId chan} {
 # -------------------------------------------------------------------------
 
 proc GridFtpQuit {fileId chan command} {
+    upvar #0 GridFtpIndex($fileId) index
     upvar #0 GridFtp$chan data
 
-    if {[file channels $chan] != {}} {
-        puts $chan $command
+    if {[info exists data]} {
+        if {[file channels $chan] != {} &&
+            $data(state) != {quit}} {
+            set data(state) quit
+            puts $chan $command
+        }
+        if {[string equal $data(afterId) {}]} {
+            set data(afterId) [after 30000 [list GridFtpClose $fileId $chan]]
+        }
     }
 
-    if {[info exists data]} {
-        set data(state) quit
-        set data(afterId) [after 30000 [list GridFtpClose $fileId $chan]]
+    if {[info exists index]} {
+        if {[dict exists $index $chan]} {
+            dict unset index $chan
+        }
+
+        if {[dict size $index] == 0} {
+            unset index
+        }
     }
 }
 
