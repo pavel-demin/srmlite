@@ -8,7 +8,7 @@
 # See the file "license.terms" for information on usage and redistribution of
 # this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: gridhttp.tcl,v 1.2 2007-11-05 18:56:17 demin Exp $
+# RCS: @(#) $Id: gridhttp.tcl,v 1.3 2007-11-06 17:30:48 demin Exp $
 
 # Rough version history:
 # 1.0	Old http_get interface.
@@ -445,12 +445,6 @@ proc http::geturl { url args } {
     # Don't append the fragment!
     set state(url) $url
 
-    if {$state(-gssimport) ne ""} {
-	set gssimport $state(-gssimport)
-    } else {
-	set gssimport ""
-    }	
-
     # If a timeout is specified we set up the after event and arrange for an
     # asynchronous socket connection.
     if {$state(-timeout) > 0} {
@@ -466,9 +460,9 @@ proc http::geturl { url args } {
 
     if {[info exists phost] && [string length $phost]} {
 	set srvurl $url
-	set conStat [catch {eval $defcmd $gssimport $async {$phost $pport}} s]
+	set conStat [catch {eval $defcmd $async {$phost $pport}} s]
     } else {
-	set conStat [catch {eval $defcmd $gssimport $async {$host $port}} s]
+	set conStat [catch {eval $defcmd $async {$host $port}} s]
     }
 
     if {$conStat} {
@@ -501,6 +495,14 @@ proc http::geturl { url args } {
 	    return $token
 	}
 	set state(status) ""
+    }
+
+    if {$state(-gssimport) ne ""} {
+        set certProxy $state(-gssimport)
+	if {[catch {gss::import $result -gssimport $certProxy -server false} result]} {
+	    cleanup $token
+	    return -code error $result
+	}
     }
 
     # Send data in cr-lf format, but accept any line terminators

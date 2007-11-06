@@ -40,7 +40,7 @@ proc SrmCall {fileId serviceURL requestType args} {
     set command [list SrmCallCommand $fileId $requestType]
     
     if {[catch {::http::geturl $serviceURL -query $query \
-        -gssimport $certProxy \
+        -timeout 30000 -gssimport $certProxy \
         -type $type -headers $headers -command $command} result]} {
         SrmFailed $fileId "Error while connecting remote SRM: $result"
     }
@@ -199,7 +199,7 @@ proc SrmCallStop {fileId} {
     set command [list SrmCallStopCommand $fileId $certProxy]
 
     if {[catch {::http::geturl $serviceURL -query $query \
-        -gssimport $certProxy \
+        -timeout 30000 -gssimport $certProxy \
         -type $type -headers $headers -command $command} result]} {
         SrmFailed $fileId "Error while connecting remote SRM: $result"
     }
@@ -227,22 +227,11 @@ proc SrmCallStopCommand {fileId certProxy token} {
 
 # -------------------------------------------------------------------------
 
-proc ::gss::socket {certProxy args} {
-
-    set hadError 0
+proc ::gss::socket {args} {
 
     if {[catch {eval ::socket $args} result]} {
-        set hadError 1
         log::log error $result
-    } elseif {[catch {gss::import $result -gssimport $certProxy -server false} result]} {
-        set hadError 1
-        log::log error $result
-    }
-    
-    if {$hadError} {
         return -code error $result
-    } else {
-        return $result
     }
 }
 
