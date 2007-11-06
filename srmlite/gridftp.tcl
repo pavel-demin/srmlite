@@ -44,7 +44,7 @@ proc GridFtpGetInput {fileId chan} {
 
     if {[catch {gets $chan line} readCount]} {
         log::log error $readCount
-        GridFtpClose $chan
+        GridFtpClose $fileId $chan
         GridFtpStop $fileId
         SrmFailed $fileId "Error during gridftp transfer"
         return
@@ -53,7 +53,7 @@ proc GridFtpGetInput {fileId chan} {
     if {$readCount == -1} {
         if {[eof $chan]} {
             set state $data(state)
-            GridFtpClose $chan
+            GridFtpClose $fileId $chan
             if {$state != "quit"} {
                 log::log error {Broken connection during gridftp transfer}
                 GridFtpStop $fileId
@@ -115,7 +115,7 @@ proc GridFtpProcessClearInput {fileId chan} {
             set data(buffer) {}
         }
         quit,* {
-            GridFtpClose $chan
+            GridFtpClose $fileId $chan
         }
         *,63? {
             GridFtpProcessWrappedInput $fileId $chan
@@ -124,7 +124,7 @@ proc GridFtpProcessClearInput {fileId chan} {
         default {
             log::log error "Unknown state $data(state),$data(rc)"
             log::log error $data(buffer)
-            GridFtpQuit $chan QUIT
+            GridFtpQuit $fileId $chan QUIT
         }
     }
 }
@@ -215,7 +215,7 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         }
         stor,226 -
         retr,226 {
-            GridFtpQuit $chan [$data(context) wrap {QUIT}]
+            GridFtpQuit $fileId $chan [$data(context) wrap {QUIT}]
             SrmCopyDone $fileId
         }
         *,1?? -
@@ -225,7 +225,7 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         default {
             log::log error "Unknown state $data(state),$data(rc)"
             log::log error $data(buffer)
-            GridFtpQuit $chan QUIT
+            GridFtpQuit $fileId $chan QUIT
         }
     }
 }
@@ -289,7 +289,7 @@ proc GridFtpCopy {fileId srcTURL dstTURL} {
 
 # -------------------------------------------------------------------------
 
-proc GridFtpClose {chan} {
+proc GridFtpClose {fileId chan} {
     upvar #0 GridFtpIndex($fileId) index
     upvar #0 GridFtp$chan data
 
@@ -328,7 +328,7 @@ proc GridFtpClose {chan} {
 
 # -------------------------------------------------------------------------
 
-proc GridFtpQuit {chan command} {
+proc GridFtpQuit {fileId chan command} {
     upvar #0 GridFtp$chan data
 
     if {[file channels $chan] != {}} {
@@ -337,7 +337,7 @@ proc GridFtpQuit {chan command} {
 
     if {[info exists data]} {
         set data(state) quit
-        set data(afterId) [after 30000 [list GridFtpClose $chan]]
+        set data(afterId) [after 30000 [list GridFtpClose $fileId $chan]]
     }
 }
 
@@ -352,7 +352,7 @@ proc GridFtpStop {fileId} {
     }
 
     dict for {chan dummy} $index {
-        GridFtpQuit $chan QUIT
+        GridFtpQuit $fileId $chan QUIT
         dict unset index $chan
     }
     
