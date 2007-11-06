@@ -137,7 +137,8 @@ proc GridFtpProcessClearInput {fileId certProxy chan} {
         default {
             log::log error "Unknown state $data(state),$data(rc)"
             log::log error $data(buffer)
-            GridFtpQuit $fileId $chan QUIT
+            GridFtpStop $fileId
+            SrmFailed $fileId $data(buffer)
         }
     }
 }
@@ -238,7 +239,8 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         default {
             log::log error "Unknown state $data(state),$data(rc)"
             log::log error $data(buffer)
-            GridFtpQuit $fileId $chan QUIT
+            GridFtpStop $fileId
+            SrmFailed $fileId $data(buffer)
         }
     }
 }
