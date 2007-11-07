@@ -336,6 +336,8 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
     Tcl_SetObjResult(interp, result);
 
+    Tcl_DecrRefCount(result);
+
   	return TCL_OK;
   }
   else
@@ -354,6 +356,8 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
       majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
 
       Tcl_SetObjResult(interp, result);
+
+      Tcl_DecrRefCount(result);
 
       return TCL_OK;
     }
@@ -403,6 +407,8 @@ GssWrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
     majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
 
     Tcl_SetObjResult(interp, result);
+
+    Tcl_DecrRefCount(result);
 
   	return TCL_OK;
   }
@@ -470,6 +476,8 @@ GssUnwrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
     majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
 
     Tcl_SetObjResult(interp, result);
+
+    Tcl_DecrRefCount(result);
 
   	return TCL_OK;
   }
