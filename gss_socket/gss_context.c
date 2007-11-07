@@ -258,6 +258,7 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
   data = Tcl_GetStringFromObj(obj, &length);
   result = Tcl_NewObj();
+  Tcl_IncrRefCount(result);
 
   if(length > 0)
   {
@@ -271,6 +272,7 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
     if(GssBase64Decode(data + offset, length - offset, result) < 0)
     {
+      Tcl_DecrRefCount(result);
       Tcl_AppendResult(interp, "Corrupted base64 data", NULL);
       return TCL_ERROR;
     }
@@ -321,6 +323,8 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
                                                             GSS_C_PROT_READY_FLAG
                                                             GSS_C_TRANS_FLAG */
                            &statePtr->gssTime);    /* (out) time ctx is valid */
+
+  Tcl_DecrRefCount(result);
 
   if(majorStatus & GSS_S_CONTINUE_NEEDED)
   {
@@ -427,6 +431,7 @@ GssUnwrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
   data = Tcl_GetStringFromObj(obj, &length);
   result = Tcl_NewObj();
+  Tcl_IncrRefCount(result);
 
   offset = 0;
 
@@ -453,6 +458,8 @@ GssUnwrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
                            &bufferIn,
                            &bufferOut,
                            NULL, GSS_C_QOP_DEFAULT);
+
+  Tcl_DecrRefCount(result);
 
   if(majorStatus == GSS_S_COMPLETE)
   {
@@ -553,7 +560,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   gss_buffer_desc gssNameBuf;
 
   Tcl_DString peerName;
-  Tcl_Obj *peerNameObj;
+  Tcl_Obj *peerNameStringObj, *peerNameObj;
   char *peerNameStr;
   int peerNameLen;
 
@@ -626,8 +633,13 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   Tcl_DStringInit(&peerName);
 
   Tcl_GetChannelOption(interp, channel, "-peername", &peerName);
-  peerNameObj = Tcl_NewStringObj(Tcl_DStringValue(&peerName), -1);
-  Tcl_ListObjIndex(interp, peerNameObj, 1, &peerNameObj);
+
+  peerNameStringObj = Tcl_NewStringObj(Tcl_DStringValue(&peerName), -1);
+  Tcl_IncrRefCount(peerNameStringObj);
+
+  Tcl_ListObjIndex(interp, peerNameStringObj, 1, &peerNameObj);
+  Tcl_IncrRefCount(peerNameObj);
+
   peerNameStr = Tcl_GetStringFromObj(peerNameObj, &peerNameLen);
 
   Tcl_DStringFree(&peerName);
@@ -639,6 +651,9 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
                                 &gssNameBuf,
                                 GSS_C_NT_HOSTBASED_SERVICE,
                                 &statePtr->gssName);
+
+  Tcl_DecrRefCount(peerNameObj);
+  Tcl_DecrRefCount(peerNameStringObj);
 
   if(majorStatus != GSS_S_COMPLETE)
   {
