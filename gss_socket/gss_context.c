@@ -329,6 +329,7 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
   if(majorStatus & GSS_S_CONTINUE_NEEDED)
   {
     result = Tcl_NewStringObj("ADAT ", -1);
+    Tcl_IncrRefCount(result);
 
     GssBase64Encode(bufferOut.value, bufferOut.length, result);
 
@@ -350,6 +351,7 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
                                      NULL);
 
       result = Tcl_NewStringObj("ADAT ", -1);
+      Tcl_IncrRefCount(result);
 
       GssBase64Encode(bufferOut.value, bufferOut.length, result);
 
@@ -401,6 +403,7 @@ GssWrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
   if(majorStatus == GSS_S_COMPLETE)
   {
     result = Tcl_NewStringObj("MIC ", -1);
+    Tcl_IncrRefCount(result);
 
     GssBase64Encode(bufferOut.value, bufferOut.length, result);
 
@@ -470,6 +473,7 @@ GssUnwrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
   if(majorStatus == GSS_S_COMPLETE)
   {
     result = Tcl_NewObj();
+    Tcl_IncrRefCount(result);
 
     Tcl_AppendToObj(result, bufferOut.value, bufferOut.length);
 
