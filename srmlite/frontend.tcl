@@ -117,6 +117,7 @@ proc /srm/managerv1 {sock query} {
             HttpdLog $sock error $result
             return [SrmFaultBody $result $errorInfo]
         } else {
+            log::log debug "new certProxy $result"
             set gssCert $result
         }
     }
