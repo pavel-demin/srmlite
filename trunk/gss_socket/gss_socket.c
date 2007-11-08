@@ -452,6 +452,55 @@ GssCredObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONS
 
 /* ----------------------------------------------------------------- */
 
+int GssNameGet(Tcl_Interp *interp, Tcl_Channel channel, gss_name_t *gssNamePtr)
+{
+  OM_uint32 majorStatus, minorStatus;
+  gss_buffer_desc gssNameBuf;
+
+  Tcl_DString peerName;
+  Tcl_Obj *peerNameStringObj, *peerNameObj;
+  char *peerNameStr;
+
+  Tcl_DStringInit(&peerName);
+
+  Tcl_GetChannelOption(interp, channel, "-peername", &peerName);
+
+  peerNameStringObj = Tcl_NewStringObj(Tcl_DStringValue(&peerName), -1);
+  Tcl_ListObjIndex(interp, peerNameStringObj, 1, &peerNameObj);
+  peerNameStr = Tcl_GetStringFromObj(peerNameObj, 0);
+
+  Tcl_DStringFree(&peerName);
+
+  /* extract the name associated with the creds */
+  gssNameBuf.value = peerNameStr;
+  gssNameBuf.length = strlen(peerNameStr) + 1;
+  majorStatus = gss_import_name(&minorStatus,
+                                &gssNameBuf,
+                                GSS_C_NT_HOSTBASED_SERVICE,
+                                gssNamePtr);
+
+  Tcl_DecrRefCount(peerNameStringObj);
+
+/*
+  majorStatus = gss_inquire_cred(&minorStatus,
+                                 statePtr->gssCredential,
+                                 &statePtr->gssName,
+                                 NULL, NULL, NULL);
+*/
+  if(majorStatus != GSS_S_COMPLETE)
+  {
+    globus_gss_assist_display_status(
+      stderr, "Failed to determine server name: ",
+      majorStatus, minorStatus, 0);
+
+    return TCL_ERROR;
+  }
+
+  return TCL_OK;
+}
+
+/* ----------------------------------------------------------------- */
+
 int GssCredGet(Tcl_Interp *interp, char *credName, GssCred **credPtr)
 {
   Tcl_CmdInfo cmdInfo;
@@ -1123,6 +1172,7 @@ static int
 GssNotifyProc(ClientData instanceData, int mask)
 {
   GssState *statePtr = (GssState *) instanceData;
+  int rc;
 
   if(0) printf("---> GssNotifyProc(0x%x)\n", mask);
 
@@ -1209,11 +1259,6 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   GssState *statePtr;
 
   OM_uint32 majorStatus, minorStatus;
-  gss_buffer_desc gssNameBuf;
-
-  Tcl_DString peerName;
-  Tcl_Obj *peerNameStringObj, *peerNameObj;
-  char *peerNameStr;
 
   GssCred *credPtr;
   char *credName;
@@ -1399,43 +1444,13 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   }
   else
   {
-    Tcl_DStringInit(&peerName);
-
-    Tcl_GetChannelOption(interp, chan, "-peername", &peerName);
-
-    peerNameStringObj = Tcl_NewStringObj(Tcl_DStringValue(&peerName), -1);
-    Tcl_ListObjIndex(interp, peerNameStringObj, 1, &peerNameObj);
-    peerNameStr = Tcl_GetStringFromObj(peerNameObj, 0);
-
-    Tcl_DStringFree(&peerName);
-
-    /* extract the name associated with the creds */
-    gssNameBuf.value = peerNameStr;
-    gssNameBuf.length = strlen(peerNameStr) + 1;
-    majorStatus = gss_import_name(&minorStatus,
-                                  &gssNameBuf,
-                                  GSS_C_NT_HOSTBASED_SERVICE,
-                                  &statePtr->gssName);
-
-    Tcl_DecrRefCount(peerNameStringObj);
-
-/*
-    majorStatus = gss_inquire_cred(&minorStatus,
-                                   statePtr->gssCredential,
-                                   &statePtr->gssName,
-                                   NULL, NULL, NULL);
-*/
-    if(majorStatus != GSS_S_COMPLETE)
+    rc = GssNameGet(interp, statePtr->channel, &statePtr->gssName);
+    if(rc != TCL_OK )
     {
-      globus_gss_assist_display_status(
-        stderr, "Failed to determine server name: ",
-        majorStatus, minorStatus, 0);
-
-      GssClean(statePtr);
-      Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
-      return TCL_ERROR;
+      Tcl_AppendResult(interp, "Failed to determine server name", NULL);
+      return rc;
     }
-
+    
     GssHandshake(statePtr);
   }
 

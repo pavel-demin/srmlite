@@ -44,6 +44,7 @@ typedef struct GssCred {
 
 /* ----------------------------------------------------------------- */
 
+int GssNameGet(Tcl_Interp *interp, Tcl_Channel channel, gss_name_t *gssNamePtr);
 int GssCredGet(Tcl_Interp *interp, char *credName, GssCred **credPtr);
 
 /* ----------------------------------------------------------------- */
