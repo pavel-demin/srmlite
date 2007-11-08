@@ -79,7 +79,6 @@ typedef struct GssContext {
   Tcl_Channel channel;
 
   gss_cred_id_t gssCredential;
-  gss_cred_id_t gssDelegProxy;
   gss_ctx_id_t gssContext;
   gss_name_t gssName;
   gss_buffer_desc gssNameBuf;
@@ -258,7 +257,6 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
   data = Tcl_GetStringFromObj(obj, &length);
   result = Tcl_NewObj();
-  Tcl_IncrRefCount(result);
 
   if(length > 0)
   {
@@ -329,15 +327,12 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
   if(majorStatus & GSS_S_CONTINUE_NEEDED)
   {
     result = Tcl_NewStringObj("ADAT ", -1);
-    Tcl_IncrRefCount(result);
 
     GssBase64Encode(bufferOut.value, bufferOut.length, result);
 
     majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
 
     Tcl_SetObjResult(interp, result);
-
-    Tcl_DecrRefCount(result);
 
   	return TCL_OK;
   }
@@ -351,15 +346,12 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
                                      NULL);
 
       result = Tcl_NewStringObj("ADAT ", -1);
-      Tcl_IncrRefCount(result);
 
       GssBase64Encode(bufferOut.value, bufferOut.length, result);
 
       majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
 
       Tcl_SetObjResult(interp, result);
-
-      Tcl_DecrRefCount(result);
 
       return TCL_OK;
     }
@@ -403,15 +395,12 @@ GssWrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
   if(majorStatus == GSS_S_COMPLETE)
   {
     result = Tcl_NewStringObj("MIC ", -1);
-    Tcl_IncrRefCount(result);
 
     GssBase64Encode(bufferOut.value, bufferOut.length, result);
 
     majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
 
     Tcl_SetObjResult(interp, result);
-
-    Tcl_DecrRefCount(result);
 
   	return TCL_OK;
   }
@@ -440,7 +429,6 @@ GssUnwrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
   data = Tcl_GetStringFromObj(obj, &length);
   result = Tcl_NewObj();
-  Tcl_IncrRefCount(result);
 
   offset = 0;
 
@@ -453,6 +441,7 @@ GssUnwrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
   if(GssBase64Decode(data + offset, length - offset, result) < 0)
   {
+    Tcl_DecrRefCount(result);
     Tcl_AppendResult(interp, "Corrupted base64 data", NULL);
     return TCL_ERROR;
   }
@@ -473,15 +462,12 @@ GssUnwrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
   if(majorStatus == GSS_S_COMPLETE)
   {
     result = Tcl_NewObj();
-    Tcl_IncrRefCount(result);
 
     Tcl_AppendToObj(result, bufferOut.value, bufferOut.length);
 
     majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
 
     Tcl_SetObjResult(interp, result);
-
-    Tcl_DecrRefCount(result);
 
   	return TCL_OK;
   }
@@ -640,18 +626,13 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   statePtr->gssName = GSS_C_NO_NAME;
   statePtr->gssContext = GSS_C_NO_CONTEXT;
   statePtr->gssCredential = GSS_C_NO_CREDENTIAL;
-  statePtr->gssDelegProxy = GSS_C_NO_CREDENTIAL;
 
   Tcl_DStringInit(&peerName);
 
   Tcl_GetChannelOption(interp, channel, "-peername", &peerName);
 
   peerNameStringObj = Tcl_NewStringObj(Tcl_DStringValue(&peerName), -1);
-  Tcl_IncrRefCount(peerNameStringObj);
-
   Tcl_ListObjIndex(interp, peerNameStringObj, 1, &peerNameObj);
-  Tcl_IncrRefCount(peerNameObj);
-
   peerNameStr = Tcl_GetStringFromObj(peerNameObj, &peerNameLen);
 
   Tcl_DStringFree(&peerName);
@@ -664,7 +645,6 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
                                 GSS_C_NT_HOSTBASED_SERVICE,
                                 &statePtr->gssName);
 
-  Tcl_DecrRefCount(peerNameObj);
   Tcl_DecrRefCount(peerNameStringObj);
 
   if(majorStatus != GSS_S_COMPLETE)

@@ -1404,11 +1404,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
     Tcl_GetChannelOption(interp, chan, "-peername", &peerName);
 
     peerNameStringObj = Tcl_NewStringObj(Tcl_DStringValue(&peerName), -1);
-    Tcl_IncrRefCount(peerNameStringObj);
-
     Tcl_ListObjIndex(interp, peerNameStringObj, 1, &peerNameObj);
-    Tcl_IncrRefCount(peerNameObj);
-
     peerNameStr = Tcl_GetStringFromObj(peerNameObj, 0);
 
     Tcl_DStringFree(&peerName);
@@ -1421,8 +1417,6 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
                                   GSS_C_NT_HOSTBASED_SERVICE,
                                   &statePtr->gssName);
 
-
-    Tcl_DecrRefCount(peerNameObj);
     Tcl_DecrRefCount(peerNameStringObj);
 
 /*
