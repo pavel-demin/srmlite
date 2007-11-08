@@ -46,6 +46,18 @@
 
 /* ----------------------------------------------------------------- */
 
+#define GSS_TCL_BLOCKING    (1<<0)  /* non-blocking mode */
+#define GSS_TCL_SERVER      (1<<1)  /* server-side */
+#define GSS_TCL_READHEADER  (1<<2)
+#define GSS_TCL_HANDSHAKE   (1<<3)
+#define GSS_TCL_INPUTERROR  (1<<4)
+#define GSS_TCL_OUTPUTERROR (1<<5)
+#define GSS_TCL_EOF         (1<<6)
+
+#define GSS_TCL_DELAY     (5)
+
+/* ----------------------------------------------------------------- */
+
 static int	GssBlockModeProc(ClientData instanceData, int mode);
 static int	GssCloseProc(ClientData instanceData, Tcl_Interp *interp);
 static int	GssInputProc(ClientData instanceData, char *buf, int bufSize, int *errorCodePtr);
@@ -53,6 +65,48 @@ static int	GssOutputProc(ClientData instanceData, CONST char *buf, int toWrite, 
 static int	GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *optionName, Tcl_DString *dsPtr);
 static void	GssWatchProc(ClientData instanceData, int mask);
 static int	GssNotifyProc(ClientData instanceData, int mask);
+
+/* ----------------------------------------------------------------- */
+
+typedef struct GssState {
+  Tcl_Channel parent;
+  Tcl_Channel channel;
+  Tcl_TimerToken timer;
+  Tcl_DriverGetOptionProc *parentGetOptionProc;
+  Tcl_DriverBlockModeProc *parentBlockModeProc;
+  Tcl_DriverWatchProc *parentWatchProc;
+  ClientData parentInstData;
+
+  int flags;
+  int errorCode;
+  int intWatchMask;
+  int extWatchMask;
+
+  gss_cred_id_t gssCredential;
+  gss_cred_id_t gssCredProxy;
+  gss_buffer_desc gssCredFileName;
+  int gssCredFileNamePos;
+  gss_ctx_id_t gssContext;
+  gss_name_t gssName;
+  gss_buffer_desc gssNameBuf;
+  OM_uint32 gssFlags;
+  OM_uint32 gssTime;
+  char *gssUser;
+
+  OM_uint32 readRawBufSize;
+  gss_buffer_desc readRawBuf; /* should be allocated in import */
+  gss_buffer_desc readOutBuf; /* allocated by gss */
+  int readRawBufPos;
+  int readOutBufPos;
+
+  OM_uint32 writeInBufSize;
+  unsigned char writeTokenSizeBuf[4];
+  gss_buffer_desc writeRawBuf; /* allocated by gss */
+  gss_buffer_desc writeInBuf;  /* should be allocated in import */
+  int writeRawBufPos;
+
+  Tcl_Interp *interp;	/* interpreter in which this resides */
+} GssState;
 
 /* ----------------------------------------------------------------- */
 
@@ -123,16 +177,16 @@ GssClean(GssState *statePtr)
                                    &statePtr->gssCredential);
   }
 
-  if(statePtr->gssDelegProxy != GSS_C_NO_CREDENTIAL)
+  if(statePtr->gssCredProxy != GSS_C_NO_CREDENTIAL)
   {
     majorStatus = gss_release_cred(&minorStatus,
-                                   &statePtr->gssDelegProxy);
+                                   &statePtr->gssCredProxy);
   }
 
-  if(statePtr->gssDelegProxyFileName.value != NULL)
+  if(statePtr->gssCredFileName.value != NULL)
   {
-    majorStatus = gss_release_buffer(&minorStatus, &statePtr->gssDelegProxyFileName);
-    statePtr->gssDelegProxyFileName.value = NULL;
+    majorStatus = gss_release_buffer(&minorStatus, &statePtr->gssCredFileName);
+    statePtr->gssCredFileName.value = NULL;
   }
 
   if(statePtr->gssName != GSS_C_NO_NAME)
@@ -347,12 +401,103 @@ GssOutputProc(ClientData instanceData, CONST char *buf,	int bytesToWrite, int *e
 
 /* ----------------------------------------------------------------- */
 
+static void
+GssCredDestroy(ClientData clientData)
+{
+  OM_uint32 majorStatus, minorStatus;
+  GssCred *credPtr = (GssCred *) clientData;
+
+  if(credPtr->gssCredBuf.value != NULL)
+  {
+    majorStatus = gss_release_buffer(&minorStatus, &credPtr->gssCredBuf);
+    credPtr->gssCredBuf.value = NULL;
+  }
+
+  ckfree((char *)credPtr);
+
+}
+
+/* ----------------------------------------------------------------- */
+
+static int
+GssCredObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+  char *option;
+
+  GssCred *credPtr = (GssCred *) clientData;
+
+  if(objc < 2)
+  {
+    Tcl_WrongNumArgs(interp, 1, objv, "command ?arg?");
+    return TCL_ERROR;
+  }
+
+  option = Tcl_GetStringFromObj(objv[1], NULL);
+
+  if(strcmp(option, "destroy") == 0)
+  {
+		if(objc != 2)
+    {
+      Tcl_WrongNumArgs(interp, 1, objv, "destroy");
+			return TCL_ERROR;
+		}
+		Tcl_DeleteCommandFromToken(interp, credPtr->token);
+		return TCL_OK;
+  }
+
+  Tcl_AppendResult(interp, "bad option \"", option,
+    "\": must be destroy", NULL);
+	return TCL_ERROR;
+}
+
+/* ----------------------------------------------------------------- */
+
+int GssCredGet(Tcl_Interp *interp, char *credName, GssCred **credPtr)
+{
+  Tcl_CmdInfo cmdInfo;
+
+  if(!Tcl_GetCommandInfo(interp, credName, &cmdInfo))
+  {
+    Tcl_AppendResult(interp, "Cannot find command ", credName, NULL);
+    return TCL_ERROR;
+  }
+
+  if(cmdInfo.objProc != GssCredObjCmd)
+  {
+    Tcl_AppendResult(interp, "Command ", credName, " is not of type gsscred.", NULL);
+    return TCL_ERROR;
+  }
+
+  *credPtr = (GssCred*) cmdInfo.objClientData;
+
+  if(*credPtr == NULL)
+  {
+    Tcl_AppendResult(interp, "Failed to acquire delegated credentials.", NULL);
+    return TCL_ERROR;
+  }
+
+  if((*credPtr)->gssCredBuf.value == NULL)
+  {
+    Tcl_AppendResult(interp, "Failed to acquire delegated credentials.", NULL);
+    return TCL_ERROR;
+  }
+
+  return TCL_OK;
+}
+
+/* ----------------------------------------------------------------- */
+
 static int
 GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *optionName, Tcl_DString *dstrPtr)
 {
   OM_uint32 majorStatus, minorStatus;
 
+  char cmdName[256];
+  Tcl_CmdInfo cmdInfo;
+  int cmdCounter;
+
   GssState *statePtr = (GssState *) instanceData;
+  GssCred *credPtr;
 
   if(optionName == NULL)
   {
@@ -362,10 +507,10 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
     Tcl_DStringAppendElement(dstrPtr, "-gssuser");
     Tcl_DStringAppendElement(dstrPtr, statePtr->gssUser);
 
-    if(statePtr->gssDelegProxyFileName.value != NULL)
+    if(statePtr->gssCredFileName.value != NULL)
     {
       Tcl_DStringAppendElement(dstrPtr, "-gssproxy");
-      Tcl_DStringAppendElement(dstrPtr, statePtr->gssDelegProxyFileName.value + statePtr->gssDelegProxyFileNamePos);
+      Tcl_DStringAppendElement(dstrPtr, statePtr->gssCredFileName.value + statePtr->gssCredFileNamePos);
     }
 
     if(statePtr->parentGetOptionProc != NULL)
@@ -389,24 +534,24 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
   }
   else if(strcmp(optionName, "-gssproxy") == 0)
   {
-    if(statePtr->gssDelegProxy != GSS_C_NO_CREDENTIAL &&
-       statePtr->gssDelegProxyFileName.value == NULL)
+    if(statePtr->gssCredProxy != GSS_C_NO_CREDENTIAL &&
+       statePtr->gssCredFileName.value == NULL)
     {
 
       majorStatus = gss_export_cred(&minorStatus,
-                                     statePtr->gssDelegProxy,
+                                     statePtr->gssCredProxy,
                                      NULL, 1,
-                                     &statePtr->gssDelegProxyFileName);
+                                     &statePtr->gssCredFileName);
 
-      if (majorStatus == GSS_S_COMPLETE)
+      if(majorStatus == GSS_S_COMPLETE)
       {
-        statePtr->gssDelegProxyFileNamePos = 0;
-        if(statePtr->gssDelegProxyFileName.length > 16)
+        statePtr->gssCredFileNamePos = 0;
+        if(statePtr->gssCredFileName.length > 16)
         {
-          if(strncmp(statePtr->gssDelegProxyFileName.value,
+          if(strncmp(statePtr->gssCredFileName.value,
                      "X509_USER_PROXY=", 16) == 0)
           {
-            statePtr->gssDelegProxyFileNamePos = 16;
+            statePtr->gssCredFileNamePos = 16;
           }
         }
       }
@@ -418,15 +563,53 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
       }
     }
 
-    if(statePtr->gssDelegProxyFileName.value != NULL)
+    if(statePtr->gssCredFileName.value != NULL)
     {
-      Tcl_DStringAppendElement(dstrPtr, statePtr->gssDelegProxyFileName.value + statePtr->gssDelegProxyFileNamePos);
+      Tcl_DStringAppendElement(dstrPtr, statePtr->gssCredFileName.value + statePtr->gssCredFileNamePos);
       return TCL_OK;
     }
     else
     {
       Tcl_AppendResult(interp, "Failed to export credentials", NULL);
       return TCL_ERROR;
+    }
+  }
+  else if(strcmp(optionName, "-gssexport") == 0)
+  {
+    if(statePtr->gssCredProxy != GSS_C_NO_CREDENTIAL)
+    {
+
+      credPtr = (GssCred *) ckalloc((unsigned int) sizeof(GssCred));
+      memset(credPtr, 0, sizeof(GssCred));
+
+      credPtr->gssCredBuf.length = 0;
+      credPtr->gssCredBuf.value = NULL;
+
+      majorStatus = gss_export_cred(&minorStatus,
+                                     statePtr->gssCredProxy,
+                                     NULL, 0,
+                                     &credPtr->gssCredBuf);
+
+      if(majorStatus == GSS_S_COMPLETE)
+      {
+        cmdCounter = 0;
+        do {
+          sprintf(cmdName, "gss::cred_%s_%d", Tcl_GetChannelName(statePtr->channel), cmdCounter);
+          cmdCounter++;
+        } while(Tcl_GetCommandInfo(interp, cmdName, &cmdInfo));
+        credPtr->token = Tcl_CreateObjCommand(interp, cmdName, GssCredObjCmd,
+          (ClientData) credPtr, GssCredDestroy);
+        Tcl_DStringAppendElement(dstrPtr, cmdName);
+        return TCL_OK;
+      }
+      else
+      {
+        globus_gss_assist_display_status(
+          stderr, "Failed to export credentials: ",
+          majorStatus, minorStatus, 0);
+        Tcl_AppendResult(interp, "Failed to export credentials", NULL);
+        return TCL_ERROR;
+      }
     }
   }
   else if(statePtr->parentGetOptionProc != NULL)
@@ -529,7 +712,7 @@ GssHandshake(GssState *statePtr)
                                                                     GSS_C_PROT_READY_FLAG
                                                                     GSS_C_TRANS_FLAG */
                                &statePtr->gssTime,         /* (out) time ctx is valid */
-                               &statePtr->gssDelegProxy); /* (out) delegated cred */
+                               &statePtr->gssCredProxy); /* (out) delegated cred */
 
   }
   else
@@ -1021,23 +1204,21 @@ GssNotifyProc(ClientData instanceData, int mask)
 static int
 GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-  Tcl_Channel chan, delegate;
+  Tcl_Channel chan;
 
-  ClientData delegateInstData;
-  Tcl_ChannelType *delegateChannelTypePtr;
-
-  GssState *delegateStatePtr;
   GssState *statePtr;
 
   OM_uint32 majorStatus, minorStatus;
   gss_buffer_desc gssNameBuf;
 
   Tcl_DString peerName;
-  Tcl_Obj *peerNameObj;
+  Tcl_Obj *peerNameStringObj, *peerNameObj;
   char *peerNameStr;
-  char *channelName;
 
-  int idx;
+  GssCred *credPtr;
+  char *credName;
+
+  int idx, rc;
   int server;             /* is connection incoming or outgoing? */
 
   if(objc < 2)
@@ -1054,8 +1235,8 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   chan = Tcl_GetTopChannel(chan);
 
   server = 0;
-  channelName = NULL;
-  delegate = (Tcl_Channel) NULL;
+  credName = NULL;
+  credPtr = NULL;
 
   for(idx = 2; idx < objc; ++idx)
   {
@@ -1071,7 +1252,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
         return TCL_ERROR;
       }
 
-      if (Tcl_GetBooleanFromObj(interp, objv[idx], &server) != TCL_OK)
+      if(Tcl_GetBooleanFromObj(interp, objv[idx], &server) != TCL_OK)
       {
         return TCL_ERROR;
       }
@@ -1079,56 +1260,29 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
       continue;
     }
 
-    if(strcmp(option, "-delegate") == 0)
+    if(strcmp(option, "-gssimport") == 0)
     {
       if(++idx >= objc)
       {
-        Tcl_WrongNumArgs(interp, 1, objv, "channel -delegate channel");
+        Tcl_WrongNumArgs(interp, 1, objv, "channel -gssimport cred");
         return TCL_ERROR;
       }
 
-      channelName = Tcl_GetString(objv[idx]);
+      credName = Tcl_GetString(objv[idx]);
 
       continue;
     }
 
     Tcl_AppendResult(interp, "bad option \"", option,
-      "\": should be server, delegate", (char *) NULL);
+      "\": should be server, gssimport", (char *) NULL);
 
     return TCL_ERROR;
   }
 
-  if(channelName != NULL)
+  if(credName != NULL)
   {
-    delegate = Tcl_GetChannel(interp, channelName, NULL);
-    if(delegate == (Tcl_Channel) NULL)
-    {
-      Tcl_AppendResult(interp, "Cannot find channel ", channelName, NULL);
-      return TCL_ERROR;
-    }
-
-    delegateChannelTypePtr = Tcl_GetChannelType(delegate);
-
-    if(delegateChannelTypePtr == NULL)
-    {
-      Tcl_AppendResult(interp, "Cannot define type of channel ", channelName, NULL);
-      return TCL_ERROR;
-    }
-
-    if(strcmp(delegateChannelTypePtr->typeName, "gss"))
-    {
-      Tcl_AppendResult(interp, "Channel ", channelName, " is not of type gss.", NULL);
-      return TCL_ERROR;
-    }
-
-    delegateInstData = Tcl_GetChannelInstanceData(delegate);
-    delegateStatePtr = (GssState *) delegateInstData;
-
-    if(delegateStatePtr->gssDelegProxy == GSS_C_NO_CREDENTIAL)
-    {
-      Tcl_AppendResult(interp, "Failed to acquire delegated credentials.", NULL);
-  		return TCL_ERROR;
-    }
+    rc = GssCredGet(interp, credName, &credPtr);
+    if(rc != TCL_OK ) return rc;
   }
 
 
@@ -1182,15 +1336,15 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   statePtr->gssName = GSS_C_NO_NAME;
   statePtr->gssContext = GSS_C_NO_CONTEXT;
   statePtr->gssCredential = GSS_C_NO_CREDENTIAL;
-  statePtr->gssDelegProxy = GSS_C_NO_CREDENTIAL;
+  statePtr->gssCredProxy = GSS_C_NO_CREDENTIAL;
 
   statePtr->gssNameBuf.length = 0;
   statePtr->gssNameBuf.value = NULL;
-  statePtr->gssDelegProxyFileName.length = 0;
-  statePtr->gssDelegProxyFileName.value = NULL;
-  statePtr->gssDelegProxyFileNamePos = 0; 
+  statePtr->gssCredFileName.length = 0;
+  statePtr->gssCredFileName.value = NULL;
+  statePtr->gssCredFileNamePos = 0;
 
-  if(delegate == (Tcl_Channel) NULL)
+  if(credPtr == NULL)
   {
     majorStatus = gss_acquire_cred(&minorStatus,     /* (out) minor status */
                                    GSS_C_NO_NAME,    /* (in) desired name */
@@ -1217,7 +1371,24 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   }
   else
   {
-    statePtr->gssCredential = delegateStatePtr->gssDelegProxy;
+    majorStatus = gss_import_cred(&minorStatus,             /* (out) minor status */
+                                  &statePtr->gssCredential, /* (out) cred handle */
+                                  GSS_C_NO_OID,             /* (in) desired mechs */
+                                  0,                        /* (in) option_req used by gss_export_cred */
+                                  &credPtr->gssCredBuf,     /* (in) buffer produced by gss_export_cred */
+                                  GSS_C_INDEFINITE,         /* (in) desired time valid */
+                                  NULL);                    /* (out) actual time valid */
+
+    if(majorStatus != GSS_S_COMPLETE)
+    {
+      globus_gss_assist_display_status(
+        stderr, "Failed to import credentials: ",
+        majorStatus, minorStatus, 0);
+
+      GssClean((ClientData) statePtr);
+      Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
+      return TCL_ERROR;
+    }
   }
 
   statePtr->flags |= GSS_TCL_HANDSHAKE;
@@ -1231,8 +1402,9 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
     Tcl_DStringInit(&peerName);
 
     Tcl_GetChannelOption(interp, chan, "-peername", &peerName);
-    peerNameObj = Tcl_NewStringObj(Tcl_DStringValue(&peerName), -1);
-    Tcl_ListObjIndex(interp, peerNameObj, 1, &peerNameObj);
+
+    peerNameStringObj = Tcl_NewStringObj(Tcl_DStringValue(&peerName), -1);
+    Tcl_ListObjIndex(interp, peerNameStringObj, 1, &peerNameObj);
     peerNameStr = Tcl_GetStringFromObj(peerNameObj, 0);
 
     Tcl_DStringFree(&peerName);
@@ -1244,6 +1416,8 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
                                   &gssNameBuf,
                                   GSS_C_NT_HOSTBASED_SERVICE,
                                   &statePtr->gssName);
+
+    Tcl_DecrRefCount(peerNameStringObj);
 
 /*
     majorStatus = gss_inquire_cred(&minorStatus,
