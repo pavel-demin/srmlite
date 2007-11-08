@@ -261,7 +261,7 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
     if(rc != TCL_OK )
     {
       Tcl_AppendResult(interp, "Failed to determine server name", NULL);
-      return TCL_ERROR;
+      return rc;
     }
   }
 
