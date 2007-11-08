@@ -1172,7 +1172,6 @@ static int
 GssNotifyProc(ClientData instanceData, int mask)
 {
   GssState *statePtr = (GssState *) instanceData;
-  int rc;
 
   if(0) printf("---> GssNotifyProc(0x%x)\n", mask);
 
@@ -1350,6 +1349,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   {
     GssClean(statePtr);
     Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
+    Tcl_AppendResult(interp, "Failed to stack channel", NULL);
     return TCL_ERROR;
   }
 
@@ -1411,6 +1411,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 
       GssClean(statePtr);
       Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
+      Tcl_AppendResult(interp, "Failed to acquire credentials", NULL);
       return TCL_ERROR;
     }
   }
@@ -1432,6 +1433,8 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 
       GssClean((ClientData) statePtr);
       Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
+
+      Tcl_AppendResult(interp, "Failed to import credentials", NULL);
       return TCL_ERROR;
     }
   }
@@ -1447,6 +1450,9 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
     rc = GssNameGet(interp, statePtr->channel, &statePtr->gssName);
     if(rc != TCL_OK )
     {
+      GssClean(statePtr);
+	    Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
+
       Tcl_AppendResult(interp, "Failed to determine server name", NULL);
       return rc;
     }
