@@ -42,6 +42,7 @@ proc SrmCall {fileId serviceURL requestType args} {
     if {[catch {::http::geturl $serviceURL -query $query \
         -timeout 30000 -gssimport $certProxy \
         -type $type -headers $headers -command $command} result]} {
+        log::log error "SrmCall: $result"
         SrmFailed $fileId "Error while connecting remote SRM: $result"
     }
 }
@@ -53,7 +54,7 @@ proc SrmCallCommand {fileId responseType token} {
     global errorInfo
 
     if {[catch {SrmCallDone $fileId $responseType $token} result]} {
-         log::log error $result
+         log::log error "SrmCallCommand: $result"
     }
 }
 
@@ -219,8 +220,8 @@ proc SrmCallStopCommand {fileId certProxy token} {
         unset client
     }
 
-    if {[info proc $certProxy] eq "$certProxy" &&
-        [string length $certProxy] != 0} {
+    if {![string equal $certProxy {}]} {
+        log::log debug "SrmCallStopCommand: $certProxy destroy"
         $certProxy destroy
     }
 }
@@ -233,6 +234,7 @@ proc ::gss::socket {args} {
         log::log error $result
         return -code error $result
     }
+    return $result
 }
 
 # -------------------------------------------------------------------------
