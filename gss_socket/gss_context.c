@@ -251,9 +251,19 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
   gss_buffer_desc bufferIn, bufferOut;
 
   char *data;
-  int length, offset;
+  int length, offset, rc;
 
   Tcl_Obj *result;
+
+  if(statePtr->gssName == GSS_C_NO_NAME)
+  {
+    rc = GssNameGet(interp, statePtr->channel, &statePtr->gssName);
+    if(rc != TCL_OK )
+    {
+      Tcl_AppendResult(interp, "Failed to determine server name", NULL);
+      return TCL_ERROR;
+    }
+  }
 
   data = Tcl_GetStringFromObj(obj, &length);
   result = Tcl_NewObj();
@@ -555,12 +565,6 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   GssContext *statePtr;
 
   OM_uint32 majorStatus, minorStatus;
-  gss_buffer_desc gssNameBuf;
-
-  Tcl_DString peerName;
-  Tcl_Obj *peerNameStringObj, *peerNameObj;
-  char *peerNameStr;
-  int peerNameLen;
 
   GssCred *credPtr;
   char *credName;
@@ -626,36 +630,6 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   statePtr->gssName = GSS_C_NO_NAME;
   statePtr->gssContext = GSS_C_NO_CONTEXT;
   statePtr->gssCredential = GSS_C_NO_CREDENTIAL;
-
-  Tcl_DStringInit(&peerName);
-
-  Tcl_GetChannelOption(interp, channel, "-peername", &peerName);
-
-  peerNameStringObj = Tcl_NewStringObj(Tcl_DStringValue(&peerName), -1);
-  Tcl_ListObjIndex(interp, peerNameStringObj, 1, &peerNameObj);
-  peerNameStr = Tcl_GetStringFromObj(peerNameObj, &peerNameLen);
-
-  Tcl_DStringFree(&peerName);
-
-  /* extract the name associated with the creds */
-  gssNameBuf.value = peerNameStr;
-  gssNameBuf.length = peerNameLen + 1;
-  majorStatus = gss_import_name(&minorStatus,
-                                &gssNameBuf,
-                                GSS_C_NT_HOSTBASED_SERVICE,
-                                &statePtr->gssName);
-
-  Tcl_DecrRefCount(peerNameStringObj);
-
-  if(majorStatus != GSS_S_COMPLETE)
-  {
-    globus_gss_assist_display_status(
-      stderr, "Failed to determine server name: ",
-      majorStatus, minorStatus, 0);
-
-    GssContextDestroy((ClientData) statePtr);
-    return TCL_ERROR;
-  }
 
   if(credPtr == NULL)
   {
