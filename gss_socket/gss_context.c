@@ -571,9 +571,6 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
 
   int idx, rc;
 
-  if(0) printf("---> GssCreateContextObjCmd -> 0\n");
-  fflush(stdout);
-
   if(objc < 2)
   {
     Tcl_WrongNumArgs(interp, 1, objv, "channel ?options?");
@@ -583,8 +580,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   channel = Tcl_GetChannel(interp, Tcl_GetStringFromObj(objv[1], NULL), NULL);
   if(channel == (Tcl_Channel) NULL)
   {
-    if(0) printf("---> GssCreateContextObjCmd -> 1\n");
-
+    Tcl_AppendResult(interp, "Failed to get channel", NULL);
     return TCL_ERROR;
   }
 
@@ -652,6 +648,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
         majorStatus, minorStatus, 0);
 
       GssContextDestroy((ClientData) statePtr);
+      Tcl_AppendResult(interp, "Failed to acquire credentials", NULL);
       return TCL_ERROR;
     }
   }
@@ -672,6 +669,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
         majorStatus, minorStatus, 0);
 
       GssContextDestroy((ClientData) statePtr);
+      Tcl_AppendResult(interp, "Failed to import credentials", NULL);
       return TCL_ERROR;
     }
   }
