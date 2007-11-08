@@ -1242,20 +1242,6 @@ GssNotifyProc(ClientData instanceData, int mask)
       statePtr->flags &= ~(GSS_TCL_HANDSHAKE);
       mask |= TCL_WRITABLE;
     }
-    
-    if(!(statePtr->flags & GSS_TCL_SERVER) &&
-       (statePtr->flags & GSS_TCL_HANDSHAKE) &&
-       (statePtr->gssName == GSS_C_NO_NAME))
-    {
-      rc = GssNameGet(statePtr->interp, statePtr->channel, &statePtr->gssName);
-      if(rc != TCL_OK )
-      {
-        statePtr->flags |= GSS_TCL_EOF;
-        statePtr->errorCode = 0;
-      }
-
-      GssHandshake(statePtr);
-    }
   }
 
   if(0) printf("---> Exiting GssNotifyProc(0x%x)\n", mask);
@@ -1455,6 +1441,17 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   if(server)
   {
     statePtr->flags |= GSS_TCL_SERVER;
+  }
+  else
+  {
+    rc = GssNameGet(interp, statePtr->channel, &statePtr->gssName);
+    if(rc != TCL_OK )
+    {
+      Tcl_AppendResult(interp, "Failed to determine server name", NULL);
+      return rc;
+    }
+    
+    GssHandshake(statePtr);
   }
 
   Tcl_SetResult(interp,
