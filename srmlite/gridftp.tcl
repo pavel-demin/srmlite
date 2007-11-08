@@ -95,8 +95,10 @@ proc GridFtpGetInput {fileId certProxy chan} {
 
 proc GridFtpCreateContext {fileId certProxy chan} {
     upvar #0 GridFtp$chan data
+    set prefix "\[fileId $fileId\] \[server $data(host)\]"
     if {[string equal $data(context) {}]} {
         set data(context) [gss::context $chan -gssimport $certProxy]
+        log::log debug "$prefix GridFtpCreateContext $data(context)"
     }
 }
 
@@ -326,8 +328,8 @@ proc GridFtpClose {fileId chan} {
 
     if {![string equal $channels {}]} {
         fileevent $chan readable {}
-        ::close $chan
         log::log debug "$prefix close $chan"
+        ::close $chan
     }
 
     if {[info exists index]} {
@@ -342,8 +344,8 @@ proc GridFtpClose {fileId chan} {
 
     if {[info exists data]} {
         set context $data(context)
-        if {[info proc $context] eq "$context" &&
-            [string length $context] != 0} {
+        if {![string equal $context {}]} {
+            log::log debug "$prefix $context destroy"
             $context destroy
         }
 
