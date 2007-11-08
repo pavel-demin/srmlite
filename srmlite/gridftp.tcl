@@ -38,7 +38,7 @@ proc ExtractHostFile {url} {
 
 # -------------------------------------------------------------------------
 
-proc GridFtpGetInput {fileId certProxy chan} {
+proc GridFtpGetInput {fileId chan} {
 
     upvar #0 GridFtp$chan data
 
@@ -88,23 +88,12 @@ proc GridFtpGetInput {fileId certProxy chan} {
         append data(buffer) $msg
     }
 
-    GridFtpProcessClearInput $fileId $certProxy $chan
+    GridFtpProcessClearInput $fileId $chan
 }
 
 # -------------------------------------------------------------------------
 
-proc GridFtpCreateContext {fileId certProxy chan} {
-    upvar #0 GridFtp$chan data
-    set prefix "\[fileId $fileId\] \[server $data(host)\]"
-    if {[string equal $data(context) {}]} {
-        set data(context) [gss::context $chan -gssimport $certProxy]
-        log::log debug "$prefix GridFtpCreateContext $data(context)"
-    }
-}
-
-# -------------------------------------------------------------------------
-
-proc GridFtpProcessClearInput {fileId certProxy chan} {
+proc GridFtpProcessClearInput {fileId chan} {
 
     upvar #0 GridFtp$chan data
 
@@ -119,7 +108,6 @@ proc GridFtpProcessClearInput {fileId certProxy chan} {
             set data(buffer) {}
         }
         auth,334 {
-            GridFtpCreateContext $fileId $certProxy $chan
             puts $chan [$data(context) handshake {}]
             set data(state) handshake
             set data(buffer) {}
@@ -269,13 +257,13 @@ proc GridFtpRetr {fileId srcTURL port} {
 
     set chan [socket -async [lindex $hostfile 0] 2811]
     fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
-    fileevent $chan readable [list GridFtpGetInput $fileId $certProxy $chan]
+    fileevent $chan readable [list GridFtpGetInput $fileId $chan]
     
     dict set index $chan 1
 
     upvar #0 GridFtp$chan data
 
-    set data(context) {}
+    set data(context) [gss::context $chan -gssimport $certProxy]
     set data(afterId) {}
     set data(buffer) {}
     set data(bufcmd) 0
@@ -284,6 +272,9 @@ proc GridFtpRetr {fileId srcTURL port} {
     set data(port) $port
     set data(host) [lindex $hostfile 0]
     set data(file) [lindex $hostfile 1]
+
+    set prefix "\[fileId $fileId\] \[server $data(host)\]"
+    log::log debug "$prefix GridFtpCopy: import $data(context)"
 }
 
 # -------------------------------------------------------------------------
@@ -298,13 +289,13 @@ proc GridFtpCopy {fileId srcTURL dstTURL} {
 
     set chan [socket -async [lindex $hostfile 0] 2811]
     fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
-    fileevent $chan readable [list GridFtpGetInput $fileId $certProxy $chan]
+    fileevent $chan readable [list GridFtpGetInput $fileId $chan]
 
     dict set index $chan 1
 
     upvar #0 GridFtp$chan data
 
-    set data(context) {}
+    set data(context) [gss::context $chan -gssimport $certProxy]
     set data(afterId) {}
     set data(buffer) {}
     set data(bufcmd) 0
@@ -314,6 +305,9 @@ proc GridFtpCopy {fileId srcTURL dstTURL} {
     set data(host) [lindex $hostfile 0]
     set data(file) [lindex $hostfile 1]
     set data(srcTURL) $srcTURL
+
+    set prefix "\[fileId $fileId\] \[server $data(host)\]"
+    log::log debug "$prefix GridFtpCopy: import $data(context)"
 }
 
 # -------------------------------------------------------------------------
