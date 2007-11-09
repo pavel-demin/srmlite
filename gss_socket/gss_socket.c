@@ -230,6 +230,8 @@ GssClean(GssState *statePtr)
     free(statePtr->gssUser);
     statePtr->gssUser = NULL;
   }
+
+  ckfree((char *)statePtr);
 }
 
 /* ----------------------------------------------------------------- */
@@ -243,18 +245,24 @@ GssCloseProc(ClientData instanceData,  Tcl_Interp *interp)
 
   if(0) printf("---> GssCloseProc(0x%x)\n", (unsigned int) statePtr);
 
+  if(statePtr->timer != (Tcl_TimerToken) NULL)
+  {
+    Tcl_DeleteTimerHandler(statePtr->timer);
+    statePtr->timer = (Tcl_TimerToken) NULL;
+  }
+
   counter = 0;
   while((counter < 3) &&
-        (statePtr->writeRawBuf.length > 0 ||
-         statePtr->writeInBuf.length > 0))
+        !(statePtr->flags & GSS_TCL_HANDSHAKE) &&
+        !(statePtr->flags & GSS_TCL_EOF) &&
+        !(statePtr->flags & GSS_TCL_OUTPUTERROR && statePtr->errorCode != EAGAIN) &&
+        (statePtr->writeRawBuf.length > 0 || statePtr->writeInBuf.length > 0))
   {
     GssWriteToken(statePtr);
     ++counter;
   }
 
   GssClean(statePtr);
-
-  Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
 
   return TCL_OK;
 }
@@ -821,6 +829,7 @@ GssHandshake(GssState *statePtr)
                                      statePtr->gssName,
                                      &statePtr->gssNameBuf,
                                      NULL);
+
       statePtr->flags &= ~(GSS_TCL_HANDSHAKE);
       (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask | statePtr->extWatchMask);
 
@@ -1172,6 +1181,7 @@ static int
 GssNotifyProc(ClientData instanceData, int mask)
 {
   GssState *statePtr = (GssState *) instanceData;
+  int rc;
 
   if(0) printf("---> GssNotifyProc(0x%x)\n", mask);
 
@@ -1216,8 +1226,26 @@ GssNotifyProc(ClientData instanceData, int mask)
       mask |= TCL_READABLE;
     }
   }
-  else if(mask & TCL_WRITABLE)
+
+  if(mask & TCL_WRITABLE)
   {
+    
+    if(!(statePtr->flags & GSS_TCL_SERVER) &&
+       (statePtr->flags & GSS_TCL_HANDSHAKE) &&
+       (statePtr->gssName == GSS_C_NO_NAME))
+    {
+      statePtr->intWatchMask &= ~(TCL_WRITABLE);
+
+      rc = GssNameGet(statePtr->interp, statePtr->channel, &statePtr->gssName);
+      if(rc != TCL_OK )
+      {
+        statePtr->flags |= GSS_TCL_EOF;
+        statePtr->errorCode = 0;
+      }
+
+      GssHandshake(statePtr);
+    }
+
     if(!(statePtr->extWatchMask & TCL_WRITABLE) ||
        (statePtr->flags & GSS_TCL_HANDSHAKE))
     {
@@ -1274,6 +1302,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   chan = Tcl_GetChannel(interp, Tcl_GetStringFromObj(objv[1], NULL), NULL);
   if(chan == (Tcl_Channel) NULL)
   {
+    Tcl_AppendResult(interp, "Failed to get channel", NULL);
     return TCL_ERROR;
   }
   chan = Tcl_GetTopChannel(chan);
@@ -1333,12 +1362,6 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   statePtr = (GssState *) ckalloc((unsigned int) sizeof(GssState));
   memset(statePtr, 0, sizeof(GssState));
 
- /*
-  * We need to make sure that the channel works in binary (for the
-  * encryption not to get goofed up).
-  */
-  Tcl_SetChannelOption(interp, chan, "-translation", "binary");
-
   statePtr->interp = interp;
 
   statePtr->channel = Tcl_StackChannel(interp, &ChannelType,
@@ -1348,7 +1371,6 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   if(statePtr->channel == (Tcl_Channel) NULL)
   {
     GssClean(statePtr);
-    Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
     Tcl_AppendResult(interp, "Failed to stack channel", NULL);
     return TCL_ERROR;
   }
@@ -1410,7 +1432,6 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
         majorStatus, minorStatus, 0);
 
       GssClean(statePtr);
-      Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
       Tcl_AppendResult(interp, "Failed to acquire credentials", NULL);
       return TCL_ERROR;
     }
@@ -1432,8 +1453,6 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
         majorStatus, minorStatus, 0);
 
       GssClean((ClientData) statePtr);
-      Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
-
       Tcl_AppendResult(interp, "Failed to import credentials", NULL);
       return TCL_ERROR;
     }
@@ -1447,17 +1466,8 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   }
   else
   {
-    rc = GssNameGet(interp, statePtr->channel, &statePtr->gssName);
-    if(rc != TCL_OK )
-    {
-      GssClean(statePtr);
-      Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
-
-      Tcl_AppendResult(interp, "Failed to determine server name", NULL);
-      return rc;
-    }
-    
-    GssHandshake(statePtr);
+    statePtr->intWatchMask |= TCL_WRITABLE;
+    (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
   }
 
   Tcl_SetResult(interp,
