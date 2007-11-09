@@ -344,7 +344,7 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
     Tcl_SetObjResult(interp, result);
 
-  	return TCL_OK;
+    return TCL_OK;
   }
   else
   {
@@ -371,7 +371,7 @@ GssHandshakeObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
         stderr, "Failed to establish security context: ",
         majorStatus, minorStatus, 0);
 
-    	return TCL_ERROR;
+      return TCL_ERROR;
     }
   }
 }
@@ -412,7 +412,7 @@ GssWrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
     Tcl_SetObjResult(interp, result);
 
-  	return TCL_OK;
+    return TCL_OK;
   }
   else
   {
@@ -420,7 +420,7 @@ GssWrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
       stderr, "Failed to wrap buffer: ",
       majorStatus, minorStatus, 0);
 
-  	return TCL_ERROR;
+    return TCL_ERROR;
   }
 }
 
@@ -479,7 +479,7 @@ GssUnwrapObjCmd(GssContext *statePtr, Tcl_Interp *interp, Tcl_Obj *CONST obj)
 
     Tcl_SetObjResult(interp, result);
 
-  	return TCL_OK;
+    return TCL_OK;
   }
   else
   {
@@ -508,47 +508,47 @@ GssContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
 
   option = Tcl_GetStringFromObj(objv[1], NULL);
 
-	if(strcmp(option, "handshake") == 0)
+  if(strcmp(option, "handshake") == 0)
   {
-		if(objc != 3)
+    if(objc != 3)
     {
       Tcl_WrongNumArgs(interp, 1, objv, "handshake data");
-			return TCL_ERROR;
-		}
-		return GssHandshakeObjCmd(statePtr, interp, objv[2]);
+      return TCL_ERROR;
+    }
+    return GssHandshakeObjCmd(statePtr, interp, objv[2]);
   }
   else if(strcmp(option, "wrap") == 0)
   {
-		if(objc != 3)
+    if(objc != 3)
     {
       Tcl_WrongNumArgs(interp, 1, objv, "wrap data");
-			return TCL_ERROR;
-		}
-		return GssWrapObjCmd(statePtr, interp, objv[2]);
+      return TCL_ERROR;
+    }
+    return GssWrapObjCmd(statePtr, interp, objv[2]);
   }
   else if(strcmp(option, "unwrap") == 0)
   {
-		if(objc != 3)
+    if(objc != 3)
     {
       Tcl_WrongNumArgs(interp, 1, objv, "unwrap data");
-			return TCL_ERROR;
-		}
-		return GssUnwrapObjCmd(statePtr, interp, objv[2]);
+      return TCL_ERROR;
+    }
+    return GssUnwrapObjCmd(statePtr, interp, objv[2]);
   }
   else if(strcmp(option, "destroy") == 0)
   {
-		if(objc != 2)
+    if(objc != 2)
     {
       Tcl_WrongNumArgs(interp, 1, objv, "destroy");
-			return TCL_ERROR;
-		}
-		Tcl_DeleteCommandFromToken(interp, statePtr->token);
-		return TCL_OK;
+      return TCL_ERROR;
+    }
+    Tcl_DeleteCommandFromToken(interp, statePtr->token);
+    return TCL_OK;
   }
 
   Tcl_AppendResult(interp, "bad option \"", option,
     "\": must be handshake, wrap, unwrap, or destroy", NULL);
-	return TCL_ERROR;
+  return TCL_ERROR;
 }
 
 /* ----------------------------------------------------------------- */
@@ -684,7 +684,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
     (ClientData) statePtr, GssContextDestroy);
 
   Tcl_SetResult(interp, cmdName, TCL_VOLATILE);
-	return TCL_OK;
+  return TCL_OK;
 }
 
 /* ----------------------------------------------------------------- */

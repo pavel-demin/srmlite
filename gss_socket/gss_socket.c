@@ -58,13 +58,13 @@
 
 /* ----------------------------------------------------------------- */
 
-static int	GssBlockModeProc(ClientData instanceData, int mode);
-static int	GssCloseProc(ClientData instanceData, Tcl_Interp *interp);
-static int	GssInputProc(ClientData instanceData, char *buf, int bufSize, int *errorCodePtr);
-static int	GssOutputProc(ClientData instanceData, CONST char *buf, int toWrite, int *errorCodePtr);
-static int	GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *optionName, Tcl_DString *dsPtr);
-static void	GssWatchProc(ClientData instanceData, int mask);
-static int	GssNotifyProc(ClientData instanceData, int mask);
+static int  GssBlockModeProc(ClientData instanceData, int mode);
+static int  GssCloseProc(ClientData instanceData, Tcl_Interp *interp);
+static int  GssInputProc(ClientData instanceData, char *buf, int bufSize, int *errorCodePtr);
+static int  GssOutputProc(ClientData instanceData, CONST char *buf, int toWrite, int *errorCodePtr);
+static int  GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *optionName, Tcl_DString *dsPtr);
+static void GssWatchProc(ClientData instanceData, int mask);
+static int  GssNotifyProc(ClientData instanceData, int mask);
 
 /* ----------------------------------------------------------------- */
 
@@ -105,7 +105,7 @@ typedef struct GssState {
   gss_buffer_desc writeInBuf;  /* should be allocated in import */
   int writeRawBufPos;
 
-  Tcl_Interp *interp;	/* interpreter in which this resides */
+  Tcl_Interp *interp; /* interpreter in which this resides */
 } GssState;
 
 /* ----------------------------------------------------------------- */
@@ -116,14 +116,14 @@ static Tcl_ChannelType ChannelType = {
   GssCloseProc,
   GssInputProc,
   GssOutputProc,
-  NULL,		/* Seek proc. */
-  NULL,		/* Set option proc. */
+  NULL,   /* Seek proc. */
+  NULL,   /* Set option proc. */
   GssGetOptionProc,
   GssWatchProc,
   NULL,   /* Get file handle out of channel. */
   NULL,   /* Close2Proc. */
   GssBlockModeProc,
-  NULL,		/* FlushProc. */
+  NULL,   /* FlushProc. */
   GssNotifyProc
 };
 
@@ -135,7 +135,7 @@ static int GssReadToken(GssState *statePtr);
 /* ----------------------------------------------------------------- */
 
 static int
-GssBlockModeProc(ClientData instanceData,	int mode)
+GssBlockModeProc(ClientData instanceData, int mode)
 {
   GssState *statePtr = (GssState *) instanceData;
 
@@ -148,7 +148,7 @@ GssBlockModeProc(ClientData instanceData,	int mode)
     statePtr->flags |= GSS_TCL_BLOCKING;
   }
 
-	return 0;
+  return 0;
 }
 
 /* ----------------------------------------------------------------- */
@@ -235,7 +235,7 @@ GssClean(GssState *statePtr)
 /* ----------------------------------------------------------------- */
 
 static int
-GssCloseProc(ClientData instanceData,	 Tcl_Interp *interp)
+GssCloseProc(ClientData instanceData,  Tcl_Interp *interp)
 {
   int counter;
 
@@ -262,7 +262,7 @@ GssCloseProc(ClientData instanceData,	 Tcl_Interp *interp)
 /* ----------------------------------------------------------------- */
 
 static int
-GssInputProc(ClientData instanceData,	char *buf, int bytesToRead,	int *errorCodePtr)
+GssInputProc(ClientData instanceData, char *buf, int bytesToRead, int *errorCodePtr)
 {
   GssState *statePtr = (GssState *) instanceData;
   int bytesRead;
@@ -341,7 +341,7 @@ GssInputProc(ClientData instanceData,	char *buf, int bytesToRead,	int *errorCode
 /* ----------------------------------------------------------------- */
 
 static int
-GssOutputProc(ClientData instanceData, CONST char *buf,	int bytesToWrite, int *errorCodePtr)
+GssOutputProc(ClientData instanceData, CONST char *buf, int bytesToWrite, int *errorCodePtr)
 {
   GssState *statePtr = (GssState *) instanceData;
   int bytesWritten;
@@ -386,7 +386,7 @@ GssOutputProc(ClientData instanceData, CONST char *buf,	int bytesToWrite, int *e
     if(statePtr->writeInBuf.length > 0)
     {
       statePtr->intWatchMask |= TCL_WRITABLE;
-    	(*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask | statePtr->extWatchMask);
+      (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask | statePtr->extWatchMask);
     }
   }
   else if(statePtr->writeInBuf.length >= statePtr->writeInBufSize)
@@ -436,18 +436,18 @@ GssCredObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONS
 
   if(strcmp(option, "destroy") == 0)
   {
-		if(objc != 2)
+    if(objc != 2)
     {
       Tcl_WrongNumArgs(interp, 1, objv, "destroy");
-			return TCL_ERROR;
-		}
-		Tcl_DeleteCommandFromToken(interp, credPtr->token);
-		return TCL_OK;
+      return TCL_ERROR;
+    }
+    Tcl_DeleteCommandFromToken(interp, credPtr->token);
+    return TCL_OK;
   }
 
   Tcl_AppendResult(interp, "bad option \"", option,
     "\": must be destroy", NULL);
-	return TCL_ERROR;
+  return TCL_ERROR;
 }
 
 /* ----------------------------------------------------------------- */
@@ -695,16 +695,16 @@ GssChannelHandlerTimer(ClientData instanceData)
 /* ----------------------------------------------------------------- */
 
 static void
-GssWatchProc(ClientData instanceData,	int mask)
+GssWatchProc(ClientData instanceData, int mask)
 {
   GssState *statePtr = (GssState *) instanceData;
 
   if(0) printf("---> GssWatchProc(0x%x)\n", mask);
 
-	statePtr->extWatchMask = mask;
+  statePtr->extWatchMask = mask;
 
-	if(!(statePtr->flags & GSS_TCL_HANDSHAKE))
-	{
+  if(!(statePtr->flags & GSS_TCL_HANDSHAKE))
+  {
     (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask | statePtr->extWatchMask);
   }
 
@@ -712,20 +712,20 @@ GssWatchProc(ClientData instanceData,	int mask)
   * Management of the internal timer.
   */
 
-	if(statePtr->timer != (Tcl_TimerToken) NULL)
+  if(statePtr->timer != (Tcl_TimerToken) NULL)
   {
     Tcl_DeleteTimerHandler(statePtr->timer);
     statePtr->timer = (Tcl_TimerToken) NULL;
-	}
+  }
 
-	if((mask & TCL_READABLE) && Tcl_InputBuffered(statePtr->channel) > 0)
+  if((mask & TCL_READABLE) && Tcl_InputBuffered(statePtr->channel) > 0)
   {
    /*
     * There is interest in readable events and we actually have
     * data waiting, so generate a timer to flush that.
     */
-	  statePtr->timer = Tcl_CreateTimerHandler(GSS_TCL_DELAY, GssChannelHandlerTimer, (ClientData) statePtr);
-	}
+    statePtr->timer = Tcl_CreateTimerHandler(GSS_TCL_DELAY, GssChannelHandlerTimer, (ClientData) statePtr);
+  }
 }
 
 /* ----------------------------------------------------------------- */
@@ -810,7 +810,7 @@ GssHandshake(GssState *statePtr)
   if(statePtr->writeRawBuf.length > 0)
   {
     statePtr->intWatchMask |= TCL_WRITABLE;
-  	(*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
+    (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
   }
 
   if(!(majorStatus & GSS_S_CONTINUE_NEEDED))
@@ -1147,11 +1147,11 @@ GssWriteToken(GssState *statePtr)
       statePtr->intWatchMask &= ~(TCL_WRITABLE);
       if(statePtr->flags & GSS_TCL_HANDSHAKE)
       {
-  	    (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
+        (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
       }
       else
       {
-  	    (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask | statePtr->extWatchMask);
+        (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask | statePtr->extWatchMask);
       }
     }
   }
@@ -1363,7 +1363,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   (*statePtr->parentBlockModeProc) (statePtr->parentInstData, TCL_MODE_NONBLOCKING);
 
   statePtr->intWatchMask |= TCL_READABLE;
-	(*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
+  (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
 
   statePtr->writeInBufSize = 32768;
   statePtr->writeInBuf.length = 0;
@@ -1451,7 +1451,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
     if(rc != TCL_OK )
     {
       GssClean(statePtr);
-	    Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
+      Tcl_EventuallyFree((ClientData) statePtr, TCL_DYNAMIC);
 
       Tcl_AppendResult(interp, "Failed to determine server name", NULL);
       return rc;
