@@ -85,6 +85,7 @@ proc HttpdReset {sock left} {
     upvar #0 Httpd$sock data
 
     array set data [list state start linemode 1 version 0 left $left counter 0]
+    set data(address) [lindex [fconfigure $sock -peername] 0]
     set data(cancel) [after $Httpd(maxtime) [list HttpdTimeout $sock]]
 
     gss::import $sock -server true
@@ -412,8 +413,8 @@ proc HttpdDate {seconds} {
 # This should be replaced as needed.
 
 proc HttpdLog {sock level args} {
-    set address [lindex [fconfigure $sock -peername] 0]
-    log::log $level "\[client $address\] [join $args { }]"
+    upvar #0 Httpd$sock data
+    log::log $level "\[client $data(address)\] [join $args { }]"
 }
 
 # -------------------------------------------------------------------------
