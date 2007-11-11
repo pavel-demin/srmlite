@@ -249,8 +249,8 @@ proc GridFtpProcessWrappedInput {fileId chan} {
 
 proc GridFtpRetr {fileId srcTURL port} {
 
-    upvar #0 GridFtpIndex($fileId) index
-    upvar #0 SrmFiles($fileId) file
+    upvar #0 GridFtpIndex$fileId index
+    upvar #0 SrmFile$fileId file
     set certProxy [dict get $file certProxy]
 
     set hostfile [ExtractHostFile $srcTURL]
@@ -281,8 +281,8 @@ proc GridFtpRetr {fileId srcTURL port} {
 
 proc GridFtpCopy {fileId srcTURL dstTURL} {
 
-    upvar #0 GridFtpIndex($fileId) index
-    upvar #0 SrmFiles($fileId) file
+    upvar #0 GridFtpIndex$fileId index
+    upvar #0 SrmFile$fileId file
     set certProxy [dict get $file certProxy]
 
     set hostfile [ExtractHostFile $dstTURL]
@@ -313,7 +313,7 @@ proc GridFtpCopy {fileId srcTURL dstTURL} {
 # -------------------------------------------------------------------------
 
 proc GridFtpClose {fileId chan} {
-    upvar #0 GridFtpIndex($fileId) index
+    upvar #0 GridFtpIndex$fileId index
     upvar #0 GridFtp$chan data
 
     set channels [file channels $chan]
@@ -355,7 +355,7 @@ proc GridFtpClose {fileId chan} {
 # -------------------------------------------------------------------------
 
 proc GridFtpQuit {fileId chan command} {
-    upvar #0 GridFtpIndex($fileId) index
+    upvar #0 GridFtpIndex$fileId index
     upvar #0 GridFtp$chan data
 
     if {[info exists data]} {
@@ -383,7 +383,7 @@ proc GridFtpQuit {fileId chan command} {
 # -------------------------------------------------------------------------
 
 proc GridFtpStop {fileId} {
-    upvar #0 GridFtpIndex($fileId) index
+    upvar #0 GridFtpIndex$fileId index
 
     if {![info exists index]} {
         log::log warning "GridFtpStop: Unknown file id $fileId"
