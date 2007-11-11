@@ -503,9 +503,9 @@ proc SrmIsRequestDone {requestId} {
 
     upvar #0 SrmRequest$requestId request
 
-    foreach fileId [dict get $SrmRequest$requestId fileIds] {
+    foreach fileId [dict get $request fileIds] {
         upvar #0 SrmFile$fileId file
-        if {[dict get $SrmFile$fileId state] != "Done"} {
+        if {[dict get $file state] != "Done"} {
             return 0
         }
     }

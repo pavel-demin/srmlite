@@ -1,6 +1,6 @@
-global SrmRequests SrmFiles
+upvar #0 SrmRequest$requestId request
 
-dict with SrmRequests($requestId) {
+dict with request {
 
     set requestTypeUpper [string toupper $requestType 0 0]
     set filesLength [llength $fileIds]
@@ -31,6 +31,7 @@ dict with SrmRequests($requestId) {
     set id 4
     foreach fileId $fileIds {
 
+        upvar #0 SrmFile$fileId file
         incr id
 @@
       <i href='#id$${id}'></i>
@@ -43,7 +44,7 @@ dict with SrmRequests($requestId) {
     foreach fileId $fileIds {
 
         incr id
-        dict with SrmFiles($fileId) {
+        dict with file {
 @@
     <id$${id} id='id$${id}' soapenc:root='0' xsi:type='ns5:RequestFileStatus'>
       <SURL xsi:type='xsd:string'>$${SURL}</SURL>

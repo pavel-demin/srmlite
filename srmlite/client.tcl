@@ -91,7 +91,7 @@ proc SrmCallDone {fileId responseType token} {
     ::http::cleanup $token
 
     if {$hadError} {
-        log::log error "SrmCallStop: \[code $ncode\] \[status $status\]"
+        log::log error "SrmCallDone: \[code $ncode\] \[status $status\]"
         SrmFailed $fileId "Error while connecting remote SRM: $faultString"
         return
     }
@@ -182,9 +182,9 @@ proc SrmCallStop {fileId} {
 
     upvar #0 SrmFile$fileId file
 
-    log::log debug "SrmCallStop: $fileId $afterId"
-
     set afterId [dict get $file afterId]
+
+    log::log debug "SrmCallStop: $fileId $afterId"
 
     if {![string equal $afterId {}]} {
         after cancel $afterId
@@ -205,6 +205,7 @@ proc SrmCallStop {fileId} {
 
     set certProxy [dict get $file certProxy]
 
+    set serviceURL [dict get $client serviceURL]
     set remoteRequestId [dict get $client remoteRequestId]
     set remoteFileId [dict get $client remoteFileId]
 
