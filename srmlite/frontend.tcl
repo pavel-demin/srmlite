@@ -12,6 +12,8 @@ package require srmlite::soap
 
 # -------------------------------------------------------------------------
 
+set SrmRequestTimer [dict create]
+
 set LocalHostNames [list]
 
 foreach interface [::starfish::netdb ip interfaces] {
@@ -193,14 +195,14 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
 
     global State
 
-    upvar #0 SrmFiles($fileId) file
+    upvar #0 SrmFile$fileId file
 
     set SURL [dict get $file SURL]
     set TURL [dict get $file TURL]
     set certProxy [dict get $file certProxy]
     set requestId [dict get $file requestId]
 
-    upvar #0 SrmRequests($requestId) request
+    upvar #0 SrmRequest$requestId request
 
     set requestType [dict get $request requestType]
     set userName [dict get $request userName]
@@ -239,14 +241,14 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
 
     global State
 
-    upvar #0 SrmFiles($fileId) file
+    upvar #0 SrmFile$fileId file
 
     set SURL [dict get $file SURL]
     set TURL [dict get $file TURL]
     set certProxy [dict get $file certProxy]
     set requestId [dict get $file requestId]
 
-    upvar #0 SrmRequests($requestId) request
+    upvar #0 SrmRequest$requestId request
 
     set requestType [dict get $request requestType]
     set userName [dict get $request userName]
@@ -274,7 +276,7 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
 
 proc SrmCopyDone {fileId} {
 
-    upvar #0 SrmFiles($fileId) file
+    upvar #0 SrmFile$fileId file
 
     set requestId [dict get $file requestId]
 
@@ -285,11 +287,10 @@ proc SrmCopyDone {fileId} {
 
 proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}}} {
 
-    global State
+    global State SrmRequestTimer
 
     set requestId [NewRequestId]
-    upvar #0 SrmRequests($requestId) request
-    upvar #0 SrmRequestTimer($requestId) timer
+    upvar #0 SrmRequest$requestId request
 
     set clockStart [clock seconds]
     set clockFinish [clock scan {2 hours} -base $clockStart]
@@ -305,7 +306,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
     foreach SURL $SURLS dstSURL $dstSURLS size $sizes {
 
         set fileId [NewRequestId]
-        upvar #0 SrmFiles($fileId) file
+        upvar #0 SrmFile$fileId file
 
         if {$size == {}} {
             set size 0
@@ -335,7 +336,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
         }
     }
 
-    set timer -1
+    dict set SrmRequestTimer $requestId 0
 
     return [SrmGetRequestStatus $userName $certProxy $requestId $requestType]
 }
@@ -345,7 +346,7 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
 proc SrmGetRequestStatus {userName certProxy requestId {requestType getRequestStatus}} {
 
     global State
-    upvar #0 SrmRequests($requestId) request
+    upvar #0 SrmRequest$requestId request
 
     if {![info exists request]} {
         set faultString "Unknown request id $requestId"
@@ -374,9 +375,8 @@ proc SrmGetRequestStatus {userName certProxy requestId {requestType getRequestSt
 
 proc SrmSetFileStatus {userName certProxy requestId fileId newState} {
 
-    global SrmRequests SrmFiles
-    upvar #0 SrmRequests($requestId) request
-    upvar #0 SrmFiles($fileId) file
+    upvar #0 SrmRequest$requestId request
+    upvar #0 SrmFile$fileId file
 
     if {![info exists request]} {
         set faultString "Unknown request id $requestId"
@@ -416,8 +416,8 @@ proc SrmSetFileStatus {userName certProxy requestId fileId newState} {
 proc SrmSetState {requestId fileId newState} {
 
     global State
-    upvar #0 SrmRequests($requestId) request
-    upvar #0 SrmFiles($fileId) file
+    upvar #0 SrmRequest$requestId request
+    upvar #0 SrmFile$fileId file
 
 
     set requestType [dict get $request requestType]
@@ -475,7 +475,7 @@ proc SrmFailed {fileId errorMessage} {
 
     log::log error "SrmFailed: $errorMessage"
 
-    upvar #0 SrmFiles($fileId) file
+    upvar #0 SrmFile$fileId file
 
     if {![info exists file]} {
         set faultString "SrmFailed: unknown file id $fileId"
@@ -483,10 +483,8 @@ proc SrmFailed {fileId errorMessage} {
         return
     }
 
-    dict set file state Failed
-
     set requestId [dict get $file requestId]
-    upvar #0 SrmRequests($requestId) request
+    upvar #0 SrmRequest$requestId request
 
     if {![info exists request]} {
         set faultString "SrmFailed: unknown request id $requestId"
@@ -495,17 +493,19 @@ proc SrmFailed {fileId errorMessage} {
     }
 
     dict set request errorMessage $errorMessage
-    dict set request reqState Failed
+
+    SrmSetState $requestId $fileId Failed
 }
 
 # -------------------------------------------------------------------------
 
 proc SrmIsRequestDone {requestId} {
 
-    global SrmFiles SrmRequests
+    upvar #0 SrmRequest$requestId request
 
-    foreach fileId [dict get $SrmRequests($requestId) fileIds] {
-        if {[dict get $SrmFiles($fileId) state] != "Done"} {
+    foreach fileId [dict get $SrmRequest$requestId fileIds] {
+        upvar #0 SrmFile$fileId file
+        if {[dict get $SrmFile$fileId state] != "Done"} {
             return 0
         }
     }
@@ -541,8 +541,8 @@ proc SrmTimeout {seconds} {
 
     log::log debug "SrmTimeout $seconds"
 
-    foreach requestId [array names SrmRequestTimer] {
-        set counter [incr SrmRequestTimer($requestId)]
+    dict for {requestId counter} $SrmRequestTimer {
+        dict incr SrmRequestTimer $requestId
         if {$counter > 15} {
             after 0 [list KillSrmRequest $requestId]
         }
@@ -554,19 +554,18 @@ proc SrmTimeout {seconds} {
 
 proc KillSrmRequest {requestId} {
 
-    global State
-    upvar #0 SrmRequests($requestId) request
-    upvar #0 SrmRequestTimer($requestId) timer
+    global State SrmRequestTimer
+    upvar #0 SrmRequest$requestId request
 
-    if {[info exists timer]} {
-        unset timer
+    if {[dict exists $SrmRequestTimer $requestId]} {
+        dict unset SrmRequestTimer $requestId
     }
 
     set requestType [dict get $request requestType]
 
     if {[info exists request]} {
         foreach fileId [dict get $request fileIds] {
-            upvar #0 SrmFiles($fileId) file
+            upvar #0 SrmFile$fileId file
 
             if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
