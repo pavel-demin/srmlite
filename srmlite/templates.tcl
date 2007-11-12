@@ -34,6 +34,18 @@ proc InitTemplateStatus {} {
 
 # -------------------------------------------------------------------------
 
+proc InitTemplateFileMetaData {} {
+
+  set fid [open template_srm_metadata.g2]
+  set content [read $fid]
+  close $fid
+
+  proc SrmFileMetaDataBody {requestId} [g2lite $content]
+
+}
+
+# -------------------------------------------------------------------------
+
 proc InitTemplateGetRequestStatus {} {
 
   set fid [open template_srm_getRequestStatus.g2]
@@ -114,6 +126,7 @@ proc InitTemplateCopy {} {
 InitTemplateHeaders
 InitTemplateFault
 InitTemplateStatus
+InitTemplateFileMetaData
 InitTemplateGetRequestStatus
 InitTemplateSetFileStatus
 InitTemplateAdvisoryDelete
