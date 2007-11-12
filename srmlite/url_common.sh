@@ -42,7 +42,6 @@ checkFileSrc()
   fi
 }
 
-
 checkFileDst()
 {
   if [ -e "$1" ]
@@ -83,4 +82,26 @@ checkFileDst()
     exit 11
   fi
 }
+
+checkFileDel()
+{
+  if [ ! -e "$1" ]
+  then
+    echo "File does not exists"
+    exit 12
+  fi
+
+  if [ ! -f "$1" ]
+  then
+    echo "Not a regular file"
+    exit 13
+  fi
+
+  if [ ! -w "$1" ]
+  then
+    echo "Permission to write denied"
+    exit 14
+  fi
+}
+
 

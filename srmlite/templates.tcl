@@ -56,6 +56,28 @@ proc InitTemplateSetFileStatus {} {
 
 # -------------------------------------------------------------------------
 
+proc InitTemplateAdvisoryDelete {} {
+
+  set fid [open template_srm_advisoryDelete.g2]
+  set content [read $fid]
+  close $fid
+
+  proc SrmAdvisoryDeleteBody {srcSURLS} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateGetFileMetaData {} {
+
+  set fid [open template_srm_getFileMetaData.g2]
+  set content [read $fid]
+  close $fid
+
+  proc SrmGetFileMetaDataBody {srcSURLS} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
 proc InitTemplateGet {} {
 
   set fid [open template_srm_get.g2]
@@ -94,6 +116,8 @@ InitTemplateFault
 InitTemplateStatus
 InitTemplateGetRequestStatus
 InitTemplateSetFileStatus
+InitTemplateAdvisoryDelete
+InitTemplateGetFileMetaData
 InitTemplateGet
 InitTemplatePut
 InitTemplateCopy

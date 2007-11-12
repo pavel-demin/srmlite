@@ -40,6 +40,7 @@ array set HttpdFiles {
 array set SoapCalls {
     getRequestStatus SrmGetRequestStatus
     setFileStatus SrmSetFileStatus
+    getFileMetaData SrmGetFileMetaData
     copy SrmCopy
     get SrmGet
     put SrmPut
@@ -207,6 +208,11 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
     set requestType [dict get $request requestType]
     set userName [dict get $request userName]
 
+    dict set file permMode [lindex $stat 0]
+    dict set file owner [lindex $stat 1]
+    dict set file group [lindex $stat 2]
+    dict set file size [lindex $stat 3]
+
     switch -- $requestType,$isRemote {
         copy,false {
             set dstSURL $TURL
@@ -227,12 +233,13 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
             dict set file isCached true
             SrmSetState $requestId $fileId Ready
         }
+        getFileMetaData,false {
+            dict set file isPinned true
+            dict set file isPermanent true
+            dict set file isCached true
+            SrmSetState $requestId $fileId Done
+        }
     }
-
-    dict set file permMode [lindex $stat 0]
-    dict set file owner [lindex $stat 1]
-    dict set file group [lindex $stat 2]
-    dict set file size [lindex $stat 3]
 }
 
 # -------------------------------------------------------------------------
@@ -285,9 +292,9 @@ proc SrmCopyDone {fileId} {
 
 # -------------------------------------------------------------------------
 
-proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}}} {
+proc SrmCreateRequest {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}}} {
 
-    global State SrmRequestTimer
+    global State
 
     set requestId [NewRequestId]
     upvar #0 SrmRequest$requestId request
@@ -335,10 +342,33 @@ proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}
             }
         }
     }
+    return $requestId
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}}} {
+
+    global SrmRequestTimer
+
+    set requestId [SrmCreateRequest $userName $certProxy $requestType $SURLS $dstSURLS $sizes]
 
     dict set SrmRequestTimer $requestId 0
 
     return [SrmGetRequestStatus $userName $certProxy $requestId $requestType]
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmGetFileMetaData {userName certProxy SURLS} {
+
+    set requestId [SrmCreateRequest $userName $certProxy getFileMetaData $SURLS]
+
+    global SrmRequest$requestId
+
+    vwait SrmRequest$requestId
+
+    return [SrmGetFileMetaDataBody $requestId]
 }
 
 # -------------------------------------------------------------------------
