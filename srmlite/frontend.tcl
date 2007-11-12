@@ -331,6 +331,9 @@ proc SrmCreateRequest {userName certProxy requestType SURLS {dstSURLS {}} {sizes
             put {
                 puts $State(in) [list $requestType $fileId $userName $SURL]
             }
+            getFileMetaData {
+                puts $State(in) [list get $fileId $userName $SURL]
+            }
             copy {
                 if {[IsLocalHost $SURL] && ![IsLocalHost $dstSURL]} {
                     puts $State(in) [list get $fileId $userName $SURL]
