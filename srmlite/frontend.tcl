@@ -371,7 +371,7 @@ proc SrmGetFileMetaData {userName certProxy SURLS} {
 
     vwait SrmRequest$requestId
 
-    return [SrmGetFileMetaDataBody $requestId]
+    return [SrmFileMetaDataBody $requestId]
 }
 
 # -------------------------------------------------------------------------
