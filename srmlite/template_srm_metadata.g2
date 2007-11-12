@@ -45,7 +45,10 @@ dict with request {
       <isCached xsi:type='xsd:boolean'>$${isCached}</isCached>
     </id$${id}>
 @@
+        }
     }
 @@
   </soap:Body>
 </soap:Envelope>
+@@
+}
