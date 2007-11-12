@@ -10,4 +10,4 @@ dirSrc=`dirname $fileSrc`
 
 checkFileSrc $fileSrc $dirSrc
 
-ls -l $2
+ls -l $fileSrc
