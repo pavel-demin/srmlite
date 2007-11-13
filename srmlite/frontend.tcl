@@ -41,6 +41,7 @@ array set SoapCalls {
     getRequestStatus SrmGetRequestStatus
     setFileStatus SrmSetFileStatus
     getFileMetaData SrmGetFileMetaData
+    advisoryDelete SrmAdvisoryDelete
     copy SrmCopy
     get SrmGet
     put SrmPut
