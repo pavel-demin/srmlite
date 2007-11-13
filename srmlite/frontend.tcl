@@ -565,9 +565,9 @@ proc SrmIsRequestDone {requestId} {
 
 # -------------------------------------------------------------------------
 
-proc SrmAdvisoryDelete {userName certProxy srcSURLS dstSURLS dummy} {
+proc SrmAdvisoryDelete {userName certProxy srcSURLS} {
 
-    return [SrmSubmitTask $userName $certProxy advisoryDelete $srcSURLS $dstSURLS]
+    return [SrmSubmitTask $userName $certProxy advisoryDelete $srcSURLS]
 }
 
 # -------------------------------------------------------------------------
