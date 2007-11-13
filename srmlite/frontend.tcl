@@ -328,7 +328,8 @@ proc SrmCreateRequest {userName certProxy requestType SURLS {dstSURLS {}} {sizes
 
         switch -- $requestType {
             get -
-            put {
+            put -
+            advisoryDelete {
                 puts $State(in) [list $requestType $fileId $userName $SURL]
             }
             getFileMetaData {
@@ -563,6 +564,13 @@ proc SrmIsRequestDone {requestId} {
 
 # -------------------------------------------------------------------------
 
+proc SrmAdvisoryDelete {userName certProxy srcSURLS dstSURLS dummy} {
+
+    return [SrmSubmitTask $userName $certProxy advisoryDelete $srcSURLS $dstSURLS]
+}
+
+# -------------------------------------------------------------------------
+
 proc SrmCopy {userName certProxy srcSURLS dstSURLS dummy} {
 
     return [SrmSubmitTask $userName $certProxy copy $srcSURLS $dstSURLS]
@@ -677,8 +685,8 @@ proc GetInput {chan} {
         Ready,put {
             SrmReadyToPut $fileId false
         }
-        Done,copy {
-            SrmCopyDone $fileId
+        Ready,advisoryDelete {
+            SrmDeleteDone $fileId false
         }
     }
 }

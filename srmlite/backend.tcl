@@ -38,6 +38,15 @@ proc SrmPut {requestType fileId userName SURL} {
 
 # -------------------------------------------------------------------------
 
+proc SrmAdvisoryDelete {requestType fileId userName SURL} {
+
+    set command "./setuid $userName ./url_del.sh [ExtractHostFile $SURL]"
+#    set command "./url_put.sh [ExtractHostFile $SURL]"
+    SubmitCommand $requestType $fileId {} $command
+}
+
+# -------------------------------------------------------------------------
+
 proc SubmitCommand {requestType fileId certProxy command} {
 
     global State
@@ -163,6 +172,9 @@ proc GetInput {chan} {
         }
         put {
             eval SrmPut $line
+        }
+        advisoryDelete {
+            eval SrmAdvisoryDelete $line
         }
         default {
             log::log error "Unknown request type $requestType"
