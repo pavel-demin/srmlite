@@ -368,11 +368,11 @@ proc SrmGetFileMetaData {userName certProxy SURLS} {
     set requestId [SrmCreateRequest $userName $certProxy getFileMetaData $SURLS]
 
     global SrmRequest$requestId
-
     vwait SrmRequest$requestId
 
+    upvar #0 SrmRequest$requestId request
+
     set requestState [dict get $request reqState]
-    
 
     switch -glob -- $requestState {
         Failed {
