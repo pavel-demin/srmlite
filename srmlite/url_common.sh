@@ -3,7 +3,7 @@ checkCertProxy()
 {
   if [ ! -e "$1" ]
   then
-    echo "Proxy certificate does not exists"
+    echo "Proxy certificate does not exist"
     exit 1
   fi
 
@@ -25,7 +25,7 @@ checkFileSrc()
 {
   if [ ! -e "$1" ]
   then
-    echo "File does not exists"
+    echo "File does not exist"
     exit 4
   fi
 
@@ -87,7 +87,7 @@ checkFileDel()
 {
   if [ ! -e "$1" ]
   then
-    echo "File does not exists"
+    echo "File does not exist"
     exit 12
   fi
 
