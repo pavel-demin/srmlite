@@ -370,9 +370,20 @@ proc SrmGetFileMetaData {userName certProxy SURLS} {
     global SrmRequest$requestId
 
     vwait SrmRequest$requestId
+
+    set requestState [dict get $request reqState]
     
-    set result [SrmFileMetaDataBody $requestId]
-    
+
+    switch -glob -- $requestState {
+        Failed {
+            set faultString [dict get $request errorMessage]
+            set result [SrmFaultBody $faultString $faultString]
+        }
+        Done {
+            set result [SrmFileMetaDataBody $requestId]
+        }
+    }
+
     KillSrmRequest $requestId
 
     return $result
@@ -639,10 +650,20 @@ proc GetInput {chan} {
         return
     }
 
+    log::log debug $line
+
     set state [lindex $line 0]
     set requestType [lindex $line 1]
     set fileId [lindex $line 2]
     set output [lindex $line 3]
+
+    upvar #0 SrmFile$fileId file
+
+    if {![info exists file]} {
+        set faultString "GetInput: unknown file id $fileId"
+        log::log debug $faultString
+        return
+    }
 
     switch -glob -- $state,$requestType {
         Failed,* {
@@ -660,8 +681,6 @@ proc GetInput {chan} {
             SrmCopyDone $fileId
         }
     }
-
-    log::log debug $line
 }
 
 # -------------------------------------------------------------------------
