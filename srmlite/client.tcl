@@ -216,7 +216,7 @@ proc SrmCallStop {fileId} {
 
         set type {text/xml; charset=utf-8}
         set headers [SrmHeaders setFileStatus]
-        set command [list SrmCallStopCommand $fileId $certProxy]
+        set command [list SrmCallStopCommand $fileId]
 
         if {[catch {::http::geturl $serviceURL -query $query \
             -timeout 30000 -gssimport $certProxy \
@@ -225,14 +225,14 @@ proc SrmCallStop {fileId} {
             SrmFailed $fileId "Error while connecting remote SRM: $result"
         }
     } else {
-        SrmCallStopCommand $fileId $certProxy {}
+        SrmCallStopCommand $fileId {}
     }
 
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmCallStopCommand {fileId certProxy token} {
+proc SrmCallStopCommand {fileId token} {
 
     if {![string equal $token {}]} {
         ::http::cleanup $token
@@ -246,9 +246,15 @@ proc SrmCallStopCommand {fileId certProxy token} {
         unset client
     }
 
-    if {![string equal $certProxy {}]} {
-        log::log debug "SrmCallStopCommand: $certProxy destroy"
-        $certProxy destroy
+    upvar #0 SrmFile$fileId file
+
+    if {[info exists file]} {
+        set certProxy [dict get $file certProxy]
+        if {![string equal $certProxy {}]} {
+            log::log debug "SrmCallStopCommand: $certProxy destroy"
+            $certProxy destroy
+            dict set file certProxy {}
+        }
     }
 }
 
