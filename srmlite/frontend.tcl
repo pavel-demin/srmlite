@@ -293,6 +293,17 @@ proc SrmCopyDone {fileId} {
 
 # -------------------------------------------------------------------------
 
+proc SrmDeleteDone {fileId} {
+
+    upvar #0 SrmFile$fileId file
+
+    set requestId [dict get $file requestId]
+
+    SrmSetState $requestId $fileId Done
+}
+
+# -------------------------------------------------------------------------
+
 proc SrmCreateRequest {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}}} {
 
     global State
