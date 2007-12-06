@@ -114,19 +114,8 @@ proc /srm/managerv1 {sock query} {
     }
 
     set gssUser [fconfigure $sock -gssuser]
-    set gssCert {}
 
-    if {[string equal $methodName copy]} {
-        if {[catch {fconfigure $sock -gssexport} result]} {
-            HttpdLog $sock error $result
-            return [SrmFaultBody $result $errorInfo]
-        } else {
-            log::log debug "new certProxy $result"
-            set gssCert $result
-        }
-    }
-
-    if {[catch {eval [list $SoapCalls($methodName) $gssUser $gssCert] $argValues} result]} {
+    if {[catch {eval [list $SoapCalls($methodName) $sock $gssUser] $argValues} result]} {
         HttpdLog $sock error $result
         return [SrmFaultBody $result $errorInfo]
     } else {
@@ -304,7 +293,7 @@ proc SrmDeleteDone {fileId} {
 
 # -------------------------------------------------------------------------
 
-proc SrmCreateRequest {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}}} {
+proc SrmCreateRequest {userName certProxies requestType SURLS {dstSURLS {}} {sizes {}}} {
 
     global State
 
@@ -322,7 +311,7 @@ proc SrmCreateRequest {userName certProxy requestType SURLS {dstSURLS {}} {sizes
         submitTime $submitTime startTime $startTime finishTime $finishTime \
         errorMessage {} retryDeltaTime 1 fileIds {} userName $userName counter 1]
 
-    foreach SURL $SURLS dstSURL $dstSURLS size $sizes {
+    foreach SURL $SURLS dstSURL $dstSURLS size $sizes certProxy $certProxies {
 
         set fileId [NewRequestId]
         upvar #0 SrmFile$fileId file
@@ -363,22 +352,22 @@ proc SrmCreateRequest {userName certProxy requestType SURLS {dstSURLS {}} {sizes
 
 # -------------------------------------------------------------------------
 
-proc SrmSubmitTask {userName certProxy requestType SURLS {dstSURLS {}} {sizes {}}} {
+proc SrmSubmitTask {userName certProxies requestType SURLS {dstSURLS {}} {sizes {}}} {
 
     global SrmRequestTimer
 
-    set requestId [SrmCreateRequest $userName $certProxy $requestType $SURLS $dstSURLS $sizes]
+    set requestId [SrmCreateRequest $userName $certProxies $requestType $SURLS $dstSURLS $sizes]
 
     dict set SrmRequestTimer $requestId 0
 
-    return [SrmGetRequestStatus $userName $certProxy $requestId $requestType]
+    return [SrmGetRequestStatus {} $userName $requestId $requestType]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmGetFileMetaData {userName certProxy SURLS} {
+proc SrmGetFileMetaData {sock userName SURLS} {
 
-    set requestId [SrmCreateRequest $userName $certProxy getFileMetaData $SURLS]
+    set requestId [SrmCreateRequest $userName {} getFileMetaData $SURLS]
 
     global SrmRequest$requestId
     vwait SrmRequest$requestId
@@ -404,7 +393,7 @@ proc SrmGetFileMetaData {userName certProxy SURLS} {
 
 # -------------------------------------------------------------------------
 
-proc SrmGetRequestStatus {userName certProxy requestId {requestType getRequestStatus}} {
+proc SrmGetRequestStatus {sock userName requestId {requestType getRequestStatus}} {
 
     global State
     upvar #0 SrmRequest$requestId request
@@ -434,7 +423,7 @@ proc SrmGetRequestStatus {userName certProxy requestId {requestType getRequestSt
 
 # -------------------------------------------------------------------------
 
-proc SrmSetFileStatus {userName certProxy requestId fileId newState} {
+proc SrmSetFileStatus {sock userName requestId fileId newState} {
 
     upvar #0 SrmRequest$requestId request
     upvar #0 SrmFile$fileId file
@@ -576,30 +565,45 @@ proc SrmIsRequestDone {requestId} {
 
 # -------------------------------------------------------------------------
 
-proc SrmAdvisoryDelete {userName certProxy srcSURLS} {
+proc SrmAdvisoryDelete {sock userName srcSURLS} {
 
-    return [SrmSubmitTask $userName $certProxy advisoryDelete $srcSURLS]
+    return [SrmSubmitTask $userName {} advisoryDelete $srcSURLS]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmCopy {userName certProxy srcSURLS dstSURLS dummy} {
+proc SrmCopy {sock userName srcSURLS dstSURLS dummy} {
 
-    return [SrmSubmitTask $userName $certProxy copy $srcSURLS $dstSURLS]
+    set certProxies [list]
+
+    foreach SURL $srcSURLS {
+      if {[catch {fconfigure $sock -gssexport} result]} {
+          HttpdLog $sock error $result
+          foreach proxy $certProxies {
+              $proxy destroy
+          }
+          return [SrmFaultBody $result $errorInfo]
+      } else {
+          log::log debug "new certProxy $result"
+          lappend certProxies $result
+      }
+    }
+
+    return [SrmSubmitTask $userName $certProxies copy $srcSURLS $dstSURLS]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmGet {userName certProxy srcSURLS protocols} {
+proc SrmGet {sock userName srcSURLS protocols} {
 
-    return [SrmSubmitTask $userName $certProxy get $srcSURLS]
+    return [SrmSubmitTask $userName {} get $srcSURLS]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmPut {userName certProxy srcSURLS dstSURLS sizes wantPermanent protocols} {
+proc SrmPut {sock userName srcSURLS dstSURLS sizes wantPermanent protocols} {
 
-    return [SrmSubmitTask $userName $certProxy put $srcSURLS $dstSURLS $sizes]
+    return [SrmSubmitTask $userName {} put $srcSURLS $dstSURLS $sizes]
 }
 
 # -------------------------------------------------------------------------
