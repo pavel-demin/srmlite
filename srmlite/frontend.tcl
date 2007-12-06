@@ -698,7 +698,7 @@ proc GetInput {chan} {
             SrmReadyToPut $fileId false
         }
         Ready,advisoryDelete {
-            SrmDeleteDone $fileId false
+            SrmDeleteDone $fileId
         }
     }
 }
