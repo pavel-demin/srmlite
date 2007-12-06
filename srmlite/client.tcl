@@ -252,7 +252,9 @@ proc SrmCallStopCommand {fileId token} {
         set certProxy [dict get $file certProxy]
         if {![string equal $certProxy {}]} {
             log::log debug "SrmCallStopCommand: $certProxy destroy"
-            $certProxy destroy
+            if {[catch {$certProxy destroy} faultString]} {
+                log::log error "SrmCallStopCommand: $faultString"
+            }
             dict set file certProxy {}
         }
     }
