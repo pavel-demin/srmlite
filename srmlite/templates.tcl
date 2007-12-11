@@ -123,6 +123,17 @@ proc InitTemplateCopy {} {
 
 # -------------------------------------------------------------------------
 
+proc InitTemplatePing {} {
+
+  set fid [open template_srm_ping.g2]
+  set content [read $fid]
+  close $fid
+
+  proc SrmPingBody {} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
 proc InitTemplatePingResponse {} {
 
   set fid [open template_srm_pingResponse.g2]
