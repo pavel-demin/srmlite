@@ -622,6 +622,8 @@ proc SrmPut {sock userName srcSURLS dstSURLS sizes wantPermanent protocols} {
 
 proc SrmLogRotate {} {
 
+    global Cfg State
+
     log::log debug "SrmLogRotate"
 
     if {[catch {file size $Cfg(frontendLog)} result]} {
@@ -629,7 +631,7 @@ proc SrmLogRotate {} {
         return
     }
 
-    if {$result < 1000000000} {
+    if {$result < 200000000} {
         return
     }
 
