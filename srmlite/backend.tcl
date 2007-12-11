@@ -143,6 +143,19 @@ proc Finish {requestType fileId processId pipe} {
 
 # -------------------------------------------------------------------------
 
+proc Timeout {seconds} {
+
+    global Cfg
+
+    log::log debug "Timeout $seconds"
+
+    LogRotate $Cfg(backendLog)
+
+    alarm $seconds
+}
+
+# -------------------------------------------------------------------------
+
 proc GetInput {chan} {
 
     global State

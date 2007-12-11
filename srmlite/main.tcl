@@ -48,6 +48,37 @@ proc FormatLogMessage {level message} {
 
 # -------------------------------------------------------------------------
 
+proc LogRotate {file} {
+
+    global Cfg State
+
+    log::log debug "LogRotate"
+
+    if {[catch {file size $file} result]} {
+        log::log error $result
+        return
+    }
+
+    if {$result < 200000000} {
+        return
+    }
+
+    set fid $State(logFileId)
+    set channels [file channels $fid]
+    if {![string equal $channels {}]} {
+        close $fid
+
+        file rename -force $file $file.old
+
+        set fid [open $file w]
+        fconfigure $fid -blocking 0 -buffering line
+        log::lvChannelForall $fid
+        set State(logFileId) $fid
+    }
+}
+
+# -------------------------------------------------------------------------
+
 proc SetupTimer {seconds command} {
     signal unblock {ALRM}
     signal -restart trap {ALRM} $command
@@ -131,6 +162,8 @@ proc backend {} {
     fconfigure $State(out) -blocking 0 -buffering line
 
     fileevent $State(in) readable [list GetInput $State(in)]
+
+    SetupTimer 600 [list Timeout 600]
 
     # start the Tcl event loop
     vwait forever
