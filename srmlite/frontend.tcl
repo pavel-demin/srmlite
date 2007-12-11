@@ -42,6 +42,7 @@ array set SoapCalls {
     setFileStatus SrmSetFileStatus
     getFileMetaData SrmGetFileMetaData
     advisoryDelete SrmAdvisoryDelete
+    ping SrmPing
     copy SrmCopy
     get SrmGet
     put SrmPut
@@ -568,6 +569,13 @@ proc SrmIsRequestDone {requestId} {
 proc SrmAdvisoryDelete {sock userName srcSURLS} {
 
     return [SrmSubmitTask $userName {} advisoryDelete $srcSURLS]
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmPing {sock userName} {
+
+    return [SrmPingResponseBody]
 }
 
 # -------------------------------------------------------------------------

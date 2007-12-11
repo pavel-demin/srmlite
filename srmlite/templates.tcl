@@ -123,6 +123,17 @@ proc InitTemplateCopy {} {
 
 # -------------------------------------------------------------------------
 
+proc InitTemplatePingResponse {} {
+
+  set fid [open template_srm_pingResponse.g2]
+  set content [read $fid]
+  close $fid
+
+  proc SrmPingResponseBody {} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
 InitTemplateHeaders
 InitTemplateFault
 InitTemplateStatus
@@ -134,6 +145,8 @@ InitTemplateGetFileMetaData
 InitTemplateGet
 InitTemplatePut
 InitTemplateCopy
+InitTemplatePing
+InitTemplatePingResponse
 
 # -------------------------------------------------------------------------
 
