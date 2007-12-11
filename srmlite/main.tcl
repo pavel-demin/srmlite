@@ -151,6 +151,7 @@ proc backend {} {
     set fid [open $Cfg(backendLog) w]
     fconfigure $fid -blocking 0 -buffering line
     log::lvChannelForall $fid
+    set State(logFileId) $fid
 
     log::log notice "backend started with pid [pid]"
 #    close $fid
