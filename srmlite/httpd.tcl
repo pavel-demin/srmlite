@@ -106,7 +106,7 @@ proc HttpdRead {sock} {
     global Httpd
     upvar #0 Httpd$sock data
     
-    if {$data(counter) == 0} {
+    if {$data(counter) == 0 && ![eof $sock]} {
         HttpdLog $sock notice {Distinguished name} [fconfigure $sock -gssname]
         incr data(counter)
     }
