@@ -56,6 +56,7 @@ proc SubmitCommand {requestType fileId certProxy command} {
     if {[catch {open "| $command" {RDONLY NONBLOCK}} pipe]} {
         set faultString "Failed to execute '$command'"
         log::log error $faultString
+        log::log error $pipe
         puts $State(out) [list Failed $requestType $fileId $faultString]
         return
     }
