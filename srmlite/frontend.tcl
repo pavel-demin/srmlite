@@ -278,7 +278,7 @@ proc SrmCopyDone {fileId} {
 
     set requestId [dict get $file requestId]
 
-    SrmSetState $requestId $fileId Done
+    SrmSetState $requestId $fileId Ready
 }
 
 # -------------------------------------------------------------------------
@@ -482,6 +482,10 @@ proc SrmSetState {requestId fileId newState} {
         Active,Pending,Ready {
             dict set request reqState Active
             dict set file state Ready
+            if {[string equal $requestType copy]} {
+                SrmCallStop $fileId
+                GridFtpStop $fileId
+            }
         }
         Pending,Ready,Running -
         Active,Ready,Running {
