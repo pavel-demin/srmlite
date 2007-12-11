@@ -620,10 +620,41 @@ proc SrmPut {sock userName srcSURLS dstSURLS sizes wantPermanent protocols} {
 
 # -------------------------------------------------------------------------
 
+proc SrmLogRotate {} {
+
+    log::log debug "SrmLogRotate"
+
+    if {[catch {file size $Cfg(frontendLog)} result]} {
+        log::log error $result
+        return
+    }
+
+    if {$result < 1000000000} {
+        return
+    }
+
+    set fid $State(logFileId)
+    set channels [file channels $fid]
+    if {![string equal $channels {}]} {
+        close $fid
+
+        file rename -force $Cfg(frontendLog) $Cfg(frontendLog).old
+
+        set fid [open $Cfg(frontendLog) w]
+        fconfigure $fid -blocking 0 -buffering line
+        log::lvChannelForall $fid
+        set State(logFileId) $fid
+    }
+}
+
+# -------------------------------------------------------------------------
+
 proc SrmTimeout {seconds} {
     global SrmRequestTimer
 
     log::log debug "SrmTimeout $seconds"
+
+    SrmLogRotate
 
     dict for {requestId counter} $SrmRequestTimer {
         dict incr SrmRequestTimer $requestId

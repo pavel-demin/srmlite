@@ -10,6 +10,7 @@ package require srmlite::cfg
 
 array set State {
     requestId -2147483648
+    logFileId {}
     in stdout
     out stdin
 }
@@ -83,6 +84,7 @@ proc frontend {} {
     set fid [open $Cfg(frontendLog) w]
     fconfigure $fid -blocking 0 -buffering line
     log::lvChannelForall $fid
+    set State(logFileId) $fid
 
     log::log notice "frontend started with pid [pid]"
 #    close $fid
