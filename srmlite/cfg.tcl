@@ -30,8 +30,8 @@ array set Cfg {
     frontendUser edguser
     frontendGroup edguser
     frontendPort 8443
-    frontendLog frontend.log
-    backendLog backend.log
+    frontendLog logs/frontend.log
+    backendLog logs/backend.log
     gridMapDir /etc/grid-security/gridmapdir
     gridMapFile /etc/grid-security/grid-mapfile
     srmv1Prefix /srm/managerv1
