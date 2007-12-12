@@ -76,7 +76,14 @@ proc GridFtpGetInput {fileId chan} {
     if {[string match {63?} $rc]} {
         set context $data(context)
         if {![string equal $context {}]} {
-            set msg [$context unwrap $msg]
+            if {[catch {$context unwrap $msg} result]} {
+                GridFtpClose $fileId $chan
+                GridFtpStop $fileId
+                SrmFailed $fileId "Error during unwrap"
+                return
+            } else {
+                set msg $result
+            }
         }
     }
 
@@ -89,6 +96,36 @@ proc GridFtpGetInput {fileId chan} {
     }
 
     GridFtpProcessClearInput $fileId $chan
+}
+
+# -------------------------------------------------------------------------
+
+proc GridFtpHandshake {fileId chan msg} {
+
+    upvar #0 GridFtp$chan data
+
+    if {[catch {$data(context) handshake $msg} result]} {
+        GridFtpClose $fileId $chan
+        GridFtpStop $fileId
+        SrmFailed $fileId "Error during handshake"
+    } else {
+        puts $chan $result
+    }
+}
+
+# -------------------------------------------------------------------------
+
+proc GridFtpWrap {fileId chan msg} {
+
+    upvar #0 GridFtp$chan data
+
+    if {[catch {$data(context) wrap $msg} result]} {
+        GridFtpClose $fileId $chan
+        GridFtpStop $fileId
+        SrmFailed $fileId "Error during wrap"
+    } else {
+        puts $chan $result
+    }
 }
 
 # -------------------------------------------------------------------------
@@ -108,16 +145,17 @@ proc GridFtpProcessClearInput {fileId chan} {
             set data(buffer) {}
         }
         auth,334 {
-            puts $chan [$data(context) handshake {}]
+            GridFtpHandshake $fileId $chan {}
             set data(state) handshake
             set data(buffer) {}
         }
         handshake,335 {
-            puts $chan [$data(context) handshake $data(buffer)]
+            GridFtpHandshake $fileId $chan $data(buffer)
+            set data(state) handshake
             set data(buffer) {}
         }
         handshake,235 {
-            puts $chan [$data(context) wrap {USER :globus-mapping:}]
+            GridFtpWrap $fileId $chan {USER :globus-mapping:}
             set data(state) login
             set data(buffer) {}
         }
@@ -159,20 +197,20 @@ proc GridFtpProcessWrappedInput {fileId chan} {
     switch -glob -- $data(state),$data(rc) {
         login,200 -
         login,331 {
-            puts $chan [$data(context) wrap {PASS dummy}]
+            GridFtpWrap $fileId $chan {PASS dummy}
             set data(state) pass
         }
         pass,200 -
         pass,230 {
-            puts $chan [$data(context) wrap {TYPE I}]
+            GridFtpWrap $fileId $chan {TYPE I}
             set data(state) type
         }
         type,200 {
-            puts $chan [$data(context) wrap {MODE E}]
+            GridFtpWrap $fileId $chan {MODE E}
             set data(state) mode
         }
         mode,200 {
-            puts $chan [$data(context) wrap {DCAU N}]
+            GridFtpWrap $fileId $chan {DCAU N}
             set data(state) dcau
         }
         dcau,200 -
@@ -181,7 +219,7 @@ proc GridFtpProcessWrappedInput {fileId chan} {
             if {$data(stor)} {
                 if {$data(bufcmd) >= [llength $sbufCommands]} {
                     log::log error "$prefix Failed to set STOR buffer size"
-                    puts $chan [$data(context) wrap {PASV}]
+                    GridFtpWrap $fileId $chan {PASV}
                     set data(state) pasv
                     return
                 }
@@ -189,38 +227,38 @@ proc GridFtpProcessWrappedInput {fileId chan} {
             } else {
                 if {$data(bufcmd) >= [llength $rbufCommands]} {
                     log::log error "$prefix Failed to set RETR buffer size"
-                    puts $chan [$data(context) wrap {OPTS RETR Parallelism=8,8,8;}]
+                    GridFtpWrap $fileId $chan {OPTS RETR Parallelism=8,8,8;}
                     set data(state) opts
                     return
                 }
                 set command [lindex $rbufCommands $data(bufcmd)]
             }
-            puts $chan [$data(context) wrap "$command 1048576"]
+            GridFtpWrap $fileId $chan "$command 1048576"
             incr data(bufcmd)
             set data(state) bufsize
         }
         bufsize,200 {
             if {$data(stor)} {
-                puts $chan [$data(context) wrap {PASV}]
+                GridFtpWrap $fileId $chan {PASV}
                 set data(state) pasv
             } else {
-                puts $chan [$data(context) wrap {OPTS RETR Parallelism=8,8,8;}]
+                GridFtpWrap $fileId $chan {OPTS RETR Parallelism=8,8,8;}
                 set data(state) opts
             }
         }
         pasv,227 {
             regexp -- {\d+,\d+,\d+,\d+,\d+,\d+} $msg port
-            puts $chan [$data(context) wrap "STOR $data(file)"]
+            GridFtpWrap $fileId $chan "STOR $data(file)"
             set data(state) stor
             GridFtpRetr $fileId $data(srcTURL) $port
         }
         opts,200 -
         opts,500 {
-            puts $chan [$data(context) wrap "PORT $data(port)"]
+            GridFtpWrap $fileId $chan "PORT $data(port)"
             set data(state) port
         }
         port,200 {
-            puts $chan [$data(context) wrap "RETR $data(file)"]
+            GridFtpWrap $fileId $chan "RETR $data(file)"
             set data(state) retr
         }
         retr,226 {
@@ -228,7 +266,7 @@ proc GridFtpProcessWrappedInput {fileId chan} {
         }
         stor,226 {
             log::log debug "$prefix $line"
-            GridFtpQuit $fileId $chan [$data(context) wrap {QUIT}]
+            GridFtpQuit $fileId $chan QUIT
             GridFtpStop $fileId
             SrmCopyDone $fileId
         }
