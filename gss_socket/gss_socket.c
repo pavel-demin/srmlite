@@ -835,15 +835,16 @@ GssHandshake(GssState *statePtr)
 
       if(statePtr->flags & GSS_TCL_SERVER)
       {
+/*
         result = globus_gss_assist_gridmap(statePtr->gssNameBuf.value, &statePtr->gssUser);
         result = globus_gss_assist_userok(statePtr->gssNameBuf.value, statePtr->gssUser);
-/*
+*/
         statePtr->gssUser[0] = '\0';
         result = globus_gss_assist_map_and_authorize(statePtr->gssContext,
                                                      "srm", NULL,
                                                      statePtr->gssUser, 256);
-        printf("---> user = %s, dn = %s\n", statePtr->gssUser, statePtr->gssNameBuf.value);
-*/
+        if(1) printf("---> user = %s, dn = %s\n", statePtr->gssUser, statePtr->gssNameBuf.value);
+
       }
     }
     else
@@ -1396,6 +1397,10 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   statePtr->readRawBuf.value = ckalloc(statePtr->readRawBufSize);
 
   memset(statePtr->readRawBuf.value, 0, 5);
+
+  statePtr->gssUser = ckalloc(256);
+  memset(statePtr->gssUser, 0, 256);
+
   statePtr->flags |= GSS_TCL_READHEADER;
 
   statePtr->flags |= GSS_TCL_BLOCKING;
