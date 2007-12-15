@@ -843,7 +843,7 @@ GssHandshake(GssState *statePtr)
         result = globus_gss_assist_map_and_authorize(statePtr->gssContext,
                                                      "srm", NULL,
                                                      statePtr->gssUser, 256);
-        if(1) printf("---> user = %s, dn = %s\n", statePtr->gssUser, statePtr->gssNameBuf.value);
+        if(0) printf("---> user = %s, dn = %s\n", statePtr->gssUser, statePtr->gssNameBuf.value);
 
       }
     }
