@@ -743,6 +743,8 @@ GssHandshake(GssState *statePtr)
 {
   OM_uint32 majorStatus, minorStatus;
   globus_result_t result;
+  uid_t uid;
+  gid_t gid;
 
   if(0) printf("---> GssHandshake\n");
 
@@ -839,11 +841,17 @@ GssHandshake(GssState *statePtr)
         result = globus_gss_assist_gridmap(statePtr->gssNameBuf.value, &statePtr->gssUser);
         result = globus_gss_assist_userok(statePtr->gssNameBuf.value, statePtr->gssUser);
 */
-        statePtr->gssUser[0] = '\0';
+        uid = geteuid();
+        gid = getegid();
+        if(0) printf("---> user = %d, group = %d\n", geteuid(), getegid());
         result = globus_gss_assist_map_and_authorize(statePtr->gssContext,
                                                      "srm", NULL,
                                                      statePtr->gssUser, 256);
         if(0) printf("---> user = %s, dn = %s\n", statePtr->gssUser, statePtr->gssNameBuf.value);
+        if(0) printf("---> user = %d, group = %d\n", geteuid(), getegid());
+        seteuid(uid);
+        setegid(gid);
+        if(0) printf("---> user = %d, group = %d\n", geteuid(), getegid());
 
       }
     }
