@@ -657,8 +657,8 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
 
         /* restore context deleted by gss_export_sec_context */
         majorStatus = gss_import_sec_context(&minorStatus,
-                                             &statePtr->gssContext,
-                                             &gssContext);
+                                             &contextBuffer,
+                                             &statePtr->gssContext);
 
         if(majorStatus != GSS_S_COMPLETE)
         {
