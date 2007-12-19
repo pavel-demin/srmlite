@@ -549,7 +549,7 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
   char cmdName[256];
   Tcl_CmdInfo cmdInfo;
   int cmdCounter, fd, success;
-  FILE *contextFile;
+  FILE *contextFile = NULL;
 
   GssState *statePtr = (GssState *) instanceData;
   GssCred *credPtr;
@@ -628,13 +628,16 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
     {
 
       majorStatus = gss_export_sec_context(&minorStatus,
-                                           statePtr->gssContext,
+                                           &statePtr->gssContext,
                                            &contextBuffer);
 
       if(majorStatus == GSS_S_COMPLETE)
       {
-        if((fd = mkstemp(fileName)) == -1 ||
-           (contextFile = fdopen(fd, "w+")) == 0)
+        if((fd = mkstemp(fileName)) == -1)
+        {
+          Tcl_AppendResult(interp, "Failed to make context file name", NULL);
+        }
+        else if((contextFile = fdopen(fd, "w+")) == 0)
         {
           Tcl_AppendResult(interp, "Failed to open context file", NULL);
         }
@@ -784,9 +787,6 @@ static int
 GssHandshake(GssState *statePtr)
 {
   OM_uint32 majorStatus, minorStatus;
-  globus_result_t result;
-  uid_t uid;
-  gid_t gid;
 
   if(0) printf("---> GssHandshake\n");
 
