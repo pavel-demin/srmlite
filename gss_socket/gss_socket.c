@@ -542,9 +542,14 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
 {
   OM_uint32 majorStatus, minorStatus;
 
+  gss_buffer_desc contextBuffer;
+
+  char fileName[] = "/tmp/ctxXXXXXX";
+
   char cmdName[256];
   Tcl_CmdInfo cmdInfo;
-  int cmdCounter;
+  int cmdCounter, fd, success;
+  FILE *contextFile;
 
   GssState *statePtr = (GssState *) instanceData;
   GssCred *credPtr;
@@ -613,6 +618,58 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
     else
     {
       Tcl_AppendResult(interp, "Failed to export credentials", NULL);
+      return TCL_ERROR;
+    }
+  }
+  else if(strcmp(optionName, "-gsscontext") == 0)
+  {
+    success = 0;
+    if(statePtr->gssContext != GSS_C_NO_CONTEXT)
+    {
+
+      majorStatus = gss_export_sec_context(&minorStatus,
+                                           statePtr->gssContext,
+                                           &contextBuffer);
+
+      if(majorStatus == GSS_S_COMPLETE)
+      {
+        if((fd = mkstemp(fileName)) == -1 ||
+           (contextFile = fdopen(fd, "w+")) == 0)
+        {
+          Tcl_AppendResult(interp, "Failed to open context file", NULL);
+        }
+        else if(fwrite(contextBuffer.value, contextBuffer.length, 1, contextFile) < 1)
+        {
+           Tcl_AppendResult(interp, "Failed to write context file", NULL);
+        }
+        else
+        {
+           success = 1;
+        }
+        
+        if(contextFile)
+        {
+          fclose(contextFile);
+        }
+
+        gss_release_buffer(&minorStatus, &contextBuffer);
+      }
+      else
+      {
+        globus_gss_assist_display_status(
+          stderr, "Failed to export context: ",
+          majorStatus, minorStatus, 0);
+        Tcl_AppendResult(interp, "Failed to export context", NULL);
+      }
+    }
+
+    if(success)
+    {
+      Tcl_DStringAppendElement(dstrPtr, fileName);
+      return TCL_OK;
+    }
+    else
+    {
       return TCL_ERROR;
     }
   }
