@@ -544,7 +544,7 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
 
   gss_buffer_desc contextBuffer;
 
-  char fileName[] = "/tmp/ctxXXXXXX";
+  char fileName[15] = "/tmp/ctxXXXXXX";
 
   char cmdName[256];
   Tcl_CmdInfo cmdInfo;
@@ -633,12 +633,18 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
 
       if(majorStatus == GSS_S_COMPLETE)
       {
+
+        fd = -1;
+
         if((fd = mkstemp(fileName)) == -1)
         {
           Tcl_AppendResult(interp, "Failed to make context file name", NULL);
         }
-        else if((contextFile = fdopen(fd, "w+")) == 0)
+        else if((contextFile = fdopen(fd, "w+")) == NULL)
         {
+          unlink(fileName);
+          close(fd);
+          fd = -1;
           Tcl_AppendResult(interp, "Failed to open context file", NULL);
         }
         else if(fwrite(contextBuffer.value, contextBuffer.length, 1, contextFile) < 1)
@@ -649,10 +655,17 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
         {
            success = 1;
         }
-        
-        if(contextFile)
+
+        if(contextFile != NULL)
         {
           fclose(contextFile);
+          contextFile = NULL;
+        }
+
+        if(fd != -1)
+        {
+          close(fd);
+          fd = -1;
         }
 
         /* restore context deleted by gss_export_sec_context */
