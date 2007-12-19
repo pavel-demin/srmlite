@@ -91,7 +91,6 @@ typedef struct GssState {
   gss_buffer_desc gssNameBuf;
   OM_uint32 gssFlags;
   OM_uint32 gssTime;
-  char *gssUser;
 
   OM_uint32 readRawBufSize;
   gss_buffer_desc readRawBuf; /* should be allocated in import */
@@ -223,12 +222,6 @@ GssClean(GssState *statePtr)
   {
     ckfree(statePtr->readRawBuf.value);
     statePtr->readRawBuf.value = NULL;
-  }
-
-  if(statePtr->gssUser != NULL)
-  {
-    free(statePtr->gssUser);
-    statePtr->gssUser = NULL;
   }
 
   ckfree((char *)statePtr);
@@ -561,9 +554,6 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
     Tcl_DStringAppendElement(dstrPtr, "-gssname");
     Tcl_DStringAppendElement(dstrPtr, statePtr->gssNameBuf.value);
 
-    Tcl_DStringAppendElement(dstrPtr, "-gssuser");
-    Tcl_DStringAppendElement(dstrPtr, statePtr->gssUser);
-
     if(statePtr->gssCredFileName.value != NULL)
     {
       Tcl_DStringAppendElement(dstrPtr, "-gssproxy");
@@ -582,11 +572,6 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
   else if(strcmp(optionName, "-gssname") == 0)
   {
     Tcl_DStringAppendElement(dstrPtr, statePtr->gssNameBuf.value);
-    return TCL_OK;
-  }
-  else if(strcmp(optionName, "-gssuser") == 0)
-  {
-    Tcl_DStringAppendElement(dstrPtr, statePtr->gssUser);
     return TCL_OK;
   }
   else if(strcmp(optionName, "-gssproxy") == 0)
@@ -835,25 +820,6 @@ GssHandshake(GssState *statePtr)
       statePtr->flags &= ~(GSS_TCL_HANDSHAKE);
       (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask | statePtr->extWatchMask);
 
-      if(statePtr->flags & GSS_TCL_SERVER)
-      {
-/*
-        result = globus_gss_assist_gridmap(statePtr->gssNameBuf.value, &statePtr->gssUser);
-        result = globus_gss_assist_userok(statePtr->gssNameBuf.value, statePtr->gssUser);
-*/
-        uid = geteuid();
-        gid = getegid();
-        if(0) printf("---> user = %d, group = %d\n", geteuid(), getegid());
-        result = globus_gss_assist_map_and_authorize(statePtr->gssContext,
-                                                     "srm", NULL,
-                                                     statePtr->gssUser, 256);
-        if(0) printf("---> user = %s, dn = %s\n", statePtr->gssUser, statePtr->gssNameBuf.value);
-        if(0) printf("---> user = %d, group = %d\n", geteuid(), getegid());
-        seteuid(uid);
-        setegid(gid);
-        if(0) printf("---> user = %d, group = %d\n", geteuid(), getegid());
-
-      }
     }
     else
     {
@@ -1405,9 +1371,6 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   statePtr->readRawBuf.value = ckalloc(statePtr->readRawBufSize);
 
   memset(statePtr->readRawBuf.value, 0, 5);
-
-  statePtr->gssUser = ckalloc(256);
-  memset(statePtr->gssUser, 0, 256);
 
   statePtr->flags |= GSS_TCL_READHEADER;
 
