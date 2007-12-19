@@ -382,9 +382,9 @@ proc SrmSubmitTask {userName certProxies requestType SURLS {dstSURLS {}} {sizes 
 
 proc SrmGetUserName {sock} {
 
-    set certProxy [fconfigure $sock -gssproxy]
+    set gssContext [fconfigure $sock -gsscontext]
 
-    set requestId [SrmCreateRequest {} $certProxy getUserName {}]
+    set requestId [SrmCreateRequest {} $gssContext getUserName {}]
 
     global SrmRequest$requestId
     vwait SrmRequest$requestId

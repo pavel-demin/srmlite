@@ -47,9 +47,9 @@ proc SrmAdvisoryDelete {requestType fileId userName SURL} {
 
 # -------------------------------------------------------------------------
 
-proc SrmGetUserName {requestType fileId certProxy} {
+proc SrmGetUserName {requestType fileId gssContext} {
 
-    set command "./getuser.sh $certProxy"
+    set command "./getuser.sh $gssContext"
     SubmitCommand $requestType $fileId $command
 }
 
