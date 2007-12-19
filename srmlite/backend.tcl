@@ -49,8 +49,7 @@ proc SrmAdvisoryDelete {requestType fileId userName SURL} {
 
 proc SrmGetUserName {requestType fileId certProxy} {
 
-    set command "./url_map.sh $certProxy"
-#    set command "./url_put.sh [ExtractHostFile $SURL]"
+    set command "./getuser.sh $certProxy"
     SubmitCommand $requestType $fileId $command
 }
 
@@ -71,7 +70,7 @@ proc SubmitCommand {requestType fileId command} {
     }
 
     set processId [pid $pipe]
-    log::log debug "\[process: $processId\] $command"
+    log::log notice "\[process: $processId\] $command"
 
     upvar #0 SrmProcesses($processId) process
 
