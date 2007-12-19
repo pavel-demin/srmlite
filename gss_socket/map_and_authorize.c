@@ -38,6 +38,8 @@ int main(int argc, char *argv[])
 
   fclose(contextFile);
 
+  unlink(argv[1]);
+
   majorStatus = gss_import_sec_context(&minorStatus,
                                        &gssContextBuffer,
                                        &gssContext);
