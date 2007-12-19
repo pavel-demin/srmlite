@@ -267,10 +267,16 @@ proc HttpdRespond {sock} {
             POST { set input $data(postdata) }
         }
 
+        fileevent $sock readable {}
+
         if {[catch {eval [list $mypath $sock $input]} result]} {
+            fileevent $sock readable [list HttpdRead $sock]
+
             HttpdError $sock 503
             HttpdLog $sock error $mypath: $result
         } else {
+            fileevent $sock readable [list HttpdRead $sock]
+
             puts $sock "HTTP/1.$data(version) 200 Data follows"
             puts $sock "Date: [HttpdDate [clock seconds]]"
             puts $sock "Content-Type: text/xml; charset=utf-8"
