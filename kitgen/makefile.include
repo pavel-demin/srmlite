@@ -27,10 +27,10 @@ O     ?=.o
 A     ?=.a
 SO    ?=.so
 
-GLOBUS_OPTS     = --prefix=$(OUTDIR) --with-flavor=gcc32 --with-buildopts="--static"
-GLOBUS_FLAVOR   = gcc32
+GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=gcc64 --with-buildopts="--static"
+GLOBUS_FLAVOR = gcc64
 
-GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
+GSS_OPTS = --disable-threads --enable-64bit --with-globus=$(OUTDIR)
 TLS_OPTS = --disable-threads --with-ssl-dir=$(OUTDIR)
 TCLX_OPTS = --disable-threads
 DICT_OPTS = --disable-threads

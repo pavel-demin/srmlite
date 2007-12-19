@@ -53,7 +53,7 @@ AC_DEFUN([SG_PACKAGE_GLOBUS],
   AC_MSG_CHECKING(if compiler supported by globus tools)
   case x$CC in
   xg++|xgcc)
-    GLOBUS_BASE_MODEL="gcc32dbg"
+    GLOBUS_BASE_MODEL="gcc32"
     ;;
   *)
     AC_MSG_ERROR([no ($CC)])
@@ -84,7 +84,7 @@ AC_DEFUN([SG_PACKAGE_GLOBUS],
   AC_MSG_CHECKING(if compiler supported by globus tools)
   case x$CC in
   xg++|xgcc)
-    GLOBUS_MODEL="gcc32dbg"
+    GLOBUS_MODEL="gcc32"
     ;;
   *)
     AC_MSG_ERROR([no ($CC)])
