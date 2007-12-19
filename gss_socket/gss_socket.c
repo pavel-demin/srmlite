@@ -655,6 +655,20 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
           fclose(contextFile);
         }
 
+        /* restore context deleted by gss_export_sec_context */
+        majorStatus = gss_import_sec_context(&minorStatus,
+                                             &statePtr->gssContext,
+                                             &gssContext);
+
+        if(majorStatus != GSS_S_COMPLETE)
+        {
+          globus_gss_assist_display_status(
+            stderr, "Failed to restore context: ",
+            majorStatus, minorStatus, 0);
+
+          Tcl_AppendResult(interp, "Failed to restore context", NULL);
+        }
+
         gss_release_buffer(&minorStatus, &contextBuffer);
       }
       else
