@@ -114,7 +114,12 @@ proc /srm/managerv1 {sock query} {
         return [SrmFaultBody $faultString $faultString]
     }
 
-    set userName [SrmGetUserName $sock]
+    if {[catch {SrmGetUserName $sock} userName]} {
+        HttpdLog $sock error $userName
+        return [SrmFaultBody $userName $errorInfo]
+    }
+
+    HttpdLog $sock notice {local user} $userName
 
     if {$userName == {}} {
         set result {Failed to map DN to local user}
