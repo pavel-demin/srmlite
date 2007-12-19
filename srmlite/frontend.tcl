@@ -114,9 +114,15 @@ proc /srm/managerv1 {sock query} {
         return [SrmFaultBody $faultString $faultString]
     }
 
-    set gssUser [fconfigure $sock -gssuser]
+    set userName [SrmGetUserName $sock]
 
-    if {[catch {eval [list $SoapCalls($methodName) $sock $gssUser] $argValues} result]} {
+    if {$userName == {}} {
+        set result {Failed to map DN to local user}
+        HttpdLog $sock error $result
+        return [SrmFaultBody $result $result]
+    }
+
+    if {[catch {eval [list $SoapCalls($methodName) $sock $userName] $argValues} result]} {
         HttpdLog $sock error $result
         return [SrmFaultBody $result $errorInfo]
     } else {
@@ -329,6 +335,9 @@ proc SrmCreateRequest {userName certProxies requestType SURLS {dstSURLS {}} {siz
         dict lappend request fileIds $fileId
 
         switch -- $requestType {
+            getUserName {
+                puts $State(in) [list getUserName $fileId $certProxy]
+            }
             get -
             put -
             advisoryDelete {
@@ -362,6 +371,35 @@ proc SrmSubmitTask {userName certProxies requestType SURLS {dstSURLS {}} {sizes 
     dict set SrmRequestTimer $requestId 0
 
     return [SrmGetRequestStatus {} $userName $requestId $requestType]
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmGetUserName {sock} {
+
+    set certProxy [fconfigure $sock -gssproxy]
+
+    set requestId [SrmCreateRequest {} $certProxy getUserName {}]
+
+    global SrmRequest$requestId
+    vwait SrmRequest$requestId
+
+    upvar #0 SrmRequest$requestId request
+
+    set requestState [dict get $request reqState]
+
+    switch -glob -- $requestState {
+        Failed {
+            set result {}
+        }
+        Done {
+            set result [dict get $request userName]
+        }
+    }
+
+    KillSrmRequest $requestId
+
+    return $result
 }
 
 # -------------------------------------------------------------------------
@@ -522,6 +560,30 @@ proc SrmSetState {requestId fileId newState} {
             log::log error "Unexpected state $requestState,$currentState,$newState"
         }
     }
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmUserNameReady {fileId userName} {
+
+    upvar #0 SrmFile$fileId file
+
+    if {![info exists file]} {
+        set faultString "SrmUserNameReady: unknown file id $fileId"
+        log::log error $faultString
+        return
+    }
+
+    set requestId [dict get $file requestId]
+    upvar #0 SrmRequest$requestId request
+
+    if {![info exists request]} {
+        set faultString "SrmUserNameReady: unknown request id $requestId"
+        log::log error $faultString
+        return
+    }
+
+    dict set request userName $userName
 }
 
 # -------------------------------------------------------------------------
@@ -718,6 +780,9 @@ proc GetInput {chan} {
         }
         Ready,advisoryDelete {
             SrmDeleteDone $fileId
+        }
+        Ready,getUserName {
+            SrmUserNameReady $fileId $output
         }
     }
 }

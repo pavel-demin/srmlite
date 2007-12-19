@@ -24,7 +24,7 @@ proc SrmGet {requestType fileId userName SURL} {
 
     set command "./setuid $userName ./url_get.sh [ExtractHostFile $SURL]"
 #    set command "./url_get.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $fileId {} $command
+    SubmitCommand $requestType $fileId $command
 }
 
 # -------------------------------------------------------------------------
@@ -33,7 +33,7 @@ proc SrmPut {requestType fileId userName SURL} {
 
     set command "./setuid $userName ./url_put.sh [ExtractHostFile $SURL]"
 #    set command "./url_put.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $fileId {} $command
+    SubmitCommand $requestType $fileId $command
 }
 
 # -------------------------------------------------------------------------
@@ -42,12 +42,21 @@ proc SrmAdvisoryDelete {requestType fileId userName SURL} {
 
     set command "./setuid $userName ./url_del.sh [ExtractHostFile $SURL]"
 #    set command "./url_put.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $fileId {} $command
+    SubmitCommand $requestType $fileId $command
 }
 
 # -------------------------------------------------------------------------
 
-proc SubmitCommand {requestType fileId certProxy command} {
+proc SrmGetUserName {requestType fileId certProxy} {
+
+    set command "./url_map.sh $certProxy"
+#    set command "./url_put.sh [ExtractHostFile $SURL]"
+    SubmitCommand $requestType $fileId $command
+}
+
+# -------------------------------------------------------------------------
+
+proc SubmitCommand {requestType fileId command} {
 
     global State
 
@@ -66,8 +75,7 @@ proc SubmitCommand {requestType fileId certProxy command} {
 
     upvar #0 SrmProcesses($processId) process
 
-    set process [dict create requestType $requestType fileId $fileId \
-        certProxy $certProxy output {}]
+    set process [dict create requestType $requestType fileId $fileId output {}]
 
     fconfigure $pipe -buffering none -blocking 0
     fileevent $pipe readable [list GetCommandOutput $requestType $fileId $processId $pipe]
@@ -131,10 +139,6 @@ proc Finish {requestType fileId processId pipe} {
 
     if {[info exists process]} {
         set output [dict get $process output]
-        set certProxy [dict get $process certProxy]
-        if {[file exists $certProxy]} {
-            file delete $certProxy
-        }
         unset process
     }
 
@@ -189,6 +193,9 @@ proc GetInput {chan} {
         }
         advisoryDelete {
             eval SrmAdvisoryDelete $line
+        }
+        getUserName {
+            eval SrmGetUserName $line
         }
         default {
             log::log error "Unknown request type $requestType"
