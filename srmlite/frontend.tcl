@@ -584,6 +584,8 @@ proc SrmUserNameReady {fileId userName} {
     }
 
     dict set request userName $userName
+
+    SrmSetState $requestId $fileId Done
 }
 
 # -------------------------------------------------------------------------
