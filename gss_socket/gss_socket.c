@@ -627,6 +627,9 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
     if(statePtr->gssContext != GSS_C_NO_CONTEXT)
     {
 
+      contextBuffer.length = 0;
+      contextBuffer.value = NULL;
+
       majorStatus = gss_export_sec_context(&minorStatus,
                                            &statePtr->gssContext,
                                            &contextBuffer);
@@ -669,6 +672,7 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
         }
 
         /* restore context deleted by gss_export_sec_context */
+/*
         majorStatus = gss_import_sec_context(&minorStatus,
                                              &contextBuffer,
                                              &statePtr->gssContext);
@@ -681,8 +685,13 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
 
           Tcl_AppendResult(interp, "Failed to restore context", NULL);
         }
+*/
 
-        gss_release_buffer(&minorStatus, &contextBuffer);
+        if(contextBuffer.value != NULL)
+        {
+          majorStatus = gss_release_buffer(&minorStatus, &contextBuffer);
+          contextBuffer.value = NULL;
+        }
       }
       else
       {
