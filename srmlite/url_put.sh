@@ -6,6 +6,10 @@ fileDst="$2"
 
 dirDst=`dirname $fileDst`
 
+sleep 1
+
 . url_common.sh
 
 checkFileDst $fileDst $dirDst
+
+touch $fileDst
