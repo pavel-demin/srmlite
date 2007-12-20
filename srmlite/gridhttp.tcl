@@ -8,7 +8,7 @@
 # See the file "license.terms" for information on usage and redistribution of
 # this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: gridhttp.tcl,v 1.4 2007-11-08 13:16:59 demin Exp $
+# RCS: @(#) $Id: gridhttp.tcl,v 1.5 2007-12-20 22:53:50 demin Exp $
 
 # Rough version history:
 # 1.0	Old http_get interface.
@@ -500,6 +500,7 @@ proc http::geturl { url args } {
     if {$state(-gssimport) ne ""} {
         set certProxy $state(-gssimport)
 	if {[catch {gss::import $s -gssimport $certProxy -server false} err]} {
+	    Finish $token "" 1
 	    cleanup $token
 	    return -code error $err
 	}
