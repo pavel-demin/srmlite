@@ -8,6 +8,8 @@ dirSrc=`dirname $fileSrc`
 
 . url_common.sh
 
+sleep 1
+
 checkFileDel $fileSrc $dirSrc
 
 rm -f $fileSrc
