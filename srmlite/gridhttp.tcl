@@ -8,7 +8,7 @@
 # See the file "license.terms" for information on usage and redistribution of
 # this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: gridhttp.tcl,v 1.5 2007-12-20 22:53:50 demin Exp $
+# RCS: @(#) $Id: gridhttp.tcl,v 1.6 2008-01-14 22:48:43 demin Exp $
 
 # Rough version history:
 # 1.0	Old http_get interface.
@@ -202,7 +202,7 @@ proc http::reset { token {why reset} } {
     set state(status) $why
     catch {fileevent $state(sock) readable {}}
     catch {fileevent $state(sock) writable {}}
-    Finish $token
+    Finish $token "" 1
     if {[info exists state(error)]} {
 	set errorlist $state(error)
 	unset state
