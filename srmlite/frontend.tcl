@@ -190,11 +190,11 @@ proc SrmUserNameReady {requestId userName} {
             HttpdResult $sock [SrmFaultBody $result $errorInfo]
             return
         } else {
-            HttpdResult $sock result
+            HttpdResult $sock $result
             return
         }
     } elseif {[info exists SoapOnLineCalls($methodName)]} {
-        if {[catch {eval [list $SoapOffLineCalls($methodName) $requestId] $argValues} result]} {
+        if {[catch {eval [list $SoapOnLineCalls($methodName) $requestId] $argValues} result]} {
             HttpdLog $sock error $result
             HttpdResult $sock [SrmFaultBody $result $errorInfo]
             return
@@ -427,7 +427,7 @@ proc SrmSubmitTask {requestId requestType SURLS {dstSURLS {}} {sizes {}} {certPr
 
 # -------------------------------------------------------------------------
 
-proc SrmGetFileMetaData {sock userName SURLS} {
+proc SrmGetFileMetaData {requestId SURLS} {
 
     SrmCreateRequest $requestId getFileMetaData $SURLS
 }
@@ -482,8 +482,8 @@ proc SrmGetRequestStatus {requestId inputRequestId {inputRequestType getRequestS
     set counter [dict get $inputRequest counter]
     incr counter
 
-    dict set request counter $counter
-    dict set request retryDeltaTime [expr {$counter / 4 * 5 + 1}]
+    dict set inputRequest counter $counter
+    dict set inputRequest retryDeltaTime [expr {$counter / 4 * 5 + 1}]
 
     return [SrmStatusBody $inputRequestType $inputRequestId]
 }
@@ -507,7 +507,7 @@ proc SrmSetFileStatus {requestId inputRequestId inputFileId newState} {
         return [SrmFaultBody $faultString $faultString]
     }
 
-    set fileIds [dict get $request fileIds]
+    set fileIds [dict get $inputRequest fileIds]
 
     if {[lsearch $fileIds $inputFileId] == -1} {
         set faultString "File $inputFileId is not part of request $inputRequestId"
