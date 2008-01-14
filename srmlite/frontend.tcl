@@ -368,7 +368,7 @@ proc SrmDeleteDone {fileId} {
 
 # -------------------------------------------------------------------------
 
-proc SrmCreateRequest {requestId requestType SURLS {dstSURLS {}} {sizes {}}} {
+proc SrmCreateRequest {requestId requestType SURLS {dstSURLS {}} {sizes {}} {certProxies {}}} {
 
     global State
 
@@ -418,9 +418,9 @@ proc SrmCreateRequest {requestId requestType SURLS {dstSURLS {}} {sizes {}}} {
 
 # -------------------------------------------------------------------------
 
-proc SrmSubmitTask {requestId requestType SURLS {dstSURLS {}} {sizes {}}} {
+proc SrmSubmitTask {requestId requestType SURLS {dstSURLS {}} {sizes {}} {certProxies {}}} {
 
-    SrmCreateRequest $requestId $requestType $SURLS $dstSURLS $sizes
+    SrmCreateRequest $requestId $requestType $SURLS $dstSURLS $sizes $certProxies
 
     return [SrmGetRequestStatus $requestId $requestId $requestType]
 }
@@ -438,7 +438,7 @@ proc SrmFileMetaDataReady {requestId} {
 
     global State
     upvar #0 SrmRequest$requestId request
-    
+
     set sock [dict get $request socket]
     set requestState [dict get $request reqState]
 
@@ -658,6 +658,10 @@ proc SrmPing {requestId} {
 
 proc SrmCopy {requestId srcSURLS dstSURLS dummy} {
 
+    upvar #0 SrmRequest$requestId request
+
+    set sock [dict get $request socket]
+
     set certProxies [list]
 
     foreach SURL $srcSURLS {
@@ -673,7 +677,7 @@ proc SrmCopy {requestId srcSURLS dstSURLS dummy} {
       }
     }
 
-    return [SrmSubmitTask $requestId copy $srcSURLS $dstSURLS]
+    return [SrmSubmitTask $requestId copy $srcSURLS $dstSURLS {} $certProxies]
 }
 
 # -------------------------------------------------------------------------
