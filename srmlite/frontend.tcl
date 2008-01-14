@@ -107,7 +107,7 @@ proc SrmGetUserName {sock requestId query} {
 
     dict set SrmRequestTimer $requestId 0
 
-    puts $State(in) [list getUserName $requestId $certProxy]
+    puts $State(in) [list getUserName $requestId $gssContext]
 }
 
 # -------------------------------------------------------------------------
@@ -133,7 +133,7 @@ proc SrmUserNameFailed {requestId userName} {
 
 proc SrmUserNameReady {requestId userName} {
 
-    global errorInfo SoapCalls
+    global errorInfo SoapOffLineCalls SoapOnLineCalls
     upvar #0 SrmRequest$requestId request
 
     if {![info exists request]} {
@@ -145,6 +145,7 @@ proc SrmUserNameReady {requestId userName} {
     dict set request userName $userName
 
     set sock [dict get $request socket]
+    set query [dict get $request query]
 
     upvar #0 Httpd$sock data
 
