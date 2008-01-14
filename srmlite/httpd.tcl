@@ -217,7 +217,6 @@ proc HttpdSockDone {sock close} {
     upvar #0 Httpd$sock data
 
     after cancel $data(cancel)
-    KillSrmRequest $data(requestId)
 
     set left [incr data(left) -1]
     unset data
@@ -353,6 +352,7 @@ proc HttpdError {sock code args} {
         flush $sock
     } reason
     HttpdLog $sock error $code $HttpdErrors($code) $args $reason
+    KillSrmRequest $data(requestId)
     HttpdSockDone $sock 1
 }
 
