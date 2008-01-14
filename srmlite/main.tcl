@@ -9,7 +9,6 @@ package require srmlite::cfg
 # -------------------------------------------------------------------------
 
 array set State {
-    requestId -2147483648
     logFileId {}
     in stdout
     out stdin

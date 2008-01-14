@@ -6,6 +6,7 @@
 array set HttpdErrors {
     204 {No Content}
     400 {Bad Request}
+    403 {Forbidden}
     404 {Not Found}
     408 {Request Timeout}
     411 {Length Required}
@@ -25,8 +26,9 @@ array set HttpdErrors {
 #  maxused:     The max # of requests for a socket
 
 array set Httpd {
+    requestId   -2147483648
     bufsize     32768
-    maxtime     60000
+    maxtime     10000
     maxused     25
     encoding    "utf-8"
 }
@@ -78,6 +80,15 @@ proc HttpdAccept {sock ipaddr {port {}}} {
 
 # -------------------------------------------------------------------------
 
+proc HttpdNewRequestId {} {
+
+    global Httpd
+
+    return [incr Httpd(requestId)]
+}
+
+# -------------------------------------------------------------------------
+
 # Initialize or reset the socket state
 
 proc HttpdReset {sock left} {
@@ -87,6 +98,7 @@ proc HttpdReset {sock left} {
     array set data [list state start linemode 1 version 0 left $left counter 0]
     set data(address) [lindex [fconfigure $sock -peername] 0]
     set data(cancel) [after $Httpd(maxtime) [list HttpdTimeout $sock]]
+    set data(requestId) [HttpdNewRequestId]
 
     gss::import $sock -server true
 
@@ -203,7 +215,10 @@ proc HttpdRead {sock} {
 proc HttpdSockDone {sock close} {
     global Httpd
     upvar #0 Httpd$sock data
+
     after cancel $data(cancel)
+    KillSrmRequest $data(requestId)
+
     set left [incr data(left) -1]
     unset data
     if {$close} {
@@ -230,7 +245,7 @@ proc HttpdTimeout {sock} {
 # generic dispatch mechanism.
 
 proc HttpdRespond {sock} {
-    global Httpd HttpdFiles HttpdUrlCache
+    global Httpd HttpdUrlCache
     upvar #0 Httpd$sock data
 
     regsub {(^(http|https|httpg)://[^/]+)?} $data(url) {} url
@@ -238,18 +253,9 @@ proc HttpdRespond {sock} {
         set mypath $HttpdUrlCache($url)
     } else {
         set procpath [HttpdUrl2File $url]
-        set filepath [file join $Httpd(root) [string trimleft $procpath /]]
 
-        if {[file isdirectory $filepath]} {
-            set filepath [file join $filepath $Httpd(default)]
-        }
-
-        if {[info exists HttpdFiles($filepath)] &&
-            [file readable $filepath]} {
-            set HttpdUrlCache($url) $filepath
-            set mypath $filepath
-        } elseif {[info proc $procpath] eq "$procpath" &&
-                  [string length $procpath] != 0} {
+        if {[info proc $procpath] eq "$procpath" &&
+            [string length $procpath] != 0} {
             set HttpdUrlCache($url) $procpath
             set mypath $procpath
         } else {
@@ -267,71 +273,11 @@ proc HttpdRespond {sock} {
             POST { set input $data(postdata) }
         }
 
-        fileevent $sock readable {}
+        set requestId $data(requestId)
 
-        if {[catch {eval [list $mypath $sock $input]} result]} {
-            fileevent $sock readable [list HttpdRead $sock]
-
+        if {[catch {eval [list $mypath $sock $requestId $input]} result]} {
             HttpdError $sock 503
             HttpdLog $sock error $mypath: $result
-        } else {
-            fileevent $sock readable [list HttpdRead $sock]
-
-            puts $sock "HTTP/1.$data(version) 200 Data follows"
-            puts $sock "Date: [HttpdDate [clock seconds]]"
-            puts $sock "Content-Type: text/xml; charset=utf-8"
-            puts $sock "Content-Length: [string length $result]"
-
-            ## Should also close socket if recvd connection close header
-            set close [expr {$data(left) == 0}]
-
-            if {$close} {
-                puts $sock "Connection close:"
-            } elseif {$data(version) == 1 && [info exists data(mime,connection)]} {
-                if {$data(mime,connection) == "Keep-Alive"} {
-                    set close 0
-                    puts $sock "Connection: Keep-Alive"
-                }
-            } else {
-                set close 1
-            }
-
-            puts $sock ""
-            puts $sock $result
-            flush $sock
-            HttpdSockDone $sock $close
-        }
-    } elseif {[file readable $mypath]} {
-        puts $sock "HTTP/1.$data(version) 200 Data follows"
-        puts $sock "Date: [HttpdDate [clock seconds]]"
-        puts $sock "Last-Modified: [HttpdDate [file mtime $mypath]]"
-        puts $sock "Content-Type: [HttpdContentType $mypath]"
-        puts $sock "Content-Length: [file size $mypath]"
-
-        ## Should also close socket if recvd connection close header
-        set close [expr {$data(left) == 0}]
-
-        if {$close} {
-            puts $sock "Connection close:"
-        } elseif {$data(version) == 1 && [info exists data(mime,connection)]} {
-            if {$data(mime,connection) == "Keep-Alive"} {
-                set close 0
-                puts $sock "Connection: Keep-Alive"
-            }
-        } else {
-            set close 1
-        }
-
-        puts $sock ""
-        flush $sock
-
-        if {$data(proto) != "HEAD"} {
-            set in [open $mypath]
-            fconfigure $sock -translation binary
-            fconfigure $in -translation binary
-            fcopy $in $sock -command [list HttpdCopyDone $in $sock $close]
-        } else {
-            HttpdSockDone $sock $close
         }
     } else {
         HttpdError $sock 404 $mypath
@@ -340,29 +286,34 @@ proc HttpdRespond {sock} {
 
 # -------------------------------------------------------------------------
 
-# Callback when file is done being output to client
-# in:  The fd for the file being copied
-# sock: The client socket
-# close: close the socket if true
-# bytes: The # of bytes copied
-# error:  The error message (if any)
+proc HttpdResult {sock result} {
 
-proc HttpdCopyDone {in sock close bytes {error {}}} {
-    global Httpd
+    global Httpd HttpdUrlCache
     upvar #0 Httpd$sock data
-    close $in
-    HttpdLog $sock notice Done $bytes bytes
+
+    puts $sock "HTTP/1.$data(version) 200 Data follows"
+    puts $sock "Date: [HttpdDate [clock seconds]]"
+    puts $sock "Content-Type: text/xml; charset=utf-8"
+    puts $sock "Content-Length: [string length $result]"
+
+    ## Should also close socket if recvd connection close header
+    set close [expr {$data(left) == 0}]
+
+    if {$close} {
+        puts $sock "Connection close:"
+    } elseif {$data(version) == 1 && [info exists data(mime,connection)]} {
+        if {$data(mime,connection) == "Keep-Alive"} {
+            set close 0
+            puts $sock "Connection: Keep-Alive"
+        }
+    } else {
+        set close 1
+    }
+
+    puts $sock ""
+    puts $sock $result
+    flush $sock
     HttpdSockDone $sock $close
-}
-
-# -------------------------------------------------------------------------
-
-proc HttpdContentType {path} {
-    global HttpdMimeTypes
-
-    set type text/plain
-    catch {set type $HttpdMimeTypes([file extension $path])}
-    return $type
 }
 
 # -------------------------------------------------------------------------
@@ -401,8 +352,8 @@ proc HttpdError {sock code args} {
         puts -nonewline $sock $head\n$message
         flush $sock
     } reason
-    HttpdSockDone $sock 1
     HttpdLog $sock error $code $HttpdErrors($code) $args $reason
+    HttpdSockDone $sock 1
 }
 
 # -------------------------------------------------------------------------

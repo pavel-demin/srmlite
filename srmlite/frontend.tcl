@@ -37,15 +37,20 @@ array set HttpdFiles {
 
 # -------------------------------------------------------------------------
 
-array set SoapCalls {
+array set SoapOffLineCalls {
     getRequestStatus SrmGetRequestStatus
     setFileStatus SrmSetFileStatus
-    getFileMetaData SrmGetFileMetaData
     advisoryDelete SrmAdvisoryDelete
     ping SrmPing
     copy SrmCopy
     get SrmGet
     put SrmPut
+}
+
+# -------------------------------------------------------------------------
+
+array set SoapOnLineCalls {
+    getFileMetaData SrmGetFileMetaData
 }
 
 # -------------------------------------------------------------------------
@@ -69,9 +74,78 @@ set PermDict {
 
 # -------------------------------------------------------------------------
 
-proc /srm/managerv1 {sock query} {
+proc /srm/managerv1 {sock requestId query} {
+
+    if {[catch {SrmGetUserName $sock $requestId $query} result]} {
+        HttpdLog $sock error $result
+        HttpdError $sock 403 "Acess is not allowed"
+        return
+    }
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmGetUserName {sock requestId query} {
+
+    global State SrmRequestTimer
+
+    set gssContext [fconfigure $sock -gsscontext]
+
+    upvar #0 SrmRequest$requestId request
+
+    set clockStart [clock seconds]
+    set clockFinish [clock scan {2 hours} -base $clockStart]
+
+    set submitTime [clock format $clockStart -format {%Y-%m-%dT%H:%M:%SZ} -gmt yes]
+    set startTime $submitTime
+    set finishTime [clock format $clockFinish -format {%Y-%m-%dT%H:%M:%SZ} -gmt yes]
+
+    set request [dict create socket $sock query $query userName {} \
+        reqState Pending requestType {} \
+        submitTime $submitTime startTime $startTime finishTime $finishTime \
+        errorMessage {} retryDeltaTime 1 fileIds {} counter 1]
+
+    dict set SrmRequestTimer $requestId 0
+
+    puts $State(in) [list getUserName $requestId $certProxy]
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmUserNameFailed {requestId userName} {
+
+    upvar #0 SrmRequest$requestId request
+
+    if {![info exists request]} {
+        set faultString "SrmUserNameFailed: unknown request id $requestId"
+        log::log error $faultString
+        return
+    }
+
+    set sock [dict get $request socket]
+
+    HttpdError $sock 403 "Acess is not allowed"
+
+    KillSrmRequest $requestId
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmUserNameReady {requestId userName} {
 
     global errorInfo SoapCalls
+    upvar #0 SrmRequest$requestId request
+
+    if {![info exists request]} {
+        set faultString "SrmUserNameReady: unknown request id $requestId"
+        log::log error $faultString
+        return
+    }
+
+    dict set request userName $userName
+
+    set sock [dict get $request socket]
+
     upvar #0 Httpd$sock data
 
     if {[info exists data(mime,soapaction)]} {
@@ -83,7 +157,8 @@ proc /srm/managerv1 {sock query} {
 
     if {[catch {dom parse $query} document]} {
        HttpdLog $sock error $document
-       return [SrmFaultBody $document $errorInfo]
+       HttpdResult $sock [SrmFaultBody $document $errorInfo]
+       return
     }
 
     set root [$document documentElement]
@@ -108,30 +183,26 @@ proc /srm/managerv1 {sock query} {
 
     HttpdLog $sock notice {SOAP call} $methodName $argValues
 
-    if {![info exists SoapCalls($methodName)]} {
+    if {[info exists SoapOffLineCalls($methodName)]} {
+        if {[catch {eval [list $SoapOffLineCalls($methodName) $requestId] $argValues} result]} {
+            HttpdLog $sock error $result
+            HttpdResult $sock [SrmFaultBody $result $errorInfo]
+            return
+        } else {
+            HttpdResult $sock result
+            return
+        }
+    } elseif {[info exists SoapOnLineCalls($methodName)]} {
+        if {[catch {eval [list $SoapOffLineCalls($methodName) $requestId] $argValues} result]} {
+            HttpdLog $sock error $result
+            HttpdResult $sock [SrmFaultBody $result $errorInfo]
+            return
+        }
+    } else {
         set faultString "Unknown SOAP call $methodName"
         HttpdLog $sock error $faultString
-        return [SrmFaultBody $faultString $faultString]
-    }
-
-    if {[catch {SrmGetUserName $sock} userName]} {
-        HttpdLog $sock error $userName
-        return [SrmFaultBody $userName $errorInfo]
-    }
-
-    HttpdLog $sock notice {local user} $userName
-
-    if {$userName == {}} {
-        set result {Failed to map DN to local user}
-        HttpdLog $sock error $result
-        return [SrmFaultBody $result $result]
-    }
-
-    if {[catch {eval [list $SoapCalls($methodName) $sock $userName] $argValues} result]} {
-        HttpdLog $sock error $result
-        return [SrmFaultBody $result $errorInfo]
-    } else {
-        return $result
+        HttpdResult $sock [SrmFaultBody $faultString $faultString]
+        return
     }
 }
 
@@ -181,15 +252,6 @@ proc ConvertSURL2TURL {url} {
     set file [lindex [ConvertSURL2HostPortFile $url] 2]
 
     return "gsiftp://[TransferHost]:2811/$file"
-}
-
-# -------------------------------------------------------------------------
-
-proc NewRequestId {} {
-
-    global State
-
-    return [incr State(requestId)]
 }
 
 # -------------------------------------------------------------------------
@@ -305,27 +367,19 @@ proc SrmDeleteDone {fileId} {
 
 # -------------------------------------------------------------------------
 
-proc SrmCreateRequest {userName certProxies requestType SURLS {dstSURLS {}} {sizes {}}} {
+proc SrmCreateRequest {requestId requestType SURLS {dstSURLS {}} {sizes {}}} {
 
     global State
 
-    set requestId [NewRequestId]
     upvar #0 SrmRequest$requestId request
 
-    set clockStart [clock seconds]
-    set clockFinish [clock scan {2 hours} -base $clockStart]
+    dict set request requestType $requestType
 
-    set submitTime [clock format $clockStart -format {%Y-%m-%dT%H:%M:%SZ} -gmt yes]
-    set startTime $submitTime
-    set finishTime [clock format $clockFinish -format {%Y-%m-%dT%H:%M:%SZ} -gmt yes]
-
-    set request [dict create reqState Pending requestType $requestType \
-        submitTime $submitTime startTime $startTime finishTime $finishTime \
-        errorMessage {} retryDeltaTime 1 fileIds {} userName $userName counter 1]
+    set userName [dict get $request userName]
 
     foreach SURL $SURLS dstSURL $dstSURLS size $sizes certProxy $certProxies {
 
-        set fileId [NewRequestId]
+        set fileId [HttpdNewRequestId]
         upvar #0 SrmFile$fileId file
 
         if {$size == {}} {
@@ -340,9 +394,6 @@ proc SrmCreateRequest {userName certProxies requestType SURLS {dstSURLS {}} {siz
         dict lappend request fileIds $fileId
 
         switch -- $requestType {
-            getUserName {
-                puts $State(in) [list getUserName $fileId $certProxy]
-            }
             get -
             put -
             advisoryDelete {
@@ -362,147 +413,121 @@ proc SrmCreateRequest {userName certProxies requestType SURLS {dstSURLS {}} {siz
             }
         }
     }
-    return $requestId
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmSubmitTask {userName certProxies requestType SURLS {dstSURLS {}} {sizes {}}} {
+proc SrmSubmitTask {requestId requestType SURLS {dstSURLS {}} {sizes {}}} {
 
-    global SrmRequestTimer
+    SrmCreateRequest $requestId $requestType $SURLS $dstSURLS $sizes
 
-    set requestId [SrmCreateRequest $userName $certProxies $requestType $SURLS $dstSURLS $sizes]
-
-    dict set SrmRequestTimer $requestId 0
-
-    return [SrmGetRequestStatus {} $userName $requestId $requestType]
-}
-
-# -------------------------------------------------------------------------
-
-proc SrmGetUserName {sock} {
-
-    set gssContext [fconfigure $sock -gsscontext]
-
-    set requestId [SrmCreateRequest {} $gssContext getUserName {}]
-
-    global SrmRequest$requestId
-    vwait SrmRequest$requestId
-
-    upvar #0 SrmRequest$requestId request
-
-    set requestState [dict get $request reqState]
-
-    switch -glob -- $requestState {
-        Failed {
-            set result {}
-        }
-        Done {
-            set result [dict get $request userName]
-        }
-    }
-
-    KillSrmRequest $requestId
-
-    return $result
+    return [SrmGetRequestStatus $requestId $requestId $requestType]
 }
 
 # -------------------------------------------------------------------------
 
 proc SrmGetFileMetaData {sock userName SURLS} {
 
-    set requestId [SrmCreateRequest $userName {} getFileMetaData $SURLS]
+    SrmCreateRequest $requestId getFileMetaData $SURLS
+}
 
-    global SrmRequest$requestId
-    vwait SrmRequest$requestId
+# -------------------------------------------------------------------------
 
+proc SrmFileMetaDataReady {requestId} {
+
+    global State
     upvar #0 SrmRequest$requestId request
-
+    
+    set sock [dict get $request socket]
     set requestState [dict get $request reqState]
 
     switch -glob -- $requestState {
         Failed {
             set faultString [dict get $request errorMessage]
-            set result [SrmFaultBody $faultString $faultString]
+            HttpdResult $sock [SrmFaultBody $faultString $faultString]
         }
         Done {
-            set result [SrmFileMetaDataBody $requestId]
+            HttpdResult $sock [SrmFileMetaDataBody $requestId]
         }
     }
 
     KillSrmRequest $requestId
-
-    return $result
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmGetRequestStatus {sock userName requestId {requestType getRequestStatus}} {
+proc SrmGetRequestStatus {requestId inputRequestId {inputRequestType getRequestStatus}} {
 
     global State
+    upvar #0 SrmRequest$inputRequestId inputRequest
+
+    if {![info exists inputRequest]} {
+        set faultString "Unknown request id $inputRequestId"
+        log::log error $faultString
+        return [SrmFaultBody $faultString $faultString]
+    }
+
     upvar #0 SrmRequest$requestId request
 
-    if {![info exists request]} {
-        set faultString "Unknown request id $requestId"
+    set inputUserName [dict get $inputRequest userName]
+    set userName [dict get $request userName]
+
+    if {![string equal $inputUserName $userName]} {
+        set faultString "User $inputUserName does not have permission to access request $inputRequestId"
         log::log error $faultString
         return [SrmFaultBody $faultString $faultString]
     }
 
-    set requestUserName [dict get $request userName]
-
-    if {![string equal $requestUserName $userName]} {
-        set faultString "User $userName does not have permission to access request $requestId"
-        log::log error $faultString
-        return [SrmFaultBody $faultString $faultString]
-    }
-
-    set counter [dict get $request counter]
+    set counter [dict get $inputRequest counter]
     incr counter
 
     dict set request counter $counter
     dict set request retryDeltaTime [expr {$counter / 4 * 5 + 1}]
 
-    return [SrmStatusBody $requestType $requestId]
+    return [SrmStatusBody $inputRequestType $inputRequestId]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmSetFileStatus {sock userName requestId fileId newState} {
+proc SrmSetFileStatus {requestId inputRequestId inputFileId newState} {
 
-    upvar #0 SrmRequest$requestId request
-    upvar #0 SrmFile$fileId file
+    upvar #0 SrmRequest$inputRequestId inputRequest
+    upvar #0 SrmFile$inputFileId inputFile
 
-    if {![info exists request]} {
-        set faultString "Unknown request id $requestId"
+    if {![info exists inputRequest]} {
+        set faultString "Unknown request id $inputRequestId"
         log::log error $faultString
         return [SrmFaultBody $faultString $faultString]
     }
 
-    if {![info exists file]} {
-        set faultString "Unknown file id $fileId"
+    if {![info exists inputFile]} {
+        set faultString "Unknown file id $inputFileId"
         log::log error $faultString
         return [SrmFaultBody $faultString $faultString]
     }
 
     set fileIds [dict get $request fileIds]
 
-    if {[lsearch $fileIds $fileId] == -1} {
-        set faultString "File $fileId is not part of request $requestId"
+    if {[lsearch $fileIds $inputFileId] == -1} {
+        set faultString "File $inputFileId is not part of request $inputRequestId"
         log::log error $faultString
         return [SrmFaultBody $faultString $faultString]
     }
 
-    set requestUserName [dict get $request userName]
+    upvar #0 SrmRequest$requestId request
 
-    if {![string equal $requestUserName $userName]} {
-        set faultString "User $userName does not have permission to update request $requestId"
+    set inputUserName [dict get $inputRequest userName]
+    set userName [dict get $request userName]
+
+    if {![string equal $inputUserName $userName]} {
+        set faultString "User $inputUserName does not have permission to update request $inputRequestId"
         log::log error $faultString
         return [SrmFaultBody $faultString $faultString]
     }
 
-    SrmSetState $requestId $fileId $newState
+    SrmSetState $inputRequestId $inputFileId $newState
 
-    return [SrmStatusBody setFileStatus $requestId]
+    return [SrmStatusBody setFileStatus $inputRequestId]
 }
 
 # -------------------------------------------------------------------------
@@ -547,6 +572,9 @@ proc SrmSetState {requestId fileId newState} {
             dict set file state Done
             if {[SrmIsRequestDone $requestId]} {
                 dict set request reqState Done
+                if {[string equal $requestType getFileMetaData]} {
+                    SrmFileMetaDataReady $requestId
+                }
             }
             if {[string equal $requestType copy]} {
                 SrmCallStop $fileId
@@ -565,32 +593,6 @@ proc SrmSetState {requestId fileId newState} {
             log::log error "Unexpected state $requestState,$currentState,$newState"
         }
     }
-}
-
-# -------------------------------------------------------------------------
-
-proc SrmUserNameReady {fileId userName} {
-
-    upvar #0 SrmFile$fileId file
-
-    if {![info exists file]} {
-        set faultString "SrmUserNameReady: unknown file id $fileId"
-        log::log error $faultString
-        return
-    }
-
-    set requestId [dict get $file requestId]
-    upvar #0 SrmRequest$requestId request
-
-    if {![info exists request]} {
-        set faultString "SrmUserNameReady: unknown request id $requestId"
-        log::log error $faultString
-        return
-    }
-
-    dict set request userName $userName
-
-    SrmSetState $requestId $fileId Done
 }
 
 # -------------------------------------------------------------------------
@@ -639,21 +641,21 @@ proc SrmIsRequestDone {requestId} {
 
 # -------------------------------------------------------------------------
 
-proc SrmAdvisoryDelete {sock userName srcSURLS} {
+proc SrmAdvisoryDelete {requestId srcSURLS} {
 
-    return [SrmSubmitTask $userName {} advisoryDelete $srcSURLS]
+    return [SrmSubmitTask $requestId advisoryDelete $srcSURLS]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmPing {sock userName} {
+proc SrmPing {requestId} {
 
     return [SrmPingResponseBody]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmCopy {sock userName srcSURLS dstSURLS dummy} {
+proc SrmCopy {requestId srcSURLS dstSURLS dummy} {
 
     set certProxies [list]
 
@@ -670,21 +672,21 @@ proc SrmCopy {sock userName srcSURLS dstSURLS dummy} {
       }
     }
 
-    return [SrmSubmitTask $userName $certProxies copy $srcSURLS $dstSURLS]
+    return [SrmSubmitTask $requestId copy $srcSURLS $dstSURLS]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmGet {sock userName srcSURLS protocols} {
+proc SrmGet {requestId srcSURLS protocols} {
 
-    return [SrmSubmitTask $userName {} get $srcSURLS]
+    return [SrmSubmitTask $requestId get $srcSURLS]
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmPut {sock userName srcSURLS dstSURLS sizes wantPermanent protocols} {
+proc SrmPut {requestId srcSURLS dstSURLS sizes wantPermanent protocols} {
 
-    return [SrmSubmitTask $userName {} put $srcSURLS $dstSURLS $sizes]
+    return [SrmSubmitTask $requestId put $srcSURLS $dstSURLS $sizes]
 }
 
 # -------------------------------------------------------------------------
@@ -762,34 +764,29 @@ proc GetInput {chan} {
 
     set state [lindex $line 0]
     set requestType [lindex $line 1]
-    set fileId [lindex $line 2]
+    set uniqueId [lindex $line 2]
     set output [lindex $line 3]
 
-    upvar #0 SrmFile$fileId file
-
-    if {![info exists file]} {
-        set faultString "GetInput: unknown file id $fileId"
-        log::log debug $faultString
-        return
-    }
-
     switch -glob -- $state,$requestType {
+        Failed,getUserName {
+            SrmUserNameFailed $uniqueId $output
+        }
         Failed,* {
-            SrmFailed $fileId $output
+            SrmFailed $uniqueId $output
+        }
+        Ready,getUserName {
+            SrmUserNameReady $uniqueId $output
         }
         Ready,get {
             set permMode [string map $PermDict [lindex $output 0]]
             set stat [lreplace $output 0 1 $permMode]
-            SrmReadyToGet $fileId $stat false
+            SrmReadyToGet $uniqueId $stat false
         }
         Ready,put {
-            SrmReadyToPut $fileId false
+            SrmReadyToPut $uniqueId false
         }
         Ready,advisoryDelete {
-            SrmDeleteDone $fileId
-        }
-        Ready,getUserName {
-            SrmUserNameReady $fileId $output
+            SrmDeleteDone $uniqueId
         }
     }
 }
