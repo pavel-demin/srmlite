@@ -126,7 +126,7 @@ proc SrmUserNameFailed {requestId userName} {
 
     HttpdError $sock 403 "Acess is not allowed"
 
-    KillSrmRequest $requestId
+#    KillSrmRequest $requestId
 }
 
 # -------------------------------------------------------------------------
@@ -765,7 +765,7 @@ proc GetInput {chan} {
         return
     }
 
-    log::log debug $line
+    log::log notice $line
 
     set state [lindex $line 0]
     set requestType [lindex $line 1]
