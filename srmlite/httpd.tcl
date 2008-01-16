@@ -28,7 +28,7 @@ array set HttpdErrors {
 array set Httpd {
     requestId   -2147483648
     bufsize     32768
-    maxtime     10000
+    maxtime     60000
     maxused     25
     encoding    "utf-8"
 }
@@ -274,7 +274,10 @@ proc HttpdRespond {sock} {
 
         set requestId $data(requestId)
 
+        fileevent $sock readable {}
+
         if {[catch {eval [list $mypath $sock $requestId $input]} result]} {
+            fileevent $sock readable [list HttpdRead $sock]
             HttpdError $sock 503
             HttpdLog $sock error $mypath: $result
         }
@@ -289,6 +292,8 @@ proc HttpdResult {sock result} {
 
     global Httpd HttpdUrlCache
     upvar #0 Httpd$sock data
+
+    fileevent $sock readable [list HttpdRead $sock]
 
     puts $sock "HTTP/1.$data(version) 200 Data follows"
     puts $sock "Date: [HttpdDate [clock seconds]]"
