@@ -49,7 +49,7 @@ proc SrmCall {fileId serviceURL requestType args} {
     set command [list SrmCallCommand $fileId $requestType]
 
     if {[catch {::http::geturl $serviceURL -query $query \
-        -timeout 30000 -gssimport $certProxy \
+        -timeout 60000 -gssimport $certProxy \
         -type $type -headers $headers -command $command} result]} {
         log::log error "SrmCall: $result"
         SrmFailed $fileId "Error while connecting remote SRM: $result"
@@ -209,7 +209,8 @@ proc SrmCallStop {fileId} {
     set remoteRequestId [dict get $client remoteRequestId]
     set remoteFileId [dict get $client remoteFileId]
 
-    if {![string equal $remoteRequestId {}] &&
+    if {![string equal $certProxy {}] &&
+        ![string equal $remoteRequestId {}] &&
         ![string equal $remoteFileId {}]} {
 
         set query [SrmSetFileStatusBody $remoteRequestId $remoteFileId Done]
@@ -219,10 +220,11 @@ proc SrmCallStop {fileId} {
         set command [list SrmCallStopCommand $fileId]
 
         if {[catch {::http::geturl $serviceURL -query $query \
-            -timeout 30000 -gssimport $certProxy \
+            -timeout 60000 -gssimport $certProxy \
             -type $type -headers $headers -command $command} result]} {
             log::log error "SrmCallStop: $result"
-            SrmFailed $fileId "Error while connecting remote SRM: $result"
+#            SrmFailed $fileId "Error while connecting remote SRM: $result"
+            SrmCallStopCommand $fileId {}
         }
     } else {
         SrmCallStopCommand $fileId {}
