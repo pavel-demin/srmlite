@@ -282,6 +282,7 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
         copy,false {
             set dstSURL $TURL
             set size [lindex $stat 3]
+            set dstSURL [string map {managerv2 managerv1} $dstSURL]
             regexp {srm://.*/srm/managerv1} $dstSURL serviceURL
             set call [list SrmCall $fileId $serviceURL put $dstSURL $size]
             dict set file afterId [after 0 $call]
@@ -328,6 +329,7 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
     switch -- $requestType,$isRemote {
         copy,false {
             set srcSURL $SURL
+            set srcSURL [string map {managerv2 managerv1} $srcSURL]
             regexp {srm://.*/srm/managerv1} $srcSURL serviceURL
             set call [list SrmCall $fileId $serviceURL get $srcSURL]
             dict set file afterId [after 0 $call]
@@ -622,6 +624,14 @@ proc SrmFailed {fileId errorMessage} {
     dict set request errorMessage $errorMessage
 
     SrmSetState $requestId $fileId Failed
+
+
+    set requestType [dict get $request requestType]
+    set sock [dict get $request socket]
+
+    if {[string equal $requestType getFileMetaData]} {
+        HttpdResult $sock [SrmFaultBody $errorMessage $errorMessage]
+    }
 }
 
 # -------------------------------------------------------------------------
