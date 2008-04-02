@@ -60,11 +60,11 @@ dict with request {
       <state xsi:type='xsd:string'>$${state}</state>
       <fileId xsi:type='xsd:int'>$${fileId}</fileId>
 @@
-        }
-        if {![string equal $TURL {}]} {
+            if {![string equal $TURL {}] && [string equal $state Ready]} {
 @@
       <TURL xsi:type='xsd:string'>$${TURL}</TURL>
 @@
+            }
         }
 @@
       <estSecondsToStart xsi:type='xsd:int'>0</estSecondsToStart>
