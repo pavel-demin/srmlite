@@ -631,6 +631,7 @@ proc SrmFailed {fileId errorMessage} {
 
     if {[string equal $requestType getFileMetaData]} {
         HttpdResult $sock [SrmFaultBody $errorMessage $errorMessage]
+        KillSrmRequest $requestId
     }
 }
 
@@ -734,10 +735,13 @@ proc KillSrmRequest {requestId} {
         dict unset SrmRequestTimer $requestId
     }
 
-    set requestType [dict get $request requestType]
-
     if {[info exists request]} {
-        foreach fileId [dict get $request fileIds] {
+        set requestType [dict get $request requestType]
+        set fileIds [dict get $request fileIds]
+
+        unset request
+
+        foreach fileId $fileIds {
             upvar #0 SrmFile$fileId file
 
             if {[string equal $requestType copy]} {
@@ -749,7 +753,6 @@ proc KillSrmRequest {requestId} {
                 unset file
             }
         }
-        unset request
     }
 }
 
