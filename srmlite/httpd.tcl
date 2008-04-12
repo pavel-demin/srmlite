@@ -352,7 +352,7 @@ proc HttpdError {sock code args} {
     # Because there is an error condition, the socket may be "dead"
 
     catch {
-        fconfigure $sock  -translation crlf
+        fconfigure $sock -translation crlf
         puts -nonewline $sock $head\n$message
         flush $sock
     } reason
