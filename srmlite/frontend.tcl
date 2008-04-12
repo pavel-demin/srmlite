@@ -263,12 +263,24 @@ proc SrmReadyToGet {fileId stat isRemote {srcTURL {}}} {
 
     upvar #0 SrmFile$fileId file
 
+    if {![info exists file]} {
+        set faultString "SrmReadyToGet: unknown file id $fileId"
+        log::log error $faultString
+        return
+    }
+
     set SURL [dict get $file SURL]
     set TURL [dict get $file TURL]
     set certProxy [dict get $file certProxy]
     set requestId [dict get $file requestId]
 
     upvar #0 SrmRequest$requestId request
+
+    if {![info exists request]} {
+        set faultString "SrmReadyToGet: unknown request id $requestId"
+        log::log error $faultString
+        return
+    }
 
     set requestType [dict get $request requestType]
     set userName [dict get $request userName]
@@ -316,12 +328,24 @@ proc SrmReadyToPut {fileId isRemote {dstTURL {}}} {
 
     upvar #0 SrmFile$fileId file
 
+    if {![info exists file]} {
+        set faultString "SrmReadyToPut: unknown file id $fileId"
+        log::log error $faultString
+        return
+    }
+
     set SURL [dict get $file SURL]
     set TURL [dict get $file TURL]
     set certProxy [dict get $file certProxy]
     set requestId [dict get $file requestId]
 
     upvar #0 SrmRequest$requestId request
+
+    if {![info exists request]} {
+        set faultString "SrmReadyToPut: unknown request id $requestId"
+        log::log error $faultString
+        return
+    }
 
     set requestType [dict get $request requestType]
     set userName [dict get $request userName]
@@ -363,7 +387,21 @@ proc SrmDeleteDone {fileId} {
 
     upvar #0 SrmFile$fileId file
 
+    if {![info exists file]} {
+        set faultString "SrmDeleteDone: unknown file id $fileId"
+        log::log error $faultString
+        return
+    }
+
     set requestId [dict get $file requestId]
+
+    upvar #0 SrmRequest$requestId request
+
+    if {![info exists request]} {
+        set faultString "SrmDeleteDone: unknown request id $requestId"
+        log::log error $faultString
+        return
+    }
 
     SrmSetState $requestId $fileId Done
 }
