@@ -1,3 +1,6 @@
+package require dict
+package require g2lite
+
 # -------------------------------------------------------------------------
 
 proc InitTemplateHeaders {} {
