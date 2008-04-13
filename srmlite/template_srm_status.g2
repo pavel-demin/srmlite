@@ -28,23 +28,27 @@ dict with request {
     <id3 id='id3' soapenc:root='0' xsi:type='xsd:dateTime'>$${finishTime}</id3>
     <id4 id='id4' soapenc:root='0' xsi:type='soapenc:Array' soapenc:arrayType='ns5:RequestFileStatus[$${filesLength}]'>
 @@
-    set id 4
-    foreach fileId $fileIds {
+}
 
-        upvar #0 SrmFile$fileId file
-        incr id
+set fileIds [dict get $request fileIds]
+set id 4
+foreach fileId $fileIds {
+
+    incr id
 @@
       <i href='#id$${id}'></i>
 @@
-    }
+}
 @@
     </id4>
 @@
-    set id 4
-    foreach fileId $fileIds {
+set id 4
+foreach fileId $fileIds {
 
-        incr id
-        dict with file {
+    upvar #0 SrmFile$fileId file
+    incr id
+
+    dict with file {
 @@
     <id$${id} id='id$${id}' soapenc:root='0' xsi:type='ns5:RequestFileStatus'>
       <SURL xsi:type='xsd:string'>$${SURL}</SURL>
@@ -60,12 +64,12 @@ dict with request {
       <state xsi:type='xsd:string'>$${state}</state>
       <fileId xsi:type='xsd:int'>$${fileId}</fileId>
 @@
-            if {![string equal $TURL {}] && [string equal $state Ready]} {
+        if {![string equal $TURL {}] && [string equal $state Ready]} {
 @@
       <TURL xsi:type='xsd:string'>$${TURL}</TURL>
 @@
-            }
         }
+    }
 @@
       <estSecondsToStart xsi:type='xsd:int'>0</estSecondsToStart>
       <sourceFilename xsi:type='xsd:string'></sourceFilename>
@@ -73,9 +77,8 @@ dict with request {
       <queueOrder xsi:type='xsd:int'>0</queueOrder>
     </id$${id}>
 @@
-    }
+}
 @@
   </soap:Body>
 </soap:Envelope>
 @@
-}
