@@ -180,7 +180,7 @@ proc HttpdRead {sock} {
             }
             -1,* {
                 if {[eof $sock]} {
-                    HttpdLog $sock error {Broken connection fetching request}
+                    HttpdLog $sock debug {Broken connection fetching request}
                     HttpdSockDone $sock 1
                 } else {
                     HttpdLog $sock warning {Partial read, retrying...}
