@@ -14,11 +14,13 @@ dict with request {
     </n:getFileMetaDataResponse>
     <id0 id='id0' soapenc:root='0' xsi:type='soapenc:Array' soapenc:arrayType='ns5:FileMetaData[2]'>
 @@
-    set id 0
-    foreach fileId $fileIds {
+}
 
-        upvar #0 SrmFile$fileId file
-        incr id
+set fileIds [dict get $request fileIds]
+set id 0
+foreach fileId $fileIds {
+
+    incr id
 @@
       <i href='#id$${id}'></i>
 @@
@@ -26,11 +28,13 @@ dict with request {
 @@
     </id0>
 @@
-    set id 0
-    foreach fileId $fileIds {
+set id 0
+foreach fileId $fileIds {
 
-        incr id
-        dict with file {
+    upvar #0 SrmFile$fileId file
+    incr id
+
+    dict with file {
 @@
     <id$${id} id='id$${id}' soapenc:root='0' xsi:type='ns5:RequestFileStatus'>
       <SURL xsi:type='xsd:string'>$${SURL}</SURL>
@@ -45,10 +49,9 @@ dict with request {
       <isCached xsi:type='xsd:boolean'>$${isCached}</isCached>
     </id$${id}>
 @@
-        }
     }
+}
 @@
   </soap:Body>
 </soap:Envelope>
 @@
-}
