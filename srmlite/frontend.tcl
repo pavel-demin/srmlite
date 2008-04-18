@@ -10,6 +10,8 @@ package require srmlite::gridftp
 package require srmlite::client
 package require srmlite::soap
 
+namespace import ::srmlite::gridftp::GridFtpTransfer
+
 # -------------------------------------------------------------------------
 
 set SrmRequestTimer [dict create]
@@ -430,7 +432,8 @@ proc SrmCreateRequest {requestId requestType SURLS {dstSURLS {}} {sizes {}} {cer
         set file [dict create state Pending requestId $requestId \
             size $size owner {} group {} permMode 0 \
             isPinned false isPermanent false isCached false \
-            SURL $SURL TURL $dstSURL certProxy $certProxy afterId {}]
+            SURL $SURL TURL $dstSURL certProxy $certProxy \
+            transfer {} afterId {}]
 
         dict lappend request fileIds $fileId
 
@@ -845,6 +848,36 @@ proc GetInput {chan} {
             SrmDeleteDone $uniqueId
         }
     }
+}
+
+# -------------------------------------------------------------------------
+
+proc GridFtpCopy {fileId srcTURL dstTURL} {
+    upvar #0 SrmFile$fileId file
+
+    set certProxy [dict get $file certProxy]
+
+    set transfer [GridFtpTransfer new]
+    dict set file transfer $transfer
+
+    $transfer start $fileId $certProxy $srcTURL $dstTURL
+}
+
+# -------------------------------------------------------------------------
+
+proc GridFtpStop {fileId} {
+    upvar #0 SrmFile$fileId file
+
+    set transfer [dict get $file transfer]
+    set instances [GridFtpTransfer info instances $transfer]
+
+    if {[string equal $instances $transfer] &&
+        [string length $transfer] != 0} {
+        $transfer stop
+        after 0 [list $transfer destroy]
+    }
+
+    dict set file transfer {}
 }
 
 # -------------------------------------------------------------------------
