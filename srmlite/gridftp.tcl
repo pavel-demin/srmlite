@@ -3,523 +3,445 @@ package require gss::context
 package require dict
 package require log
 
-# -------------------------------------------------------------------------
+package require XOTcl
 
-set bufCommandsRetr {
-    {SITE RETRBUFSIZE}
-    {SITE RBUFSZ}
-    {SITE RBUFSIZ}
-    {SITE BUFSIZE}
-}
+namespace eval ::srmlite::gridftp {
+    namespace import ::xotcl::*
 
 # -------------------------------------------------------------------------
 
-set bufCommandsStor {
-    {SITE STORBUFIZE}
-    {SITE SBUFSZ}
-    {SITE SBUFSIZ}
-    {SITE BUFSIZE}
-}
-
-# -------------------------------------------------------------------------
-
-array set respStor {
-    connect   {220 auth}
-    auth      {334 handshake}
-    handshake {335 handshake 235 user}
-    user      {200 pass 331 pass}
-    pass      {200 type 230 type}
-    type      {200 mode}
-    mode      {200 dcau}
-    dcau      {200 bufStor 500 bufStor}
-    bufStor   {200 pasv 500 bufStor}
-    pasv      {227 stor}
-    stor      {226 quit}
-}
-
-# -------------------------------------------------------------------------
-
-array set respRetr {
-    connect   {220 auth}
-    auth      {334 handshake}
-    handshake {335 handshake 235 user}
-    user      {200 pass 331 pass}
-    pass      {200 type 230 type}
-    type      {200 mode}
-    mode      {200 dcau}
-    dcau      {200 bufRetr 500 bufRetr}
-    bufRetr   {200 opts 500 bufRetr}
-    opts      {200 port 500 port}
-    port      {200 retr}
-    retr      {226 wait}
-}
-
-# -------------------------------------------------------------------------
-
-proc ExtractHostFile {url} {
-
-    set exp {^(([^:]*)://)?([^@]+@)?([^/:]+)(:([0-9]+))?(/srm/managerv1\?SFN=)?(/.*)?$}
-    if {![regexp -nocase $exp $url x prefix proto user host y port z file]} {
-        log::log error "Unsupported URL $url"
-        return {}
+    set bufCommandsRetr {
+        {SITE RETRBUFSIZE}
+        {SITE RBUFSZ}
+        {SITE RBUFSIZ}
+        {SITE BUFSIZE}
     }
 
-    set file [file normalize $file]
+# -------------------------------------------------------------------------
 
-    return [list $host $file]
-}
+    set bufCommandsStor {
+        {SITE STORBUFIZE}
+        {SITE SBUFSZ}
+        {SITE SBUFSIZ}
+        {SITE BUFSIZE}
+    }
 
 # -------------------------------------------------------------------------
 
-proc GridFtpGetInput {fileId chan} {
-
-    upvar #0 GridFtp$chan data
-
-    set prefix "\[fileId $fileId\] \[server $data(host)\]"
-
-    if {[catch {gets $chan line} readCount]} {
-        log::log error "$prefix $readCount"
-        GridFtpClose $fileId $chan
-        GridFtpStop $fileId
-        eval $callbackFailure "Error during gridftp transfer"
-        return
+    array set respStor {
+        connect   {220 auth}
+        auth      {334 handshake}
+        handshake {335 handshake 235 user}
+        user      {200 pass 331 pass}
+        pass      {200 type 230 type}
+        type      {200 mode}
+        mode      {200 dcau}
+        dcau      {200 bufStor 500 bufStor}
+        bufStor   {200 pasv 500 bufStor}
+        pasv      {227 stor}
+        stor      {226 done}
     }
 
-    if {$readCount == -1} {
-        if {[eof $chan]} {
-            set state $data(state)
-            GridFtpClose $fileId $chan
-            if {$state != "quit"} {
-                log::log error "$prefix Broken connection during gridftp transfer"
-                GridFtpStop $fileId
-                eval $callbackFailure "$prefix Error during gridftp transfer"
-            }
-        } else {
-            log::log warning "$prefix No full line available, retrying..."
+# -------------------------------------------------------------------------
+
+    array set respRetr {
+        connect   {220 auth}
+        auth      {334 handshake}
+        handshake {335 handshake 235 user}
+        user      {200 pass 331 pass}
+        pass      {200 type 230 type}
+        type      {200 mode}
+        mode      {200 dcau}
+        dcau      {200 bufRetr 500 bufRetr}
+        bufRetr   {200 opts 500 bufRetr}
+        opts      {200 port 500 port}
+        port      {200 retr}
+        retr      {226 wait}
+    }
+
+# -------------------------------------------------------------------------
+
+    proc ExtractHostFile {url} {
+
+        set exp {^(([^:]*)://)?([^@]+@)?([^/:]+)(:([0-9]+))?(/srm/managerv1\?SFN=)?(/.*)?$}
+        if {![regexp -nocase $exp $url x prefix proto user host y port z file]} {
+            log::log error "Unsupported URL $url"
+            return {}
         }
-        return
+
+        set file [file normalize $file]
+
+        return [list $host $file]
     }
 
-    if {![regexp -- {^-?(\d+)( |-)?(ADAT)?( |=)?(.*)$} $line -> rc ml adat eq msg]} {
-        log::log error "$prefix Unsupported response from FTP server\n$line"
+# -------------------------------------------------------------------------
+
+    Class GridFtpTransfer
+
+# -------------------------------------------------------------------------
+
+    GridFtpTransfer instproc start {fileId certProxy srcTURL dstTURL} {
+
+        set hostfile [ExtractHostFile $srcTURL]
+
+        set retr [GridFtpClient new -childof [self]]
+	$retr set certProxy $certProxy
+	$retr set fileId $fileId
+        $retr set host [lindex $hostfile 0]
+        $retr set file [lindex $hostfile 1]
+	$retr set stor 0
+
+        set hostfile [ExtractHostFile $dstTURL]
+
+        set stor [GridFtpClient new -childof [self]]
+	$stor set certProxy $certProxy
+        $stor set fileId $fileId
+        $stor set host [lindex $hostfile 0]
+        $stor set file [lindex $hostfile 1]
+	$stor set stor 1
+	$stor forward retr $retr start
+        $stor start
     }
 
-    set data(rc) $rc
+# -------------------------------------------------------------------------
 
-    if {[string match {63?} $rc]} {
-        set context $data(context)
-        if {![string equal $context {}]} {
-            if {[catch {$context unwrap $msg} result]} {
-                GridFtpClose $fileId $chan
-                GridFtpStop $fileId
-                eval $callbackFailure "Error during unwrap"
-                return
-            } else {
-                set msg $result
-            }
+    GridFtpTransfer instproc stop {} {
+        foreach client [my info children] {
+            $client quit
         }
     }
 
-    if {[string equal $ml {-}]} {
-        append data(buffer) $msg
-        log::log debug "$prefix Multi-line mode, continue..."
-        return
-    } else {
-        append data(buffer) $msg
+# -------------------------------------------------------------------------
+
+    Class GridFtpClient
+
+# -------------------------------------------------------------------------
+
+    GridFtpClient instproc log {level args} {
+        my instvar fileId host
+        log::log $level "\[fileId $fileId\] \[server $host\] [join $args { }]"
     }
 
-    if {[string match {63?} $rc]} {
-        set line $data(buffer)
+# -------------------------------------------------------------------------
 
-        if {![regexp -- {^-?(\d+)( |-)?(.*)$} $line -> rc ml msg]} {
-            log::log error "$prefix Unsupported response from FTP server\n$line"
+    GridFtpClient instproc start {{port {}}} {
+        my instvar certProxy host chan
+
+        set chan [socket -async $host 2811]
+        fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
+        fileevent $chan readable [list [self] GetInput]
+
+        my set context [gss::context $chan -gssimport $certProxy]
+        my set buffer {}
+        my set bufcmd 0
+        my set state connect
+        my set port $port
+
+        my log debug "GridFtpClient import [my set context]"
+    }
+
+# -------------------------------------------------------------------------
+
+    GridFtpClient instproc GetInput {} {
+
+        my instvar chan context state code buffer
+
+        if {[catch {gets $chan line} readCount]} {
+            my log error $readCount
+            my close
+            my failure "Error during gridftp transfer"
             return
         }
 
-        set data(buffer) $msg
-        set data(rc) $rc
+        if {$readCount == -1} {
+            if {[eof $chan]} {
+                my close
+                my log error "Broken connection during gridftp transfer"
+                my failure "Error during gridftp transfer"
+            } else {
+                my log warning "No full line available, retrying..."
+            }
+            return
+        }
+
+        if {![regexp -- {^-?(\d+)( |-)?(ADAT)?( |=)?(.*)$} $line -> rc ml adat eq msg]} {
+            my log error "Unsupported response from FTP server\n$line"
+        }
+
+        set code $rc
+
+        if {[string match {63?} $code]} {
+            if {![string equal $context {}]} {
+                if {[catch {$context unwrap $msg} result]} {
+                    my close
+                    my failure "Error during unwrap"
+                    return
+                } else {
+                    set msg $result
+                }
+            }
+        }
+
+        append buffer $msg
+
+        if {[string equal $ml {-}]} {
+            my log debug "Multi-line mode, continue..."
+            return
+        }
+
+        if {[string match {63?} $code]} {
+            if {![regexp -- {^-?(\d+)( |-)?(.*)$} $buffer -> rc ml msg]} {
+                my log error "Unsupported response from FTP server\n$line"
+                return
+            }
+
+            set buffer $msg
+            set code $rc
+        }
+
+        my ProcessInput
+
+        set buffer {}
     }
-
-    GridFtpProcessInput $fileId $chan
-
-    set data(buffer) {}
-}
 
 # -------------------------------------------------------------------------
 
-proc GridFtpHandshake {fileId chan msg} {
+    GridFtpClient instproc wrap {msg} {
 
-    upvar #0 GridFtp$chan data
+        my instvar chan context
 
-    if {[catch {$data(context) handshake $msg} result]} {
-        GridFtpClose $fileId $chan
-        GridFtpStop $fileId
-        eval $callbackFailure "Error during handshake"
-    } else {
-        puts $chan $result
-    }
-}
-
-# -------------------------------------------------------------------------
-
-proc GridFtpWrap {fileId chan msg} {
-
-    upvar #0 GridFtp$chan data
-
-    if {[catch {$data(context) wrap $msg} result]} {
-        GridFtpClose $fileId $chan
-        GridFtpStop $fileId
-        eval $callbackFailure "Error during wrap"
-    } else {
-        puts $chan $result
-    }
-}
-
-# -------------------------------------------------------------------------
-
-proc GridFtpProcessInput {fileId chan} {
-
-    upvar #0 GridFtp$chan data
-
-    set prefix "\[fileId $fileId\] \[server $data(host)\]"
-
-    log::log debug "$prefix $data(state),$data(rc)"
-
-    if {[string equal $data(state) quit]} {
-        GridFtpClose $fileId $chan
-    }
-
-    if {$data(stor)} {
-        upvar #0 respStor resp
-    } else {
-        upvar #0 respRetr resp
-    }
-
-    foreach {code newState} $resp($data(state)) {
-        if {$data(rc) == $code} {
-	    $newState $fileId $chan
-	    return
+        if {[catch {$context wrap $msg} result]} {
+            my close
+            my failure "Error during wrap"
+        } else {
+            puts $chan $result
         }
     }
 
-    if {[string match {1??}] || [string match {2??}]} {
-    {
-        log::log debug "$prefix [lindex [split $line "\n"] 0]"
-    } else {
-        log::log error "$prefix Unknown state $data(state),$data(rc)"
-        log::log error "$prefix $data(buffer)"
-        GridFtpStop $fileId
-        eval $callbackFailure $data(buffer)
+# -------------------------------------------------------------------------
+
+    GridFtpClient instproc ProcessInput {} {
+
+        my instvar state code buffer stor
+
+        my log debug "$state,$code"
+
+        if {[string equal $state quit]} {
+            my close
+        }
+
+        if {$stor} {
+            upvar #0 ::srmlite::gridftp::respStor resp
+        } else {
+            upvar #0 ::srmlite::gridftp::respRetr resp
+        }
+
+        foreach {retCode newState} $resp($state) {
+            if {[string equal $retCode $code]} {
+    	        my $newState
+    	        return
+            }
+        }
+
+        if {[string match {1??} $code] || [string match {2??} $code]} {
+            my log debug "[lindex [split $buffer "\n"] 0]"
+        } else {
+            my log error "Unknown state $state,$code"
+            my log error "$buffer"
+            my failure $buffer
+        }
     }
-}
 
 # -------------------------------------------------------------------------
 
-proc auth {fileId chan} {
-    upvar #0 GridFtp$chan data
-    puts $chan {AUTH GSSAPI}
-    set data(state) auth
-}
-
-# -------------------------------------------------------------------------
-
-proc handshake {fileId chan} {
-    upvar #0 GridFtp$chan data
-    puts $chan {AUTH GSSAPI}
-    if {[string equal $data(state) auth]} {
-        GridFtpHandshake $fileId $chan $data(buffer)
-    } else {
-        GridFtpHandshake $fileId $chan $data(buffer)
+    GridFtpClient instproc auth {} {
+        my instvar chan
+        puts $chan {AUTH GSSAPI}
+        my set state auth
     }
-    set data(state) handshake
-}
 
 # -------------------------------------------------------------------------
 
-proc user {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpWrap $fileId $chan {USER :globus-mapping:}
-    set data(state) user
-}
+    GridFtpClient instproc handshake {} {
+        my instvar chan context state buffer
 
-# -------------------------------------------------------------------------
+        if {[string equal $state auth]} {
+            set buffer {}
+        }
 
-proc pass {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpWrap $fileId $chan {PASS dummy}
-    set data(state) pass
-}
+        if {[catch {$context handshake $buffer} result]} {
+            my close
+            my failure "Error during handshake"
+        } else {
+            puts $chan $result
+        }
 
-# -------------------------------------------------------------------------
-
-proc type {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpWrap $fileId $chan {TYPE I}
-    set data(state) type
-}
-
-# -------------------------------------------------------------------------
-
-proc mode {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpWrap $fileId $chan {MODE E}
-    set data(state) mode
-}
-
-# -------------------------------------------------------------------------
-
-proc dcau {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpWrap $fileId $chan {DCAU N}
-    set data(state) dcau
-}
-
-# -------------------------------------------------------------------------
-
-proc bufStor {fileId chan} {
-    upvar #0 GridFtp$chan data
-    set prefix "\[fileId $fileId\] \[server $data(host)\]"
-
-    if {$data(bufcmd) >= [llength $bufCommandsStor]} {
-        log::log error "$prefix Failed to set STOR buffer size"
-        pasv $fileId $chan
-        return
+        set state handshake
     }
-    set command [lindex $bufCommandsStor $data(bufcmd)]
-    GridFtpWrap $fileId $chan "$command 1048576"
-    incr data(bufcmd)
-    set data(state) bufRetr
-}
 
 # -------------------------------------------------------------------------
 
-proc bufRetr {fileId chan} {
-    upvar #0 GridFtp$chan data
-    set prefix "\[fileId $fileId\] \[server $data(host)\]"
-
-    if {$data(bufcmd) >= [llength $bufCommandsRetr]} {
-        log::log error "$prefix Failed to set RETR buffer size"
-        opts $fileId $chan
-        return
+    GridFtpClient instproc user {} {
+        my wrap {USER :globus-mapping:}
+        my set state user
     }
-    set command [lindex $bufCommandsRetr $data(bufcmd)]
-    GridFtpWrap $fileId $chan "$command 1048576"
-    incr data(bufcmd)
-    set data(state) bufRetr
-}
 
 # -------------------------------------------------------------------------
 
-proc pasv {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpWrap $fileId $chan {PASV}
-    set data(state) pasv
-}
+    GridFtpClient instproc pass {} {
+        my wrap {PASS dummy}
+        my set state pass
+    }
 
 # -------------------------------------------------------------------------
 
-proc opts {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpWrap $fileId $chan {OPTS RETR Parallelism=8,8,8;}
-    set data(state) opts
-}
+    GridFtpClient instproc type {} {
+        my wrap {TYPE I}
+        my set state type
+    }
 
 # -------------------------------------------------------------------------
 
-proc stor {fileId chan} {
-    upvar #0 GridFtp$chan data
-    regexp -- {\d+,\d+,\d+,\d+,\d+,\d+} $data(buffer) port
-    GridFtpWrap $fileId $chan "STOR $data(file)"
-    set data(state) stor
-    GridFtpRetr $fileId $data(srcTURL) $port
-}
+    GridFtpClient instproc mode {} {
+        my wrap {MODE E}
+        my set state mode
+    }
 
 # -------------------------------------------------------------------------
 
-proc port {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpWrap $fileId $chan "PORT $data(port)"
-    set data(state) port
-}
+    GridFtpClient instproc dcau {} {
+        my wrap {DCAU N}
+        my set state dcau
+    }
 
 # -------------------------------------------------------------------------
 
-proc retr {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpWrap $fileId $chan "RETR $data(file)"
-    set data(state) retr
-}
+    GridFtpClient instproc bufStor {} {
+        variable bufCommandsStor
+        my instvar state bufcmd
+
+        if {$bufcmd >= [llength $bufCommandsStor]} {
+            my log error "Failed to set STOR buffer size"
+            my pasv
+            return
+        }
+        set command [lindex $bufCommandsStor $bufcmd]
+        my wrap "$command 1048576"
+        incr bufcmd
+        set state bufStor
+    }
 
 # -------------------------------------------------------------------------
 
-proc quit {fileId chan} {
-    upvar #0 GridFtp$chan data
-    GridFtpQuit $fileId $chan QUIT
-    GridFtpStop $fileId
-    eval $callbackSuccess
-}
+    GridFtpClient instproc bufRetr {} {
+        variable bufCommandsRetr
+        my instvar state bufcmd
+
+        if {$bufcmd >= [llength $bufCommandsRetr]} {
+            my log error "Failed to set RETR buffer size"
+            opts $fileId $chan
+            return
+        }
+        set command [lindex $bufCommandsRetr $bufcmd]
+        my wrap "$command 1048576"
+        incr bufcmd
+        set state bufRetr
+    }
 
 # -------------------------------------------------------------------------
 
-proc wait {fileId chan} {
-    upvar #0 GridFtp$chan data
-    set prefix "\[fileId $fileId\] \[server $data(host)\]"
-    log::log debug "$prefix $line"
-}
+    GridFtpClient instproc pasv {} {
+        my wrap {PASV}
+        my set state pasv
+    }
 
 # -------------------------------------------------------------------------
 
-proc GridFtpRetr {fileId srcTURL port} {
-
-    upvar #0 GridFtpIndex$fileId index
-    upvar #0 SrmFile$fileId file
-    set certProxy [dict get $file certProxy]
-
-    set hostfile [ExtractHostFile $srcTURL]
-
-    set chan [socket -async [lindex $hostfile 0] 2811]
-    fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
-    fileevent $chan readable [list GridFtpGetInput $fileId $chan]
-
-    dict set index $chan 1
-
-    upvar #0 GridFtp$chan data
-
-    set data(context) [gss::context $chan -gssimport $certProxy]
-    set data(afterId) {}
-    set data(buffer) {}
-    set data(bufcmd) 0
-    set data(state) connect
-    set data(stor) 0
-    set data(port) $port
-    set data(host) [lindex $hostfile 0]
-    set data(file) [lindex $hostfile 1]
-
-    set prefix "\[fileId $fileId\] \[server $data(host)\]"
-    log::log debug "$prefix GridFtpRetr: import $data(context)"
-}
+    GridFtpClient instproc opts {} {
+        my wrap {OPTS RETR Parallelism=8,8,8;}
+        my set state opts
+    }
 
 # -------------------------------------------------------------------------
 
-proc GridFtpCopy {fileId srcTURL dstTURL} {
-
-    upvar #0 GridFtpIndex$fileId index
-    upvar #0 SrmFile$fileId file
-    set certProxy [dict get $file certProxy]
-
-    set hostfile [ExtractHostFile $dstTURL]
-
-    set chan [socket -async [lindex $hostfile 0] 2811]
-    fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
-    fileevent $chan readable [list GridFtpGetInput $fileId $chan]
-
-    dict set index $chan 1
-
-    upvar #0 GridFtp$chan data
-
-    set data(context) [gss::context $chan -gssimport $certProxy]
-    set data(afterId) {}
-    set data(buffer) {}
-    set data(bufcmd) 0
-    set data(state) connect
-    set data(stor) 1
-    set data(port) {}
-    set data(host) [lindex $hostfile 0]
-    set data(file) [lindex $hostfile 1]
-    set data(srcTURL) $srcTURL
-
-    set prefix "\[fileId $fileId\] \[server $data(host)\]"
-    log::log debug "$prefix GridFtpCopy: import $data(context)"
-}
+    GridFtpClient instproc stor {} {
+        my instvar fileId state buffer file
+        regexp -- {\d+,\d+,\d+,\d+,\d+,\d+} $buffer port
+        my wrap "STOR $file"
+        set state stor
+        my retr $port
+    }
 
 # -------------------------------------------------------------------------
 
-proc GridFtpClose {fileId chan} {
-    upvar #0 GridFtpIndex$fileId index
-    upvar #0 GridFtp$chan data
+    GridFtpClient instproc port {} {
+        my instvar state port
+        my wrap "PORT $port"
+        set state port
+    }
 
-    set channels [file channels $chan]
-    set prefix "\[fileId $fileId\]"
-    log::log debug "$prefix GridFtpClose $chan => $channels"
+# -------------------------------------------------------------------------
 
-    if {![string equal $channels {}]} {
+    GridFtpClient instproc retr {} {
+        my instvar state file
+        my wrap "RETR $file"
+        set state retr
+    }
+
+# -------------------------------------------------------------------------
+
+    GridFtpClient instproc done {} {
+        my success
+    }
+
+# -------------------------------------------------------------------------
+
+    GridFtpClient instproc quit {} {
+        my instvar chan state
+        puts $chan {QUIT}
+        set state quit
+        my close
+    }
+
+# -------------------------------------------------------------------------
+
+    GridFtpClient instproc close {} {
+        my instvar chan context afetrId
+
         fileevent $chan readable {}
-        log::log debug "$prefix close $chan"
+        my log debug "close $chan"
         ::close $chan
-    }
 
-    if {[info exists index]} {
-        if {[dict exists $index $chan]} {
-            dict unset index $chan
-        }
-
-        if {[dict size $index] == 0} {
-            unset index
-        }
-    }
-
-    if {[info exists data]} {
-        set context $data(context)
         if {![string equal $context {}]} {
-            log::log debug "$prefix $context destroy"
+            my log debug "$context destroy"
             $context destroy
         }
-
-        set afterId $data(afterId)
-        if {![string equal $afterId {}]} {
-            after cancel $afterId
-        }
-
-        unset data
     }
-}
 
 # -------------------------------------------------------------------------
 
-proc GridFtpQuit {fileId chan command} {
-    upvar #0 GridFtpIndex$fileId index
-    upvar #0 GridFtp$chan data
-
-    if {[info exists data]} {
-        if {[file channels $chan] != {} &&
-            $data(state) != {quit}} {
-            set data(state) quit
-            puts $chan $command
-        }
-        if {[string equal $data(afterId) {}]} {
-            set data(afterId) [after 30000 [list GridFtpClose $fileId $chan]]
-        }
+    GridFtpClient instproc wait {} {
+        my instvar buffer
+        my log debug "$buffer"
     }
-
-    if {[info exists index]} {
-        if {[dict exists $index $chan]} {
-            dict unset index $chan
-        }
-
-        if {[dict size $index] == 0} {
-            unset index
-        }
-    }
-}
 
 # -------------------------------------------------------------------------
 
-proc GridFtpStop {fileId} {
-    upvar #0 GridFtpIndex$fileId index
-
-    if {![info exists index]} {
-        log::log warning "GridFtpStop: Unknown file id $fileId"
-        return
+    GridFtpClient instproc success {} {
+        my instvar fileId
+        SrmCopyDone $fileId
     }
-
-    dict for {chan dummy} $index {
-        GridFtpQuit $fileId $chan QUIT
-        dict unset index $chan
-    }
-
-    unset index
-}
 
 # -------------------------------------------------------------------------
 
-package provide srmlite::gridftp 0.2
+    GridFtpClient instproc failure {faultString} {
+        my instvar fileId
+        SrmFailed $fileId $faultString
+    }
+
+# -------------------------------------------------------------------------
+
+   namespace export GridFtpTransfer
+}
+
+package provide srmlite::gridftp 0.3
