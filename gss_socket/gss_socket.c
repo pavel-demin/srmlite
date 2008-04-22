@@ -1430,45 +1430,6 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   statePtr = (GssState *) ckalloc((unsigned int) sizeof(GssState));
   memset(statePtr, 0, sizeof(GssState));
 
-  statePtr->interp = interp;
-
-  statePtr->channel = Tcl_StackChannel(interp, &ChannelType,
-                                       (ClientData) statePtr,
-                                       (TCL_READABLE | TCL_WRITABLE | TCL_EXCEPTION), chan);
-
-  if(statePtr->channel == (Tcl_Channel) NULL)
-  {
-    GssClean(statePtr);
-    Tcl_AppendResult(interp, "Failed to stack channel", NULL);
-    return TCL_ERROR;
-  }
-
-  statePtr->parent = Tcl_GetStackedChannel(statePtr->channel);
-
-  statePtr->parentGetOptionProc = Tcl_ChannelGetOptionProc(Tcl_GetChannelType(statePtr->parent));
-  statePtr->parentBlockModeProc = Tcl_ChannelBlockModeProc(Tcl_GetChannelType(statePtr->parent));
-  statePtr->parentWatchProc = Tcl_ChannelWatchProc(Tcl_GetChannelType(statePtr->parent));
-  statePtr->parentInstData = Tcl_GetChannelInstanceData(statePtr->parent);
-
-  (*statePtr->parentBlockModeProc) (statePtr->parentInstData, TCL_MODE_NONBLOCKING);
-
-  statePtr->intWatchMask |= TCL_READABLE;
-  (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
-
-  statePtr->writeInBufSize = 32768;
-  statePtr->writeInBuf.length = 0;
-  statePtr->writeInBuf.value = ckalloc(statePtr->writeInBufSize);
-
-  statePtr->readRawBufSize = 32768;
-  statePtr->readRawBuf.length = 5;
-  statePtr->readRawBuf.value = ckalloc(statePtr->readRawBufSize);
-
-  memset(statePtr->readRawBuf.value, 0, 5);
-
-  statePtr->flags |= GSS_TCL_READHEADER;
-
-  statePtr->flags |= GSS_TCL_BLOCKING;
-
   statePtr->gssName = GSS_C_NO_NAME;
   statePtr->gssContext = GSS_C_NO_CONTEXT;
   statePtr->gssCredential = GSS_C_NO_CREDENTIAL;
@@ -1526,6 +1487,45 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
       return TCL_ERROR;
     }
   }
+
+  statePtr->interp = interp;
+
+  statePtr->channel = Tcl_StackChannel(interp, &ChannelType,
+                                       (ClientData) statePtr,
+                                       (TCL_READABLE | TCL_WRITABLE | TCL_EXCEPTION), chan);
+
+  if(statePtr->channel == (Tcl_Channel) NULL)
+  {
+    GssClean(statePtr);
+    Tcl_AppendResult(interp, "Failed to stack channel", NULL);
+    return TCL_ERROR;
+  }
+
+  statePtr->parent = Tcl_GetStackedChannel(statePtr->channel);
+
+  statePtr->parentGetOptionProc = Tcl_ChannelGetOptionProc(Tcl_GetChannelType(statePtr->parent));
+  statePtr->parentBlockModeProc = Tcl_ChannelBlockModeProc(Tcl_GetChannelType(statePtr->parent));
+  statePtr->parentWatchProc = Tcl_ChannelWatchProc(Tcl_GetChannelType(statePtr->parent));
+  statePtr->parentInstData = Tcl_GetChannelInstanceData(statePtr->parent);
+
+  (*statePtr->parentBlockModeProc) (statePtr->parentInstData, TCL_MODE_NONBLOCKING);
+
+  statePtr->intWatchMask |= TCL_READABLE;
+  (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
+
+  statePtr->writeInBufSize = 32768;
+  statePtr->writeInBuf.length = 0;
+  statePtr->writeInBuf.value = ckalloc(statePtr->writeInBufSize);
+
+  statePtr->readRawBufSize = 32768;
+  statePtr->readRawBuf.length = 5;
+  statePtr->readRawBuf.value = ckalloc(statePtr->readRawBufSize);
+
+  memset(statePtr->readRawBuf.value, 0, 5);
+
+  statePtr->flags |= GSS_TCL_READHEADER;
+
+  statePtr->flags |= GSS_TCL_BLOCKING;
 
   statePtr->flags |= GSS_TCL_HANDSHAKE;
 
