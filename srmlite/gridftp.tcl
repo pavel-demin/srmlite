@@ -3,10 +3,13 @@ package require gss::context
 package require dict
 package require log
 
+package require srmlite::notifier
+
 package require XOTcl
 
 namespace eval ::srmlite::gridftp {
     namespace import ::xotcl::*
+    namespace import ::srmlite::notifier::*
 
 # -------------------------------------------------------------------------
 
@@ -76,31 +79,51 @@ namespace eval ::srmlite::gridftp {
 
 # -------------------------------------------------------------------------
 
-    Class GridFtpTransfer
+    Class GridFtpTransfer -superclass Notifier \
+        -parameter {
+            {fileId}
+            {certProxy}
+            {srcTURL}
+            {dstTURL}
+            {timeout 30000}
+        }
 
 # -------------------------------------------------------------------------
 
-    GridFtpTransfer instproc start {fileId certProxy srcTURL dstTURL} {
+    GridFtpTransfer instproc init {} {
+        my instvar fileId certProxy srcTURL dstTURL retr stor callbackRecipient
+
+        set certProxyOpts {}
+        if {[my exists certProxy]} {
+            set certProxyOpts "-certProxy $certProxy"
+        }
 
         set hostfile [ExtractHostFile $srcTURL]
 
-        set retr [GridFtpClient new -childof [self]]
-	$retr set certProxy $certProxy
-	$retr set fileId $fileId
-        $retr set host [lindex $hostfile 0]
-        $retr set file [lindex $hostfile 1]
-	$retr set stor 0
+        set retr [eval [list GridFtpClient new \
+            -childof [self] \
+            -fileId $fileId \
+            -callbackRecipient [self] \
+            -host [lindex $hostfile 0] \
+            -file [lindex $hostfile 1]] \
+            $certProxyOpts]
 
         set hostfile [ExtractHostFile $dstTURL]
 
-        set stor [GridFtpClient new -childof [self]]
-	$stor set certProxy $certProxy
-        $stor set fileId $fileId
-        $stor set host [lindex $hostfile 0]
-        $stor set file [lindex $hostfile 1]
-	$stor set stor 1
-	$stor forward retr $retr start
-        $stor start
+        set stor [eval [list GridFtpClient new \
+            -childof [self] \
+            -fileId $fileId \
+            -callbackRecipient [self] \
+            -host [lindex $hostfile 0] \
+            -file [lindex $hostfile 1] \
+	    -peer $retr] \
+            $certProxyOpts]
+    }
+
+# -------------------------------------------------------------------------
+
+    GridFtpTransfer instproc start {} {
+        [my set stor] start
     }
 
 # -------------------------------------------------------------------------
@@ -113,7 +136,28 @@ namespace eval ::srmlite::gridftp {
 
 # -------------------------------------------------------------------------
 
-    Class GridFtpClient
+    GridFtpTransfer instproc successCallback {result} {
+#        SrmCopyDone [my fileId]
+        my notify successCallback $result
+    }
+
+# -------------------------------------------------------------------------
+
+    GridFtpTransfer instproc failureCallback {reason} {
+#        SrmFailed [my fileId] $reason
+        my notify failureCallback $reason
+    }
+
+# -------------------------------------------------------------------------
+
+    Class GridFtpClient -superclass Notifier \
+        -parameter {
+            {fileId}
+            {certProxy}
+            {host}
+            {file}
+            {peer}
+        }
 
 # -------------------------------------------------------------------------
 
@@ -125,19 +169,63 @@ namespace eval ::srmlite::gridftp {
 # -------------------------------------------------------------------------
 
     GridFtpClient instproc start {{port {}}} {
-        my instvar certProxy host chan
 
-        set chan [socket -async $host 2811]
-        fconfigure $chan -blocking 0 -translation {auto crlf} -buffering line
-        fileevent $chan readable [list [self] GetInput]
+        my set context {}
 
-        my set context [gss::context $chan -gssimport $certProxy]
+        if {[catch {my connect} result]} {
+            my log error $result
+            my close
+            my failure "Error during connect"
+            return
+        }
+
         my set buffer {}
         my set bufcmd 0
         my set state connect
         my set port $port
 
         my log debug "GridFtpClient import [my set context]"
+    }
+
+# -------------------------------------------------------------------------
+
+    GridFtpClient instproc connect {} {
+        my instvar host chan
+
+        set chan [socket -async $host 2811]
+        fileevent $chan writable [list [self] connect_done]
+    }
+
+# -------------------------------------------------------------------------
+
+    GridFtpClient instproc connect_done {} {
+        my instvar chan
+
+        fileevent $chan writable {}
+
+        if {[catch {my gssimport} result]} {
+            my log error $result
+            my close
+            my failure "Error during gssimport"
+            return
+        }
+    }
+
+# -------------------------------------------------------------------------
+
+    GridFtpClient instproc gssimport {} {
+        my instvar certProxy chan
+
+        fileevent $chan writable {}
+
+        fconfigure $chan -blocking false -translation {auto crlf} -buffering line
+        fileevent $chan readable [list [self] GetInput]
+
+        if {[my exists certProxy]} {
+            my set context [gss::context $chan -gssimport $certProxy]
+        } else {
+            my set context [gss::context $chan]
+        }
     }
 
 # -------------------------------------------------------------------------
@@ -155,8 +243,8 @@ namespace eval ::srmlite::gridftp {
 
         if {$readCount == -1} {
             if {[eof $chan]} {
-                my close
                 my log error "Broken connection during gridftp transfer"
+                my close
                 my failure "Error during gridftp transfer"
             } else {
                 my log warning "No full line available, retrying..."
@@ -173,6 +261,7 @@ namespace eval ::srmlite::gridftp {
         if {[string match {63?} $code]} {
             if {![string equal $context {}]} {
                 if {[catch {$context unwrap $msg} result]} {
+                    my log error $result
                     my close
                     my failure "Error during unwrap"
                     return
@@ -211,6 +300,7 @@ namespace eval ::srmlite::gridftp {
         my instvar chan context
 
         if {[catch {$context wrap $msg} result]} {
+            my log error $result
             my close
             my failure "Error during wrap"
         } else {
@@ -230,7 +320,7 @@ namespace eval ::srmlite::gridftp {
             my close
         }
 
-        if {$stor} {
+        if {[my exists peer]} {
             upvar #0 ::srmlite::gridftp::respStor resp
         } else {
             upvar #0 ::srmlite::gridftp::respRetr resp
@@ -270,6 +360,7 @@ namespace eval ::srmlite::gridftp {
         }
 
         if {[catch {$context handshake $buffer} result]} {
+            my log error $result
             my close
             my failure "Error during handshake"
         } else {
@@ -339,7 +430,7 @@ namespace eval ::srmlite::gridftp {
 
         if {$bufcmd >= [llength $bufCommandsRetr]} {
             my log error "Failed to set RETR buffer size"
-            opts $fileId $chan
+            my opts
             return
         }
         set command [lindex $bufCommandsRetr $bufcmd]
@@ -365,11 +456,11 @@ namespace eval ::srmlite::gridftp {
 # -------------------------------------------------------------------------
 
     GridFtpClient instproc stor {} {
-        my instvar fileId state buffer file
+        my instvar fileId state buffer file peer
         regexp -- {\d+,\d+,\d+,\d+,\d+,\d+} $buffer port
         my wrap "STOR $file"
         set state stor
-        my retr $port
+        $peer start $port
     }
 
 # -------------------------------------------------------------------------
@@ -408,9 +499,11 @@ namespace eval ::srmlite::gridftp {
     GridFtpClient instproc close {} {
         my instvar chan context afetrId
 
-        fileevent $chan readable {}
-        my log debug "close $chan"
-        ::close $chan
+        catch {
+            my log debug "close $chan"
+	    fileevent $chan readable {}
+            ::close $chan
+        }
 
         if {![string equal $context {}]} {
             my log debug "$context destroy"
@@ -428,15 +521,13 @@ namespace eval ::srmlite::gridftp {
 # -------------------------------------------------------------------------
 
     GridFtpClient instproc success {} {
-        my instvar fileId
-        SrmCopyDone $fileId
+        my notify successCallback success
     }
 
 # -------------------------------------------------------------------------
 
     GridFtpClient instproc failure {faultString} {
-        my instvar fileId
-        SrmFailed $fileId $faultString
+        my notify failureCallback $faultString
     }
 
 # -------------------------------------------------------------------------
