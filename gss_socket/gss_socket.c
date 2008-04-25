@@ -919,6 +919,10 @@ GssHandshake(GssState *statePtr)
       statePtr->flags |= GSS_TCL_EOF;
       statePtr->errorCode = 0;
 
+      globus_gss_assist_display_status(
+        stderr, "Failed to establish security context: ",
+        majorStatus, minorStatus, 0);
+
       if(statePtr->gssContext != GSS_C_NO_CONTEXT)
       {
         majorStatus = gss_delete_sec_context(&minorStatus,
@@ -926,10 +930,6 @@ GssHandshake(GssState *statePtr)
                                              GSS_C_NO_BUFFER);
         statePtr->gssContext = GSS_C_NO_CONTEXT;
       }
-
-      globus_gss_assist_display_status(
-        stderr, "Failed to establish security context: ",
-        majorStatus, minorStatus, 0);
     }
   }
 
