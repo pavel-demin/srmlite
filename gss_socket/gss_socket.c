@@ -732,7 +732,7 @@ GssGetOptionProc(ClientData instanceData, Tcl_Interp *interp, CONST char *option
       {
         cmdCounter = 0;
         do {
-          sprintf(cmdName, "gss::cred_%s_%d", Tcl_GetChannelName(statePtr->channel), cmdCounter);
+          sprintf(cmdName, "::gss::cred_%s_%d", Tcl_GetChannelName(statePtr->channel), cmdCounter);
           cmdCounter++;
         } while(Tcl_GetCommandInfo(interp, cmdName, &cmdInfo));
         credPtr->token = Tcl_CreateObjCommand(interp, cmdName, GssCredObjCmd,

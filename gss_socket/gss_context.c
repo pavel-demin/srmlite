@@ -676,7 +676,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
 
   cmdCounter = 0;
   do {
-    sprintf(cmdName, "gss::context_%s_%d", Tcl_GetChannelName(channel), cmdCounter);
+    sprintf(cmdName, "::gss::context_%s_%d", Tcl_GetChannelName(channel), cmdCounter);
     cmdCounter++;
   } while(Tcl_GetCommandInfo(interp, cmdName, &cmdInfo));
 
