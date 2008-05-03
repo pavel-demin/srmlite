@@ -550,6 +550,13 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
+    SrmFile instproc log {level args} {
+        my instvar host
+        log::log $level "[join $args { }]"
+    }
+
+# -------------------------------------------------------------------------
+
     SrmFile instproc updateState {code} {
         my instvar state faultString
         variable resp
@@ -724,9 +731,9 @@ namespace eval ::srmlite::srmv2::server {
         }
 
         if {[my exists certProxy]} {
-            my log debug "destroy certProxy $certProxy"
+            my log debug {destroy certProxy} $certProxy
             if {[catch {$certProxy destroy} faultString]} {
-                my log error "Error during certProxy destroy: $faultString"
+                my log error {Error during certProxy destroy:} $faultString
             }
             unset certProxy
         }
