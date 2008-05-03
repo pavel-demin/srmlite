@@ -1,0 +1,40 @@
+$request eval {
+    upvar g2result g2result
+@@
+<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:srmPrepareToGetResponse soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <srmPrepareToGetResponse xsi:type="ns1:srmPrepareToGetResponse">
+        <returnStatus xsi:type="ns1:TReturnStatus">
+          <statusCode xsi:type="ns1:TStatusCode">$${requestState}</statusCode>
+          <explanation xsi:type="xsd:string"@@nillableValue explanation requestStateComment@@>
+        </returnStatus>
+        <requestToken xsi:type="xsd:string">$${requestToken}</requestToken>
+        <arrayOfFileStatuses xsi:type="ns1:ArrayOfTGetRequestFileStatus">
+@@
+}
+foreach file [$request info children] {
+    $file eval {
+        upvar g2result g2result
+@@
+          <statusArray xsi:type="ns1:TGetRequestFileStatus">
+            <sourceSURL xsi:type="xsd:anyURI">$${SURL}</sourceSURL>
+            <fileSize xsi:type="xsd:unsignedLong"@@nillableValue fileSize fileSize@@>
+            <status xsi:type="ns1:TReturnStatus">
+              <statusCode xsi:type="ns1:TStatusCode">$${fileState}</statusCode>
+              <explanation xsi:type="xsd:string"@@nillableValue explanation fileStateComment@@>
+            </status>
+            <estimatedWaitTime xsi:type="xsd:int">$${waitTime}</estimatedWaitTime>
+          </statusArray>
+@@
+    }
+}
+@@
+        </arrayOfFileStatuses>
+        <remainingTotalRequestTime xsi:type="xsd:int" xsi:nil="true"/>
+      </srmPrepareToGetResponse>
+    </ns1:srmPrepareToGetResponse>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

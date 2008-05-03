@@ -1,436 +1,576 @@
+package require gss::socket
+
+package require srmlite::notifier
+package require srmlite::templates
+
+package require XOTcl
+
+namespace eval ::srmlite::httpd {
+    namespace import ::xotcl::*
+    namespace import ::srmlite::notifier::*
 
 # -------------------------------------------------------------------------
 
 # HTTP/1.[01] error codes (the ones we use)
 
-array set HttpdErrors {
-    204 {No Content}
-    400 {Bad Request}
-    403 {Forbidden}
-    404 {Not Found}
-    408 {Request Timeout}
-    411 {Length Required}
-    419 {Expectation Failed}
-    503 {Service Unavailable}
-    504 {Service Temporarily Unavailable}
-}
-
-# -------------------------------------------------------------------------
-
-# Httpd is a global array containing the global server state
-#  root:        the root of the document directory
-#  port:        The port this server is serving
-#  listen:      the main listening socket id
-#  accepts:     a count of accepted connections so far
-#  maxtime:     The max time (msec) allowed to complete an http request
-#  maxused:     The max # of requests for a socket
-
-array set Httpd {
-    requestId   -2147483648
-    bufsize     32768
-    maxtime     60000
-    maxused     25
-    encoding    "utf-8"
-}
-
-# -------------------------------------------------------------------------
-
-# convert the file suffix into a mime type
-# add your own types as needed
-
-array set HttpdMimeTypes {
-    {}    "text/plain"
-    .txt  "text/plain"
-    .css  "text/css"
-    .js   "text/javascript"
-    .htm  "text/html; charset=$Httpd(encoding)"
-    .html "text/html; charset=$Httpd(encoding)"
-    .gif  "image/gif"
-    .jpg  "image/jpeg"
-    .ico  "image/ico"
-}
-
-# -------------------------------------------------------------------------
-
-# Start the server by listening for connections on the desired port.
-
-proc HttpdServer {root {port 80} {default index.html}} {
-    global Httpd
-
-    catch {close Httpd(port)}   ;# it might already be running
-    array set Httpd [list root $root default $default port $port]
-    array set Httpd [list accepts 0 requests 0 errors 0]
-    set Httpd(listen) [socket -server HttpdAccept $port]
-    return $Httpd(port)
-}
-
-# -------------------------------------------------------------------------
-
-# Accept a new connection from the server and set up a handler
-# to read the request from the client.
-
-proc HttpdAccept {sock ipaddr {port {}}} {
-    global Httpd
-    upvar #0 Httpd$sock data
-
-    incr Httpd(accepts)
-    HttpdReset $sock $Httpd(maxused)
-    HttpdLog $sock notice {Connected to port} $port
-}
-
-# -------------------------------------------------------------------------
-
-proc HttpdNewRequestId {} {
-
-    global Httpd
-
-    return [incr Httpd(requestId)]
-}
-
-# -------------------------------------------------------------------------
-
-# Initialize or reset the socket state
-
-proc HttpdReset {sock left} {
-    global Httpd
-    upvar #0 Httpd$sock data
-
-    array set data [list state start linemode 1 version 0 left $left counter 0]
-    set data(address) [lindex [fconfigure $sock -peername] 0]
-    set data(cancel) [after $Httpd(maxtime) [list HttpdTimeout $sock]]
-    set data(requestId) [HttpdNewRequestId]
-
-    gss::import $sock -server true
-
-    fconfigure $sock -blocking 0 -buffersize $Httpd(bufsize) -translation {auto crlf}
-
-    fileevent $sock readable [list HttpdRead $sock]
-}
-
-# -------------------------------------------------------------------------
-
-# Read data from a client request
-# 1) read the request line
-# 2) read the mime headers
-# 3) read the additional data (if post && content-length not satisfied)
-
-proc HttpdRead {sock} {
-    global Httpd
-    upvar #0 Httpd$sock data
-    
-    if {$data(counter) == 0 && ![eof $sock]} {
-        HttpdLog $sock notice {Distinguished name} [fconfigure $sock -gssname]
-        incr data(counter)
+    variable errorCodes
+    array set errorCodes {
+        204 {No Content}
+        400 {Bad Request}
+        403 {Forbidden}
+        404 {Not Found}
+        408 {Request Timeout}
+        411 {Length Required}
+        419 {Expectation Failed}
+        503 {Service Unavailable}
+        504 {Service Temporarily Unavailable}
     }
 
-    # Use line mode to read the request and the mime headers
+# -------------------------------------------------------------------------
 
-    if {$data(linemode)} {
-        set readCount [gets $sock line]
-        set state [string compare $readCount 0],$data(state)
-        switch -glob -- $state {
-            1,start {
-                if {[regexp {(HEAD|POST|GET) ([^?]+)\??([^ ]*) HTTP/1.([01])} $line \
-                        -> data(proto) data(url) data(query) data(version)]} {
-                    set data(state) mime
-                    incr Httpd(requests)
-                    HttpdLog $sock notice Request $data(left) $line
-                } else {
-                    HttpdError $sock 400 $line
-                }
-            }
-            0,start {
-                HttpdLog $sock warning {Initial blank line fetching request}
-            }
-            1,mime {
-                if {[regexp {([^:]+):[  ]*(.*)} $line -> key value]} {
-                    set key [string tolower $key]
-                    set data(key) $key
-                    if {[info exists data(mime,$key)]} {
-                        append data(mime,$key) ", $value"
-                    } else {
-                        set data(mime,$key) $value
-                    }
-                } elseif {[regexp {^[   ]+(.+)} $line -> value] && \
-                        [info exists data(key)]} {
-                    append data(mime,$data($key)) " " $value
-                } else {
-                    HttpdError $sock 400 $line
-                }
-            }
-            0,mime {
-                if {$data(proto) == "POST" && \
-                        [info exists data(mime,content-length)]} {
-                    set data(linemode) 0
-                    set data(count) $data(mime,content-length)
-                    if {$data(version) && [info exists data(mime,expect]} {
-                        if {$data(mime,expect) == "100-continue"} {
-                            puts $sock "100 Continue HTTP/1.1\n"
-                            flush $sock
-                        } else {
-                            HttpdError $sock 419 $data(mime,expect)
-                        }
-                    }
-                    fconfigure $sock -translation {binary crlf}
-                } elseif {$data(proto) != "POST"}  {
-                    HttpdRespond $sock
-                } else {
-                    HttpdError $sock 411 {Confusing mime headers}
-                }
-            }
-            -1,* {
-                if {[eof $sock]} {
-                    HttpdLog $sock debug {Broken connection fetching request}
-                    HttpdSockDone $sock 1
-                } else {
-                    HttpdLog $sock warning {Partial read, retrying...}
-                }
-            }
-            default {
-                HttpdError $sock 404 "Invalid http state: $state,[eof $sock]"
-            }
+    variable requiresBody
+    array set requiresBody {
+        GET 0 POST 1
+    }
+
+# -------------------------------------------------------------------------
+
+    variable urlCache
+    array set urlCache {}
+
+# -------------------------------------------------------------------------
+
+
+    Class HttpServer -parameter {
+        {port 80}
+        {addr}
+    }
+
+
+# -------------------------------------------------------------------------
+
+    HttpServer instproc init {} {
+
+        my array set objectMap {}
+        my array set urlCache {}
+
+        next
+    }
+# -------------------------------------------------------------------------
+
+     HttpServer instproc start {} {
+        my instvar port addr chan
+
+        set myaddrOpts {}
+        if {[my exists addr]} {
+	    set myaddrOpts "-myaddr $addr"
         }
 
-    # Use counted mode to get the post data
+        set chan [eval [list socket -server [list [self] accept]] $myaddrOpts $port]
 
-    } elseif {![eof $sock]} {
-        append data(postdata) [read $sock $data(count)]
-        set data(count) [expr {$data(mime,content-length) - \
-                [string length $data(postdata)]}]
-        if {$data(count) == 0} {
-            HttpdRespond $sock
-        }
-    } else {
-        HttpdLog $sock error {Broken connection reading POST data}
-        HttpdSockDone $sock 1
     }
-}
 
 # -------------------------------------------------------------------------
 
-# Done with the socket, either close it, or set up for next fetch
-#  sock:  The socket I'm done with
-#  close: If true, close the socket, otherwise set up for reuse
-
-proc HttpdSockDone {sock close} {
-    global Httpd
-    upvar #0 Httpd$sock data
-
-    after cancel $data(cancel)
-
-    set left [incr data(left) -1]
-    unset data
-    if {$close} {
-        close $sock
-    } else {
-        HttpdReset $sock $left
+    HttpServer instproc exportObject {{-object {}} {-prefix {}}} {
+        my set objectMap($prefix) $object
     }
-    return ""
-}
-
-# -------------------------------------------------------------------------
-
-# A timeout happened
-
-proc HttpdTimeout {sock} {
-    global Httpd
-    upvar #0 Httpd$sock data
-    HttpdError $sock 408
-}
 
 # -------------------------------------------------------------------------
 
 # Handle file system queries.  This is a place holder for a more
 # generic dispatch mechanism.
 
-proc HttpdRespond {sock} {
-    global Httpd HttpdUrlCache
-    upvar #0 Httpd$sock data
+    HttpServer instproc findObject {url} {
+        my instvar objectMap urlCache
 
-    regsub {(^(http|https|httpg)://[^/]+)?} $data(url) {} url
-    if {[info exists HttpdUrlCache($url)]} {
-        set mypath $HttpdUrlCache($url)
-    } else {
-        set procpath [HttpdUrl2File $url]
+        regsub {(^(http|https|httpg|srm)://[^/]+)?} $url {} url
 
-        if {[info proc $procpath] eq "$procpath" &&
-            [string length $procpath] != 0} {
-            set HttpdUrlCache($url) $procpath
-            set mypath $procpath
+        set object {}
+
+        if {[my exists urlCache($url)]} {
+            set object $urlCache($url)
         } else {
-            set HttpdUrlCache($url) {}
-            set mypath {}
+            set mypath [url2path $url]
+            if {[my exists objectMap($mypath)]} {
+                set object $objectMap($mypath)
+            }
+            set urlCache($url) $object
         }
+
+        return $object
     }
-
-    if {[string length $mypath] == 0} {
-        HttpdError $sock 400
-    } elseif {[info proc $mypath] eq "$mypath"} {
-        # Service URL-procedure
-        switch -- $data(proto) {
-            GET { set input [HttpdQueryMap $data(query)]}
-            POST { set input $data(postdata) }
-        }
-
-        set requestId $data(requestId)
-
-        fileevent $sock readable {}
-
-        if {[catch {eval [list $mypath $sock $requestId $input]} result]} {
-            fileevent $sock readable [list HttpdRead $sock]
-            HttpdError $sock 503
-            HttpdLog $sock error $mypath: $result
-        }
-    } else {
-        HttpdError $sock 404 $mypath
-    }
-}
 
 # -------------------------------------------------------------------------
 
-proc HttpdResult {sock result} {
-
-    global Httpd HttpdUrlCache
-    upvar #0 Httpd$sock data
-
-    fileevent $sock readable [list HttpdRead $sock]
-
-    puts $sock "HTTP/1.$data(version) 200 Data follows"
-    puts $sock "Date: [HttpdDate [clock seconds]]"
-    puts $sock "Content-Type: text/xml; charset=utf-8"
-    puts $sock "Content-Length: [string length $result]"
-
-    ## Should also close socket if recvd connection close header
-    set close [expr {$data(left) == 0}]
-
-    if {$close} {
-        puts $sock "Connection close:"
-    } elseif {$data(version) == 1 && [info exists data(mime,connection)]} {
-        if {$data(mime,connection) == "Keep-Alive"} {
-            set close 0
-            puts $sock "Connection: Keep-Alive"
-        }
-    } else {
-        set close 1
+    HttpServer instproc accept {chan addr port} {
+        HttpConnection new \
+	    -childof [self] \
+	    -chan $chan \
+	    -addr $addr \
+	    -port $port
     }
-
-    puts $sock ""
-    puts $sock $result
-    flush $sock
-    HttpdSockDone $sock $close
-}
 
 # -------------------------------------------------------------------------
 
-# Generic error response.
+    HttpServer instproc destroy {} {
+        catch {::close [my set chan]}
+        next
+    }
 
-set HttpdErrorFormat {
-    <title>Error: %1$s</title>
-    Got the error: <b>%2$s</b><br>
-    while trying to obtain <b>%3$s</b>
-}
+# -------------------------------------------------------------------------
+
+    Class HttpConnection -parameter {
+        {chan}
+        {addr}
+        {port}
+        {timeout 60000}
+        {bufsize 32768}
+        {reqleft 25}
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc init {} {
+        my reset [my reqleft]
+        my setup
+        next
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc reset {reqleft} {
+        my instvar timeout
+
+	my reqleft $reqleft
+
+	my set version 0
+	my set url {}
+
+        if {[my array exists mime]} {
+	    my unset mime
+        }
+
+        if {[my exists postdata]} {
+            my unset postdata
+        }
+
+        my set afterId [after $timeout [list [self] error 408]]
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc setup {} {
+        my instvar chan bufsize
+
+        fconfigure $chan -blocking 0 -buffersize $bufsize -translation {auto crlf}
+        fileevent $chan readable [list [self] firstLine]
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc getLine {var} {
+        my upvar $var line
+        my instvar chan
+
+        if {[catch {gets $chan line} readCount]} {
+            my log error $readCount
+            my log error {Broken connection fetching request}
+            my done 1
+            return -2
+        }
+
+        if {$readCount == -1} {
+            if {[eof $chan]} {
+                my log error {Broken connection fetching request}
+                my done 1
+                return -2
+            } else {
+                my log warning {No full line available, retrying...}
+                return -1
+            }
+        }
+
+        return $readCount
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc firstLine {} {
+        my instvar chan method url query version
+
+        set readCount [my getLine line]
+
+        if {$readCount < 0} {
+            return
+        } elseif {$readCount == 0} {
+            my log warning {Initial blank line fetching request}
+            return
+        }
+
+        if {[regexp {(POST|GET) ([^?]+)\??([^ ]*) HTTP/1.([01])} $line \
+                -> method url query version]} {
+            my log notice Request [my reqleft] $line
+            my firstLineDone
+        } else {
+            my error 400 $line
+            return
+        }
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc firstLineDone {} {
+        fileevent [my set chan] readable [list [self] header]
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc header {} {
+        my instvar mime currentKey
+
+        set readCount [my getLine line]
+
+        if {$readCount < 0} {
+            return
+        } elseif {$readCount == 0} {
+            my headerDone
+            return
+        }
+
+        if {[regexp {^([^:]+):\s*(.*)} $line -> key value]} {
+            set key [string tolower $key]
+            set currentKey $key
+            if {[my exists mime($key)]} {
+                append mime($key) {, } $value
+            } else {
+                set mime($key) $value
+            }
+        } elseif {[regexp {^\s+(.+)} $line -> value] && [my exists currentKey]} {
+            append mime($currentKey) { } $value
+        } else {
+            my error 400 $line
+            return
+        }
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc headerDone {} {
+        my instvar chan method version mime count
+        variable requiresBody
+
+        if {[my exists mime(content-length)] &&
+            [my set mime(content-length)] > 0} {
+            set count $mime(content-length)
+            if {$version && [my exists mime(expect)]} {
+                if {[string equal $mime(expect) 100-continue]} {
+                    puts $chan {100 Continue HTTP/1.1\n}
+                    flush $chan
+                } else {
+                    my error 419 $mime(expect)
+                    return
+                }
+            }
+            my set postdata {}
+            fconfigure $chan -translation {binary crlf}
+            fileevent $chan readable [list [self] data]
+        } elseif {$requiresBody($method)} {
+            my error 411 {Confusing mime headers}
+            return
+        } else {
+            my dataDone
+        }
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc data {} {
+        my instvar chan mime postdata count
+
+        if {[eof $chan]} {
+            my log error {Broken connection reading POST data}
+            my done 1
+            return
+        } elseif {[catch {read $chan $count} block]} {
+            my log error $block
+            my log error {Error during read POST data}
+            my done 1
+            return
+        } else {
+            my append postdata $block
+            set count [expr {$count - [string length $block]}]
+            if {$count == 0} {
+                my dataDone
+            }
+        }
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc dataDone {} {
+        my dispatch
+    }
+
+# -------------------------------------------------------------------------
+
+# Handle file system queries.  This is a place holder for a more
+# generic dispatch mechanism.
+
+    HttpConnection instproc dispatch {} {
+        my instvar chan method url
+        variable requiresBody
+
+        fileevent $chan readable {}
+
+        set object [[my info parent] findObject $url]
+
+        if {[Object isobject $object]} {
+
+            if {$requiresBody($method)} {
+                 set input [my set postdata]
+            } else {
+                 set input [decodeQuery [my set query]]
+            }
+
+            $object process [self] $input
+
+        } else {
+            my error 404
+            return
+        }
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc respond {result} {
+        my instvar chan version reqleft mime
+
+        fileevent [my set chan] readable [list [self] firstLine]
+
+        puts $chan "HTTP/1.$version 200 Data follows"
+        puts $chan "Date: [my date [clock seconds]]"
+        puts $chan "Content-Type: text/xml; charset=utf-8"
+        puts $chan "Content-Length: [string length $result]"
+
+        ## Should also close socket if recvd connection close header
+        set close [expr {$reqleft == 0}]
+
+        if {$close} {
+            puts $chan "Connection: close"
+        } elseif {$version > 0 && [info exists mime(connection)]} {
+            if {[string equal $mime(connection) Keep-Alive]} {
+                set close 0
+                puts $chan "Connection: Keep-Alive"
+            }
+        } else {
+            set close 1
+        }
+
+        puts $chan {}
+        puts $chan $result
+        flush $chan
+
+        my done $close
+        return
+    }
 
 # -------------------------------------------------------------------------
 
 # Respond with an error reply
-# sock:  The socket handle to the client
-# code:  The httpd error code
+# code:  The http error code
 # args:  Additional information for error logging
 
-proc HttpdError {sock code args} {
-    upvar #0 Httpd$sock data
-    global Httpd HttpdErrors HttpdErrorFormat
+    HttpConnection instproc error {code args} {
+        my instvar chan url version
+        variable errorFormat
+	variable errorCodes
 
-    append data(url) ""
-    incr Httpd(errors)
-    set message [format $HttpdErrorFormat $code $HttpdErrors($code) $data(url)]
-    append head "HTTP/1.$data(version) $code $HttpdErrors($code)"  \n
-    append head "Date: [HttpdDate [clock seconds]]"  \n
-    append head "Connection: close"  \n
-    append head "Content-Length: [string length $message]"  \n
+        set message [srmErrorBody $code $errorCodes($code) $url]
+        append head "HTTP/1.$version $code $errorCodes($code)"  \n
+        append head "Date: [my date [clock seconds]]"  \n
+        append head "Connection: close"  \n
+        append head "Content-Length: [string length $message]"  \n
 
-    # Because there is an error condition, the socket may be "dead"
+        # Because there is an error condition, the socket may be "dead"
 
-    catch {
-        fconfigure $sock -translation crlf
-        puts -nonewline $sock $head\n$message
-        flush $sock
-    } reason
-    HttpdLog $sock error $code $HttpdErrors($code) $args $reason
-    KillSrmRequest $data(requestId)
-    HttpdSockDone $sock 1
-}
+        catch {
+            fconfigure $chan -translation crlf
+            puts -nonewline $chan $head\n$message
+            flush $chan
+        } result
 
-# -------------------------------------------------------------------------
-
-# Generate a date string in HTTP format.
-
-proc HttpdDate {seconds} {
-    return [clock format $seconds -format {%a, %d %b %Y %T %Z}]
-}
+        my log error $code $errorCodes($code) $args $result
+        my done 1
+        return
+    }
 
 # -------------------------------------------------------------------------
 
-# Log an Httpd transaction.
-# This should be replaced as needed.
+    HttpConnection instproc done {close} {
 
-proc HttpdLog {sock level args} {
-    upvar #0 Httpd$sock data
-    log::log $level "\[client $data(address)\] [join $args { }]"
-}
+        after cancel [my set afterId]
+
+        my incr reqleft -1
+
+        if {$close} {
+            my destroy
+        } else {
+            my reset [my reqleft]
+        }
+    }
 
 # -------------------------------------------------------------------------
 
+    HttpConnection instproc destroy {} {
+        my instvar chan
+
+        catch {
+	    fileevent $chan readable {}
+            ::close $chan
+        }
+
+        next
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc log {level args} {
+        my instvar addr
+        log::log $level "\[client $addr\] [join $args { }]"
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc date {seconds} {
+        clock format $seconds -format {%a, %d %b %Y %T %Z}
+    }
+
+# -------------------------------------------------------------------------
+
+    Class HttpServerGss -superclass HttpServer -parameter {
+        {frontendService}
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpServerGss instproc accept {chan addr port} {
+        HttpConnectionGss new \
+	    -childof [self] \
+	    -chan $chan \
+	    -addr $addr \
+	    -port $port \
+	    -frontendService [my frontendService]
+    }
+
+# -------------------------------------------------------------------------
+
+    Class HttpConnectionGss -superclass HttpConnection -parameter {
+        {frontendService}
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnectionGss instproc setup {} {
+        my instvar chan bufsize
+        if {[catch {gss::import $chan -server true} result]} {
+            my log error {Error during gssimport:} $result
+            my done 1
+            return
+        }
+        next
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnectionGss instproc dataDone {} {
+        my authorization
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnectionGss instproc authorization {} {
+        my instvar chan
+
+	fileevent $chan readable {}
+
+        my log notice {Distinguished name} [fconfigure $chan -gssname]
+        if {[catch {fconfigure $chan -gsscontext} result]} {
+            my log error {Error during gsscontext:} $result
+            my done 1
+            return
+        }
+        [my frontendService] process [list authorization [self] $result]
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnectionGss instproc authorizationSuccess {userName} {
+        my set userName $userName
+        my dispatch
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnectionGss instproc authorizationFailure {reason} {
+	my log error {Authorization failed:} $reason
+        my error 403 {Acess is not allowed}
+    }
+
+# -------------------------------------------------------------------------
 # Convert a url into a pathname. (UNIX version only)
 # This is probably not right, and belongs somewhere else.
 # - Remove leading http://... if any
 # - Collapse all /./ and /../ constructs
 # - expand %xx sequences -> disallow "/"'s  and "."'s due to expansions
 
-proc HttpdUrl2File {url} {
-    regsub -all {//+} $url / url                ;# collapse multiple /'s
-    while {[regsub -all {/\./} $url / url]} {}  ;# collapse /./
-    while {[regsub -all {/\.\.(/|$)} $url /\x81\\1 url]} {} ;# mark /../
-    while {[regsub {/\[^/\x81]+/\x81/} $url / url]} {} ;# collapse /../
-    if {![regexp {\x81|%2\[eEfF]} $url]} {      ;# invalid /../, / or . ?
-        return [HttpdCgiMap $url]
-    } else {
-        return {}
+    proc url2path {url} {
+        regsub -all {//+} $url / url                ;# collapse multiple /'s
+        while {[regsub -all {/\./} $url / url]} {}  ;# collapse /./
+        while {[regsub -all {/\.\.(/|$)} $url /\x81\\1 url]} {} ;# mark /../
+        while {[regsub {/\[^/\x81]+/\x81/} $url / url]} {} ;# collapse /../
+        if {![regexp {\x81|%2\[eEfF]} $url]} {      ;# invalid /../, / or . ?
+            return [decodeUrl $url]
+        } else {
+            return {}
+        }
     }
-}
 
 # -------------------------------------------------------------------------
-
 # Decode url-encoded strings.
 
-proc HttpdCgiMap { data } {
-  # jcw wiki webserver
-  # @c Decode url-encoded strings
+    proc decodeUrl {data} {
+        # jcw wiki webserver
+        # @c Decode url-encoded strings
 
-  regsub -all {\+} $data { } data
-  regsub -all {([][$\\])} $data {\\\1} data
-  regsub -all {%([0-9a-fA-F][0-9a-fA-F])} $data {[format %c 0x\1]} data
+        regsub -all {\+} $data { } data
+        regsub -all {([][$\\])} $data {\\\1} data
+        regsub -all {%([0-9a-fA-F][0-9a-fA-F])} $data {[format %c 0x\1]} data
 
-  return [subst $data]
-}
+        return [subst -novariables -nobackslashes $data]
+    }
+
+# -------------------------------------------------------------------------
+
+    proc decodeQuery {query} {
+        # jcw wiki webserver
+        # @c Decode url-encoded query into key/value pairs
+
+        set result [list]
+
+        regsub -all {[&=]} $query { }    query
+        regsub -all {  }   $query { {} } query; # Othewise we lose empty values
+
+        foreach {key val} $query {
+            lappend result [decodeUrl $key] [decodeUrl $val]
+        }
+
+        return $result
+    }
 
 # -------------------------------------------------------------------------
 
-proc HttpdQueryMap { query } {
-  # jcw wiki webserver
-  # @c Decode url-encoded query into key/value pairs
-
-  set res [list]
-
-  regsub -all {[&=]} $query { }    query
-  regsub -all {  }   $query { {} } query; # Othewise we lose empty values
-
-  foreach {key val} $query {
-      lappend res [CgiMap $key] [CgiMap $val]
-  }
-  return $res
+     namespace export HttpServer HttpServerGss
 }
-
-# -------------------------------------------------------------------------
 
 package provide srmlite::httpd 0.1

@@ -37,39 +37,15 @@ SetLogLevel debug
 
 set certProxy /tmp/x509up_u1000
 
-set requestType srmLsRequest
+set requestType srmMkdir
 
 set serviceURL srm://maite.iihe.ac.be:8443/srm/managerv2
 
-#set serviceURL srm://cmssrm.fnal.gov:8443/srm/managerv2
-
-set serviceURL srm://ingrid.cism.ucl.ac.be:8443/srm/managerv2
-
-#set serviceURL srm://ingrid-se01.cism.ucl.ac.be:8444/srm/managerv2
-#set serviceURL srm://ingrid-se02.cism.ucl.ac.be:8443/srm/managerv1
-
-set srcSURLS [list \
-    srm://maite.iihe.ac.be:8443/srm/managerv2?SFN=/pnfs/iihe/cms/ph/sc4/store/PhEDEx_LoadTest07/LoadTest07_Prod_BelgiumIIHE/LoadTest07_BelgiumIIHE_00 \
-    srm://maite.iihe.ac.be:8443/srm/managerv2?SFN=/pnfs/iihe/cms/ph/sc4/store/PhEDEx_LoadTest07/LoadTest07_Prod_BelgiumIIHE/LoadTest07_BelgiumIIHE_01
-]
-set srcSURLS [list \
-    srm://maite.iihe.ac.be:8443/srm/managerv2?SFN=/pnfs/iihe/cms/ph/sc4/store/PhEDEx_LoadTest07/LoadTest07_Prod_BelgiumIIHE/
-]
-
-set srcSURLS [list \
-    srm://ingrid.cism.ucl.ac.be:8443/srm/managerv2?SFN=/opt/work/EventReader.cpp \
-    srm://ingrid.cism.ucl.ac.be:8443/srm/managerv2?SFN=/opt/work/EventReader.xpp
-]
-
-#set srcSURLS [list \
-#     srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/11//store/data/2008/2/8/Pass4Skim-TrackerTIF-B2/0000/0ED60A50-47D7-DC11-959B-0017312B5DE9.root \
-#     srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/11//store/data/2008/2/8/Pass4Skim-TrackerTIF-B2/0000/04A1BEEA-41D7-DC11-A08F-001731AF68CF.root
-#]
-
+set SURL srm://maite.iihe.ac.be:8443/srm/managerv2?SFN=/pnfs/iihe/cms/ph/sc4/store/PhEDEx_LoadTest07/LoadTest07_Prod_BelgiumIIHE/
 
 set ::env(X509_USER_PROXY) $certProxy
 
-set query [srmLsReqBody $srcSURLS]
+set query [srmMkdirReqBody $SURL]
 
 puts $query
 

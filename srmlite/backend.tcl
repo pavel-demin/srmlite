@@ -2,11 +2,21 @@
 package require Tclx
 package require dict
 
+package require srmlite::utilities
+namespace import ::srmlite::utilities::LogRotate
+
+# -------------------------------------------------------------------------
+
+array set State {
+    in stdout
+    out stdin
+}
+
 # -------------------------------------------------------------------------
 
 proc ExtractHostFile {url} {
 
-    set exp {^(([^:]*)://)?([^@]+@)?([^/:]+)(:([0-9]+))?(/srm/managerv1\?SFN=)?(/.*)?$}
+    set exp {^(([^:]*)://)?([^@]+@)?([^/:]+)(:(\d+))?(/srm/managerv\d\?SFN=)?(/.*)?$}
     if {![regexp -nocase $exp $url x prefix proto user host y port z file]} {
         log::log error "Unsupported URL $url"
         return {}
@@ -20,42 +30,60 @@ proc ExtractHostFile {url} {
 
 # -------------------------------------------------------------------------
 
-proc SrmGet {requestType fileId userName SURL} {
+proc SrmLs {requestType uniqueId userName SURL} {
+
+    set command "./setuid $userName ./url_ls.sh [ExtractHostFile $SURL]"
+#    set command "./url_ls.sh [ExtractHostFile $SURL]"
+    SubmitCommand $requestType $uniqueId $command
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmGet {requestType uniqueId userName SURL} {
 
     set command "./setuid $userName ./url_get.sh [ExtractHostFile $SURL]"
 #    set command "./url_get.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $fileId $command
+    SubmitCommand $requestType $uniqueId $command
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmPut {requestType fileId userName SURL} {
+proc SrmPut {requestType uniqueId userName SURL} {
 
     set command "./setuid $userName ./url_put.sh [ExtractHostFile $SURL]"
 #    set command "./url_put.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $fileId $command
+    SubmitCommand $requestType $uniqueId $command
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmAdvisoryDelete {requestType fileId userName SURL} {
+proc SrmRm {requestType uniqueId userName SURL} {
 
     set command "./setuid $userName ./url_del.sh [ExtractHostFile $SURL]"
-#    set command "./url_put.sh [ExtractHostFile $SURL]"
-    SubmitCommand $requestType $fileId $command
+#    set command "./url_del.sh [ExtractHostFile $SURL]"
+    SubmitCommand $requestType $uniqueId $command
 }
 
 # -------------------------------------------------------------------------
 
-proc SrmGetUserName {requestType fileId gssContext} {
+proc SrmMkdir {requestType uniqueId userName SURL} {
+
+    set command "./setuid $userName ./url_mkdir.sh [ExtractHostFile $SURL]"
+#    set command "./url_mkdir.sh [ExtractHostFile $SURL]"
+    SubmitCommand $requestType $uniqueId $command
+}
+
+# -------------------------------------------------------------------------
+
+proc SrmAuth {requestType uniqueId gssContext} {
 
     set command "./getuser.sh $gssContext"
-    SubmitCommand $requestType $fileId $command
+    SubmitCommand $requestType $uniqueId $command
 }
 
 # -------------------------------------------------------------------------
 
-proc SubmitCommand {requestType fileId command} {
+proc SubmitCommand {requestType uniqueId command} {
 
     global State
 
@@ -65,7 +93,7 @@ proc SubmitCommand {requestType fileId command} {
         set faultString "Failed to execute '$command'"
         log::log error $faultString
         log::log error $pipe
-        puts $State(out) [list Failed $requestType $fileId $faultString]
+        puts $State(out) [list Failure $requestType $uniqueId $faultString]
         return
     }
 
@@ -74,27 +102,27 @@ proc SubmitCommand {requestType fileId command} {
 
     upvar #0 SrmProcesses($processId) process
 
-    set process [dict create requestType $requestType fileId $fileId output {}]
+    set process [dict create requestType $requestType uniqueId $uniqueId output {}]
 
     fconfigure $pipe -buffering none -blocking 0
-    fileevent $pipe readable [list GetCommandOutput $requestType $fileId $processId $pipe]
+    fileevent $pipe readable [list GetCommandOutput $requestType $uniqueId $processId $pipe]
 }
 
 # -------------------------------------------------------------------------
 
-proc GetCommandOutput {requestType fileId processId pipe} {
+proc GetCommandOutput {requestType uniqueId processId pipe} {
 
     upvar #0 SrmProcesses($processId) process
 
     if {[catch {gets $pipe line} readCount]} {
         log::log error $readCount
-        Finish $requestType $fileId $processId $pipe
+        Finish $requestType $uniqueId $processId $pipe
         return
     }
 
     if {$readCount == -1} {
         if {[eof $pipe]} {
-            Finish $requestType $fileId $processId $pipe
+            Finish $requestType $uniqueId $processId $pipe
         } else {
             log::log warning "\[process: $processId\] No full line available, retrying..."
         }
@@ -102,14 +130,14 @@ proc GetCommandOutput {requestType fileId processId pipe} {
     }
 
     if {$line != {}} {
-        dict set process output $line
+        dict lappend process output $line
         log::log debug "+> $line"
     }
 }
 
 # -------------------------------------------------------------------------
 
-proc Finish {requestType fileId processId pipe} {
+proc Finish {requestType uniqueId processId pipe} {
 
     global State
     upvar #0 SrmProcesses($processId) process
@@ -127,11 +155,9 @@ proc Finish {requestType fileId processId pipe} {
     }
 
     if {$hadError} {
-        set state Failed
-    } elseif {[string equal $requestType copy]} {
-        set state Done
+        set state Failure
     } else {
-        set state Ready
+        set state Success
     }
 
     set output {}
@@ -141,7 +167,7 @@ proc Finish {requestType fileId processId pipe} {
         unset process
     }
 
-    puts $State(out) [list $state $requestType $fileId $output]
+    puts $State(out) [list $state $requestType $uniqueId $output]
 }
 
 # -------------------------------------------------------------------------
@@ -190,11 +216,17 @@ proc GetInput {chan} {
         put {
             eval SrmPut $line
         }
-        advisoryDelete {
-            eval SrmAdvisoryDelete $line
+        rm {
+            eval SrmRm $line
         }
-        getUserName {
-            eval SrmGetUserName $line
+        ls {
+            eval SrmLs $line
+        }
+        mkdir {
+            eval SrmMkdir $line
+        }
+        authorization {
+            eval SrmAuth $line
         }
         default {
             log::log error "Unknown request type $requestType"
@@ -204,4 +236,4 @@ proc GetInput {chan} {
 
 # -------------------------------------------------------------------------
 
-package provide srmlite::backend 0.1
+package provide srmlite::backend 0.2

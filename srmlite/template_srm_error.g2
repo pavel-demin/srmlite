@@ -1,0 +1,9 @@
+@@
+<html>
+<title>Error: $${code}</title>
+<body>
+<h1>$${text}</h1>
+while trying to access <b>$${url}</b>.
+</body>
+</html>
+@@

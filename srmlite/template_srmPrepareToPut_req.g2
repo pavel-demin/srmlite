@@ -1,0 +1,44 @@
+@@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:srmPrepareToPut soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <srmPrepareToPutRequest xsi:type="ns1:srmPrepareToPutRequest">
+        <authorizationID xsi:type="xsd:string" xsi:nil="true"/>
+        <arrayOfFileRequests xsi:type="ns1:ArrayOfTPutFileRequest">
+@@
+foreach dstSURL $dstSURLS size $sizes {
+@@
+          <requestArray xsi:type="ns1:TPutFileRequest">
+            <targetSURL xsi:type="xsd:anyURI">$${dstSURL}</targetSURL>
+            <expectedFileSize xsi:type="xsd:unsignedLong">$${size}</expectedFileSize>
+          </requestArray>
+@@
+}
+@@
+        </arrayOfFileRequests>
+        <userRequestDescription xsi:type="xsd:string" xsi:nil="true"/>
+        <overwriteOption xsi:type="ns1:TOverwriteMode" xsi:nil="true"/>
+        <storageSystemInfo xsi:type="ns1:ArrayOfTExtraInfo" xsi:nil="true"/>
+        <desiredTotalRequestTime xsi:type="xsd:int">86400</desiredTotalRequestTime>
+        <desiredPinLifeTime xsi:type="xsd:int" xsi:nil="true"/>
+        <desiredFileLifeTime xsi:type="xsd:int" xsi:nil="true"/>
+        <desiredFileStorageType xsi:type="ns1:TFileStorageType">PERMANENT</desiredFileStorageType>
+        <targetSpaceToken xsi:type="xsd:string" xsi:nil="true"/>
+        <targetFileRetentionPolicyInfo xsi:type="ns1:TRetentionPolicyInfo">
+          <retentionPolicy xsi:type="ns1:TRetentionPolicy">CUSTODIAL</retentionPolicy>
+          <accessLatency xsi:type="ns1:TAccessLatency">NEARLINE</accessLatency>
+        </targetFileRetentionPolicyInfo>
+        <transferParameters xsi:type="ns1:TTransferParameters">
+          <accessPattern xsi:type="ns1:TAccessPattern">TRANSFER_MODE</accessPattern>
+          <connectionType xsi:type="ns1:TConnectionType">WAN</connectionType>
+          <arrayOfClientNetworks xsi:type="ns1:ArrayOfString" xsi:nil="true"/>
+          <arrayOfTransferProtocols xsi:type="ns1:ArrayOfString">
+            <stringArray xsi:type="xsd:string">gsiftp</stringArray>
+          </arrayOfTransferProtocols>
+        </transferParameters>
+      </srmPrepareToPutRequest>
+    </ns1:srmPrepareToPut>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

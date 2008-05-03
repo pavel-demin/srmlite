@@ -1,12 +1,17 @@
 lappend auto_path .
 
+package require g2lite
+package require tdom
 package require log
+
+package require srmlite::templates
+package require srmlite::soap
 
 package require XOTcl
 namespace import ::xotcl::*
 
-package require srmlite::srmv2::client
-namespace import ::srmlite::srmv2::client::*
+package require srmlite::http
+namespace import ::srmlite::http::*
 
 # -------------------------------------------------------------------------
 
@@ -34,20 +39,7 @@ set serviceURL srm://maite.iihe.ac.be:8443/srm/managerv2
 
 set serviceURL srm://cmssrm.fnal.gov:8443/srm/managerv2
 
-#set serviceURL srm://ingrid.cism.ucl.ac.be:8443/srm/managerv2
-
-set srcSURLS [list \
-    srm://maite.iihe.ac.be:8443/srm/managerv2?SFN=/pnfs/iihe/cms/ph/sc4/store/PhEDEx_LoadTest07/LoadTest07_Prod_BelgiumIIHE/LoadTest07_BelgiumIIHE_00
-]
-
-set srcSURLS [list \
-    srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/11//store/data/2008/2/8/Pass4Skim-TrackerTIF-B2/0000/0ED60A50-47D7-DC11-959B-0017312B5DE9.root
-]
-
-#set srcSURLS [list \
-#    srm://ingrid.cism.ucl.ac.be:8443/srm/managerv2?SFN=/opt/work/EventReader.cpp \
-#    srm://ingrid.cism.ucl.ac.be:8443/srm/managerv2?SFN=/opt/work/EventReader.hpp
-#]
+#set serviceURL srm://ingrid-se01.cism.ucl.ac.be:8443/srm/managerv2
 
 set ::env(X509_USER_PROXY) $certProxy
 
@@ -63,26 +55,23 @@ callbackRecipient proc failureCallback {reason} {
     set output $reason
 }
 
-SrmClient client \
-    -serviceURL $serviceURL \
-    -SURL $srcSURLS \
+set query [srmPingReqBody]
+set requestType srmPing
+
+HttpRequest request \
+    -url $serviceURL \
+    -agent Axis/1.3 \
+    -accept {application/soap+xml, application/dime, multipart/related, text/*} \
+    -type {text/xml; charset=utf-8} \
     -callbackRecipient ::callbackRecipient
 
-client get
+request send \
+    -query $query \
+    -headers [srmHeaders $requestType]
 
 vwait output
 
 puts $output
 
-exit
-
-after 10000
-
-client getDone
-
-vwait output
-
-puts $output
-
-client destroy
+request destroy
 callbackRecipient destroy

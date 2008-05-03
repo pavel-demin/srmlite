@@ -1,6 +1,21 @@
 package require dict
 package require g2lite
 
+package require srmlite::utilities
+namespace import ::srmlite::utilities::Extract*
+
+# -------------------------------------------------------------------------
+
+proc nillableValue {tag var} {
+  variable g2result
+  upvar $var value
+  if {[info exists value]} {
+      append g2result {>} $value {</} $tag
+  } else {
+      append g2result { xsi:nil="true"/}
+  }
+}
+
 # -------------------------------------------------------------------------
 
 proc InitTemplateHeaders {} {
@@ -9,7 +24,18 @@ proc InitTemplateHeaders {} {
   set content [read $fid]
   close $fid
 
-  proc SrmHeaders {requestType} [g2lite $content]
+  proc srmHeaders {requestType} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateError {} {
+
+  set fid [open template_srm_error.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmErrorBody {code text url} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
@@ -20,148 +46,345 @@ proc InitTemplateFault {} {
   set content [read $fid]
   close $fid
 
-  proc SrmFaultBody {faultString stackTrace} [g2lite $content]
+  proc srmFaultBody {faultString stackTrace} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateStatus {} {
+proc InitTemplateSrmStatusRes {} {
 
-  set fid [open template_srm_status.g2]
+  set fid [open template_srmStatus_res.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmStatusBody {responseType requestId} [g2lite $content]
-
+  proc srmStatusResBody {requestType requestState explanation} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateFileMetaData {} {
+proc InitTemplateSrmPingReq {} {
 
-  set fid [open template_srm_metadata.g2]
+  set fid [open template_srmPing_req.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmFileMetaDataBody {requestId} [g2lite $content]
-
+  proc srmPingReqBody {} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateGetRequestStatus {} {
+proc InitTemplateSrmPingRes {} {
 
-  set fid [open template_srm_getRequestStatus.g2]
+  set fid [open template_srmPing_res.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmGetRequestStatusBody {requestId} [g2lite $content]
+  proc srmPingResBody {} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateSetFileStatus {} {
+proc InitTemplateSrmLsReq {} {
 
-  set fid [open template_srm_setFileStatus.g2]
+  set fid [open template_srmLs_req.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmSetFileStatusBody {requestId fileId fileState} [g2lite $content]
+  proc srmLsReqBody {SURLS} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateAdvisoryDelete {} {
+proc InitTemplateSrmLsRes {} {
 
-  set fid [open template_srm_advisoryDelete.g2]
+  set fid [open template_srmLs_res.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmAdvisoryDeleteBody {srcSURLS} [g2lite $content]
+  proc srmLsResBody {request} [g2lite $content]
+}
+
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmRmReq {} {
+
+  set fid [open template_srmRm_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmRmReqBody {SURLS} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateGetFileMetaData {} {
+proc InitTemplateSrmRmRes {} {
 
-  set fid [open template_srm_getFileMetaData.g2]
+  set fid [open template_srmRm_res.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmGetFileMetaDataBody {srcSURLS} [g2lite $content]
+  proc srmRmResBody {request} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateGet {} {
+proc InitTemplateSrmMkdirReq {} {
 
-  set fid [open template_srm_get.g2]
+  set fid [open template_srmMkdir_req.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmGetBody {srcSURLS} [g2lite $content]
+  proc srmMkdirReqBody {SURL} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplatePut {} {
+proc InitTemplateSrmMkdirRes {} {
 
-  set fid [open template_srm_put.g2]
+  set fid [open template_srmRequestStatus_res.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmPutBody {dstSURL size} [g2lite $content]
+  proc srmMkdirResBody {request} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateCopy {} {
+proc InitTemplateSrmCopyReq {} {
 
-  set fid [open template_srm_copy.g2]
+  set fid [open template_srmCopy_req.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmCopyBody {srcSURL dstSURL} [g2lite $content]
+  proc srmCopyReqBody {srcSURLS dstSURLS} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplatePing {} {
+proc InitTemplateSrmCopyRes {} {
 
-  set fid [open template_srm_ping.g2]
+  set fid [open template_srmCopy_res.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmPingBody {} [g2lite $content]
+  proc srmCopyResBody {request} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
-proc InitTemplatePingResponse {} {
+proc InitTemplateSrmPrepareToGetReq {} {
 
-  set fid [open template_srm_pingResponse.g2]
+  set fid [open template_srmPrepareToGet_req.g2]
   set content [read $fid]
   close $fid
 
-  proc SrmPingResponseBody {} [g2lite $content]
+  proc srmPrepareToGetReqBody {srcSURLS} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmPrepareToGetRes {} {
+
+  set fid [open template_srmPrepareToGet_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmPrepareToGetResBody {request} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmPrepareToPutReq {} {
+
+  set fid [open template_srmPrepareToPut_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmPrepareToPutReqBody {dstSURLS sizes} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmPrepareToPutRes {} {
+
+  set fid [open template_srmPrepareToPut_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmPrepareToPutResBody {request} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmStatusOfCopyRequestReq {} {
+
+  set fid [open template_srmStatusOfCopyRequest_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmStatusOfCopyRequestReqBody {requestToken srcSURLS dstSURLS} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmStatusOfCopyRequestRes {} {
+
+  set fid [open template_srmStatusOfCopyRequest_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmStatusOfCopyRequestResBody {request files} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmStatusOfGetRequestReq {} {
+
+  set fid [open template_srmStatusOfGetRequest_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmStatusOfGetRequestReqBody {requestToken srcSURLS} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmStatusOfGetRequestRes {} {
+
+  set fid [open template_srmStatusOfGetRequest_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmStatusOfGetRequestResBody {request files} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmStatusOfPutRequestReq {} {
+
+  set fid [open template_srmStatusOfPutRequest_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmStatusOfPutRequestReqBody {requestToken dstSURLS} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmStatusOfPutRequestRes {} {
+
+  set fid [open template_srmStatusOfPutRequest_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmStatusOfPutRequestResBody {request files} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmReleaseFilesReq {} {
+
+  set fid [open template_srmReleaseFiles_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmReleaseFilesReqBody {requestToken srcSURLS} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmReleaseFilesRes {} {
+
+  set fid [open template_srmReleaseFiles_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmReleaseFilesResBody {request files} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmPutDoneReq {} {
+
+  set fid [open template_srmPutDone_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmPutDoneReqBody {requestToken srcSURLS} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmPutDoneRes {} {
+
+  set fid [open template_srmPutDone_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmPutDoneResBody {request files} [g2lite $content]
+}
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmAbortFilesReq {} {
+
+  set fid [open template_srmAbortFiles_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmAbortFilesReqBody {requestToken SURLS} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmAbortFilesRes {} {
+
+  set fid [open template_srmAbortFiles_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmAbortFilesResBody {request files} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
 
 InitTemplateHeaders
+InitTemplateError
 InitTemplateFault
-InitTemplateStatus
-InitTemplateFileMetaData
-InitTemplateGetRequestStatus
-InitTemplateSetFileStatus
-InitTemplateAdvisoryDelete
-InitTemplateGetFileMetaData
-InitTemplateGet
-InitTemplatePut
-InitTemplateCopy
-InitTemplatePing
-InitTemplatePingResponse
+
+InitTemplateSrmStatusRes
+
+InitTemplateSrmPingReq
+InitTemplateSrmPingRes
+
+InitTemplateSrmLsReq
+InitTemplateSrmLsRes
+InitTemplateSrmRmReq
+InitTemplateSrmRmRes
+InitTemplateSrmMkdirReq
+InitTemplateSrmMkdirRes
+
+InitTemplateSrmCopyReq
+InitTemplateSrmCopyRes
+InitTemplateSrmPrepareToGetReq
+InitTemplateSrmPrepareToGetRes
+InitTemplateSrmPrepareToPutReq
+InitTemplateSrmPrepareToPutRes
+
+InitTemplateSrmStatusOfCopyRequestReq
+InitTemplateSrmStatusOfCopyRequestRes
+InitTemplateSrmStatusOfGetRequestReq
+InitTemplateSrmStatusOfGetRequestRes
+InitTemplateSrmStatusOfPutRequestReq
+InitTemplateSrmStatusOfPutRequestRes
+
+InitTemplateSrmReleaseFilesReq
+InitTemplateSrmReleaseFilesRes
+InitTemplateSrmPutDoneReq
+InitTemplateSrmPutDoneRes
+InitTemplateSrmAbortFilesReq
+InitTemplateSrmAbortFilesRes
 
 # -------------------------------------------------------------------------
 
-package provide srmlite::templates 0.1
+package provide srmlite::templates 0.2

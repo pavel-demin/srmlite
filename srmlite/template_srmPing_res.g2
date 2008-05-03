@@ -1,0 +1,13 @@
+@@
+<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:srmPingResponse soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <srmPingResponse xsi:type="ns1:srmPingResponse">
+        <versionInfo xsi:type="xsd:string">v2.2</versionInfo>
+        <otherInfo xsi:type="ns1:ArrayOfTExtraInfo" xsi:nil="true"/>
+      </srmPingResponse>
+    </ns1:srmPingResponse>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

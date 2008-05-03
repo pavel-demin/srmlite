@@ -1,0 +1,13 @@
+@@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:srmAbortRequest soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <srmAbortRequestRequest xsi:type="ns1:srmAbortRequestRequest">
+        <requestToken xsi:type="xsd:string">$${requestToken}</requestToken>
+        <authorizationID xsi:type="xsd:string" xsi:nil="true"/>
+      </srmAbortRequestRequest>
+    </ns1:srmAbortRequest>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

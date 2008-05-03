@@ -1,0 +1,152 @@
+$request eval {
+    upvar g2result g2result
+@@
+<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:srmLsResponse soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <srmLsResponse xsi:type="ns1:srmLsResponse">
+        <returnStatus xsi:type="ns1:TReturnStatus">
+          <statusCode xsi:type="ns1:TStatusCode">$${requestState}</statusCode>
+          <explanation xsi:type="xsd:string"@@nillableValue explanation requestStateComment@@>
+        </returnStatus>
+        <requestToken xsi:type="xsd:string" xsi:nil="true"/>
+        <details xsi:type="ns1:ArrayOfTMetaDataPathDetail">
+@@
+}
+foreach file [$request info children] {
+    $file eval {
+        upvar g2result g2result
+        if {[info exists metadata]} {
+            set stat [lindex $metadata 0]
+            set permMode [lindex $stat 0]
+            set fileType [ExtractFileType $permMode]
+            set ownerMode [ExtractOwnerMode $permMode]
+            set groupMode [ExtractGroupMode $permMode]
+            set otherMode [ExtractOtherMode $permMode]
+            set owner [lindex $stat 2]
+            set group [lindex $stat 3]
+            set fileSize 0
+            if {[string equal $fileType FILE]} {
+                set fileSize [lindex $stat 4]
+            }
+            set seconds [clock scan [lrange $stat 5 6]]
+            set fileTime [clock format $seconds -format {%Y-%m-%dT%H:%M:%S.000Z} -gmt yes]
+            set filePath [lindex $stat 7]
+@@
+          <pathDetailArray xsi:type="ns1:TMetaDataPathDetail">
+            <path xsi:type="xsd:string">$${filePath}</path>
+            <status xsi:type="ns1:TReturnStatus">
+              <statusCode xsi:type="ns1:TStatusCode">$${fileState}</statusCode>
+              <explanation xsi:type="xsd:string"@@nillableValue explanation fileStateComment@@>
+            </status>
+            <size xsi:type="xsd:unsignedLong">$${fileSize}</size>
+            <createdAtTime xsi:type="xsd:dateTime">$${fileTime}</createdAtTime>
+            <lastModificationTime xsi:type="xsd:dateTime">$${fileTime}</lastModificationTime>
+            <fileStorageType xsi:type="ns1:TFileStorageType">PERMANENT</fileStorageType>
+            <retentionPolicyInfo xsi:type="ns1:TRetentionPolicyInfo">
+              <retentionPolicy xsi:type="ns1:TRetentionPolicy">CUSTODIAL</retentionPolicy>
+              <accessLatency xsi:type="ns1:TAccessLatency">ONLINE</accessLatency>
+            </retentionPolicyInfo>
+            <fileLocality xsi:type="ns1:TFileLocality">ONLINE</fileLocality>
+            <arrayOfSpaceTokens xsi:type="ns1:ArrayOfString" xsi:nil="true"/>
+            <type xsi:type="ns1:TFileType">$${fileType}</type>
+            <lifetimeAssigned xsi:type="xsd:int">-1</lifetimeAssigned>
+            <lifetimeLeft xsi:type="xsd:int">-1</lifetimeLeft>
+            <ownerPermission xsi:type="ns1:TUserPermission">
+              <userID xsi:type="xsd:string">$${owner}</userID>
+              <mode xsi:type="ns1:TPermissionMode">$${ownerMode}</mode>
+            </ownerPermission>
+            <groupPermission xsi:type="ns1:TGroupPermission">
+              <groupID xsi:type="xsd:string">$${group}</groupID>
+              <mode xsi:type="ns1:TPermissionMode">$${groupMode}</mode>
+            </groupPermission>
+            <otherPermission xsi:type="ns1:TPermissionMode">$${otherMode}</otherPermission>
+            <checkSumType xsi:type="xsd:string" xsi:nil="true"/>
+            <checkSumValue xsi:type="xsd:string" xsi:nil="true"/>
+@@
+            if {[llength $metadata] == 1} {
+@@
+            <arrayOfSubPaths xsi:type="ns1:ArrayOfTMetaDataPathDetail" xsi:nil="true"/>
+@@
+            } else {
+@@
+            <arrayOfSubPaths xsi:type="ns1:ArrayOfTMetaDataPathDetail">
+
+@@
+                foreach stat [lrange $metadata 1 end] {
+                    set permMode [lindex $stat 0]
+                    set fileType [ExtractFileType $permMode]
+                    set ownerMode [ExtractOwnerMode $permMode]
+                    set groupMode [ExtractGroupMode $permMode]
+                    set otherMode [ExtractOtherMode $permMode]
+                    set owner [lindex $stat 2]
+                    set group [lindex $stat 3]
+                    set fileSize 0
+                    if {[string equal $fileType FILE]} {
+                        set fileSize [lindex $stat 4]
+                    }
+                    set seconds [clock scan [lrange $stat 5 6]]
+                    set fileTime [clock format $seconds -format {%Y-%m-%dT%H:%M:%S.000Z} -gmt yes]
+                    set filePath [lindex $stat 7]
+@@
+              <pathDetailArray xsi:type="ns1:TMetaDataPathDetail">
+                <path xsi:type="xsd:string">$${filePath}</path>
+                <status xsi:type="ns1:TReturnStatus">
+                  <statusCode xsi:type="ns1:TStatusCode">$${fileState}</statusCode>
+                  <explanation xsi:type="xsd:string"@@nillableValue explanation fileStateComment@@>
+                </status>
+                <size xsi:type="xsd:unsignedLong">$${fileSize}</size>
+                <createdAtTime xsi:type="xsd:dateTime">$${fileTime}</createdAtTime>
+                <lastModificationTime xsi:type="xsd:dateTime">$${fileTime}</lastModificationTime>
+                <fileStorageType xsi:type="ns1:TFileStorageType">PERMANENT</fileStorageType>
+                <retentionPolicyInfo xsi:type="ns1:TRetentionPolicyInfo">
+                  <retentionPolicy xsi:type="ns1:TRetentionPolicy">CUSTODIAL</retentionPolicy>
+                  <accessLatency xsi:type="ns1:TAccessLatency">ONLINE</accessLatency>
+                </retentionPolicyInfo>
+                <fileLocality xsi:type="ns1:TFileLocality">ONLINE</fileLocality>
+                <arrayOfSpaceTokens xsi:type="ns1:ArrayOfString" xsi:nil="true"/>
+                <type xsi:type="ns1:TFileType">$${fileType}</type>
+                <lifetimeAssigned xsi:type="xsd:int">-1</lifetimeAssigned>
+                <lifetimeLeft xsi:type="xsd:int">-1</lifetimeLeft>
+                <ownerPermission xsi:type="ns1:TUserPermission">
+                  <userID xsi:type="xsd:string">$${owner}</userID>
+                  <mode xsi:type="ns1:TPermissionMode">$${ownerMode}</mode>
+                </ownerPermission>
+                <groupPermission xsi:type="ns1:TGroupPermission">
+                  <groupID xsi:type="xsd:string">$${group}</groupID>
+                  <mode xsi:type="ns1:TPermissionMode">$${groupMode}</mode>
+                </groupPermission>
+                <otherPermission xsi:type="ns1:TPermissionMode">$${otherMode}</otherPermission>
+                <checkSumType xsi:type="xsd:string" xsi:nil="true"/>
+                <checkSumValue xsi:type="xsd:string" xsi:nil="true"/>
+              </pathDetailArray>
+@@
+                }
+@@
+            </arrayOfSubPath>
+@@
+            }
+        } else {
+            set filePath [lindex [ExtractHostPortFile $SURL] 2]
+@@
+          <pathDetailArray xsi:type="ns1:TMetaDataPathDetail">
+            <path xsi:type="xsd:string">$${filePath}</path>
+            <status xsi:type="ns1:TReturnStatus">
+              <statusCode xsi:type="ns1:TStatusCode">$${fileState}</statusCode>
+              <explanation xsi:type="xsd:string"@@nillableValue explanation fileStateComment@@>
+            </status>
+@@
+        }
+@@
+          </pathDetailArray>
+@@
+    }
+}
+@@
+        </details>
+      </srmLsResponse>
+    </ns1:srmLsResponse>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

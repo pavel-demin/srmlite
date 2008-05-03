@@ -1,0 +1,36 @@
+$request eval {
+    upvar g2result g2result
+@@
+<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:srmRmResponse soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <srmRmResponse xsi:type="ns1:srmRmResponse">
+        <returnStatus xsi:type="ns1:TReturnStatus">
+          <statusCode xsi:type="ns1:TStatusCode">$${requestState}</statusCode>
+          <explanation xsi:type="xsd:string"@@nillableValue explanation requestStateComment@@>
+        </returnStatus>
+        <arrayOfFileStatuses xsi:type="ns1:ArrayOfTSURLReturnStatus">
+@@
+}
+foreach file [$request info children] {
+    $file eval {
+        upvar g2result g2result
+@@
+          <statusArray xsi:type="ns1:TSURLReturnStatus">
+            <surl xsi:type="xsd:anyURI">$${SURL}</surl>
+            <status xsi:type="ns1:TReturnStatus">
+              <statusCode xsi:type="ns1:TStatusCode">$${fileState}</statusCode>
+              <explanation xsi:type="xsd:string"@@nillableValue explanation fileStateComment@@>
+            </status>
+          </statusArray>
+@@
+    }
+}
+@@
+        </arrayOfFileStatuses>
+      </srmRmResponse>
+    </ns1:srmRmResponse>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

@@ -8,10 +8,27 @@ package require srmlite::httpd
 package require srmlite::templates
 package require srmlite::soap
 
+package require XOTcl
+namespace import ::xotcl::*
+
+package require srmlite::httpd
+namespace import ::srmlite::httpd::*
+
+package require srmlite::lcmaps
+namespace import ::srmlite::lcmaps::*
+
+package require srmlite::srmv2
+namespace import ::srmlite::srmv2::*
+
 # -------------------------------------------------------------------------
 
-set StateDict {
-    Pending     SRM_REQUEST_QUEUED
+set requestId -2147483648
+
+# -------------------------------------------------------------------------
+
+proc NewRequestId {} {
+    global requestId
+    return [incr requestId]
 }
 
 # -------------------------------------------------------------------------
@@ -39,19 +56,18 @@ proc ConvertSURL2TURL {url} {
 
 # -------------------------------------------------------------------------
 
-proc /srm/managerv2 {sock requestId query} {
-    upvar #0 Httpd$sock data
+proc /srm/managerv2 {connection query} {
 
     if {[info exists data(mime,soapaction)]} {
         set action $data(mime,soapaction)
     } else {
-        HttpdError $sock 411 "Confusing mime headers"
+        connection error 411 {Confusing mime headers}
         return
     }
 
     if {[catch {dom parse $query} document]} {
-       HttpdLog $sock error $document
-       HttpdResult $sock [SrmFaultBody $document $errorInfo]
+       $connection log error $document
+       $connection respond [SrmFaultBody $document $errorInfo]
        return
     }
 
@@ -95,7 +111,7 @@ proc /srm/managerv2 {sock requestId query} {
        return
     }
 
-    HttpdResult $sock $query
+    $connection respond $query
 
 }
 
@@ -108,7 +124,7 @@ proc CreateRequest {SURLS} {
     set startTime $submitTime
     set finishTime [clock format $clockFinish -format {%Y-%m-%dT%H:%M:%SZ} -gmt yes]
 
-    set requestId [HttpdNewRequestId]
+    set requestId [NewRequestId]
 
     upvar #0 SrmRequest$requestId request
 
@@ -117,7 +133,7 @@ proc CreateRequest {SURLS} {
         errorMessage {} retryDeltaTime 1 fileIds {} counter 1]
 
     foreach srcSURL $SURLS {
-        set fileId [HttpdNewRequestId]
+        set fileId [NewRequestId]
 
         upvar #0 SrmFile$fileId file
 
@@ -131,6 +147,20 @@ proc CreateRequest {SURLS} {
     return $requestId
 }
 
-HttpdServer . 8443 index.html
+Object hello
+hello proc process {connection input} {
+    $connection respond hello
+}
+
+Frontend frontend
+Managerv2 srmv2
+
+#HttpServer server -port 8443
+HttpServerGss server -port 8443 -frontendService frontend
+
+server exportObject -prefix /hello -object hello
+server exportObject -prefix /srm/managerv2 -object srmv2
+
+server start
 
 vwait forever

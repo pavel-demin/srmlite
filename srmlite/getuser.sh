@@ -6,6 +6,9 @@ export GRIDMAPDIR=/etc/grid-security/gridmapdir
 export X509_CERT_DIR=/etc/grid-security/certificates
 export X509_VOMS_DIR=/etc/grid-security/vomsdir
 
+echo demin
+exit 0
+
 ./getuser $1
 rc=$?
 if [ $rc != 0 ]

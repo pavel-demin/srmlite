@@ -50,7 +50,7 @@ proc SoapElements {node} {
 proc SoapElementNames {node} {
     set result {}
     set elementNodes [SoapElements $node]
-    if {$elementNodes == {}} {
+    if {$elementNodes eq {}} {
         set result [$node nodeName]
     } else {
         foreach element $elementNodes {
@@ -86,10 +86,22 @@ proc SoapIsArray {node} {
         }
     }
 
+    if {[$node hasAttribute xsi:type]} {
+        set type [$node getAttribute xsi:type]
+        if {[string match -nocase {*:ArrayOf*} $type]} {
+            return 1
+        }
+    }
+
     # If all the child element names are the same, it's an array
     # but of there is only one element???
     set names [SoapElementNames $node]
     if {[llength $names] > 1 && [llength [lsort -unique $names]] == 1} {
+        return 1
+    }
+
+    set name [$node nodeName]
+    if {[string match -nocase {arrayOf*} $name]} {
         return 1
     }
 
@@ -143,11 +155,11 @@ proc SoapDecompose {node} {
     set elementNodes [SoapElements $node]
 
     # if no child element - return the value.
-    if {$elementNodes == {}} {
+    if {$elementNodes eq {}} {
         set result [SoapElementValue $node]
     } else {
         # decide if this is an array or struct
-        if {[SoapIsArray $node] == 1} {
+        if {[SoapIsArray $node]} {
             foreach element $elementNodes {
                 lappend result [SoapDecompose $element]
             }

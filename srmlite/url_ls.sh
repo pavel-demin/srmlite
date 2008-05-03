@@ -8,6 +8,6 @@ dirSrc=`dirname $fileSrc`
 
 . url_common.sh
 
-checkFileSrc $fileSrc $dirSrc
+checkFileLs $fileSrc $dirSrc
 
-ls -l --time-style=long-iso $fileSrc
+find $fileSrc -maxdepth 1 -exec ls -dln --time-style=long-iso {} \;

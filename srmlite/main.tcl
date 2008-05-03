@@ -8,14 +8,6 @@ package require srmlite::cfg
 
 # -------------------------------------------------------------------------
 
-array set State {
-    logFileId {}
-    in stdout
-    out stdin
-}
-
-# -------------------------------------------------------------------------
-
 proc ::log::Puts {level text} {
     variable channelMap
     variable fill
@@ -45,36 +37,6 @@ proc FormatLogMessage {level message} {
     log::Puts $level "\[$time] \[$level\] $message"
 }
 
-# -------------------------------------------------------------------------
-
-proc LogRotate {file} {
-
-    global Cfg State
-
-    log::log debug "LogRotate"
-
-    if {[catch {file size $file} result]} {
-        log::log error $result
-        return
-    }
-
-    if {$result < 200000000} {
-        return
-    }
-
-    set fid $State(logFileId)
-    set channels [file channels $fid]
-    if {![string equal $channels {}]} {
-        close $fid
-
-        file rename -force $file $file.old
-
-        set fid [open $file w]
-        fconfigure $fid -blocking 0 -buffering line
-        log::lvChannelForall $fid
-        set State(logFileId) $fid
-    }
-}
 
 # -------------------------------------------------------------------------
 
@@ -96,14 +58,23 @@ proc shutdown {} {
 
 # -------------------------------------------------------------------------
 
-proc frontend {} {
+proc frontend {pipein pipeout} {
 
-    global Cfg State
+    global Cfg
 
     package require srmlite::httpd
-    package require srmlite::frontend
+    namespace import ::srmlite::httpd::*
 
-    set State(ftpHosts) $Cfg(ftpHosts)
+    package require srmlite::cleanup
+    namespace import ::srmlite::cleanup::*
+
+    package require srmlite::frontend
+    namespace import ::srmlite::frontend::*
+
+    package require srmlite::srmv2::server
+    namespace import ::srmlite::srmv2::server::*
+
+    package require srmlite::utilities
 
     id group $Cfg(frontendGroup)
     id user $Cfg(frontendUser)
@@ -114,24 +85,35 @@ proc frontend {} {
     set fid [open $Cfg(frontendLog) w]
     fconfigure $fid -blocking 0 -buffering line
     log::lvChannelForall $fid
-    set State(logFileId) $fid
+
+    set ::srmlite::utilities::logFileId $fid
+    set ::srmlite::utilities::ftpHosts $Cfg(ftpHosts)
 
     log::log notice "frontend started with pid [pid]"
 #    close $fid
 
-    set State(in) [lindex $State(pipein) 1]
-    set State(out) [lindex $State(pipeout) 0]
+    CleanupService timeout \
+        -logFile $Cfg(frontendLog)
 
-    fconfigure $State(in) -blocking 0 -buffering line
-    fconfigure $State(out) -blocking 0 -buffering line
+    FrontendService frontend \
+        -in [lindex $pipeout 0] \
+        -out [lindex $pipein 1]
 
-    fileevent $State(out) readable [list GetInput $State(out)]
+    Srmv2Manager srmv2 \
+	-cleanupService timeout \
+	-frontendService frontend
 
-    HttpdServer . $Cfg(frontendPort) index.html
+    HttpServerGss server \
+        -port $Cfg(frontendPort) \
+	-frontendService frontend
+
+    server exportObject -prefix /srm/managerv2 -object srmv2
+
+    server start
 
     log::log notice "starting httpd server on port $Cfg(frontendPort)"
 
-    SetupTimer 600 [list SrmTimeout 600]
+    SetupTimer 600 [list timeout timeout 600]
 
     # start the Tcl event loop
     vwait forever
@@ -141,22 +123,24 @@ proc frontend {} {
 
 # -------------------------------------------------------------------------
 
-proc backend {} {
-
-    global Cfg State
+proc backend {pipein pipeout} {
 
     package require srmlite::backend
+    package require srmlite::utilities
+
+    global Cfg State
 
     set fid [open $Cfg(backendLog) w]
     fconfigure $fid -blocking 0 -buffering line
     log::lvChannelForall $fid
-    set State(logFileId) $fid
+
+    set ::srmlite::utilities::logFileId $fid
 
     log::log notice "backend started with pid [pid]"
 #    close $fid
 
-    set State(in) [lindex $State(pipein) 0]
-    set State(out) [lindex $State(pipeout) 1]
+    set State(in) [lindex $pipein 0]
+    set State(out) [lindex $pipeout 1]
 
     fconfigure $State(in) -blocking 0 -buffering line
     fconfigure $State(out) -blocking 0 -buffering line
@@ -252,18 +236,18 @@ signal unblock {INT QUIT TERM}
 signal -restart trap {INT QUIT TERM} shutdown
 
 
-set State(pipein) [pipe]
-set State(pipeout) [pipe]
+set pipein [pipe]
+set pipeout [pipe]
 
 switch [fork] {
     -1 {
         shutdown
     }
     0 {
-        frontend
+        frontend $pipein $pipeout
     }
     default {
-        backend
+        backend $pipein $pipeout
     }
 }
 

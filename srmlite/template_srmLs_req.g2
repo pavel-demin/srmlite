@@ -1,0 +1,28 @@
+@@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+ <soapenv:Body>
+  <ns1:srmLs soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+   <srmLsRequest xsi:type="ns1:srmLsRequest">
+    <authorizationID xsi:type="xsd:string" xsi:nil="true"/>
+    <arrayOfSURLs xsi:type="ns1:ArrayOfAnyURI">
+@@
+foreach SURL $SURLS {
+@@
+     <urlArray xsi:type="xsd:anyURI">$${SURL}</urlArray>
+@@
+}
+@@
+    </arrayOfSURLs>
+    <storageSystemInfo xsi:type="ns1:ArrayOfTExtraInfo" xsi:nil="true"/>
+    <fileStorageType xsi:type="ns1:TFileStorageType" xsi:nil="true"/>
+    <fullDetailedList xsi:type="xsd:boolean">false</fullDetailedList>
+    <allLevelRecursive xsi:type="xsd:boolean">false</allLevelRecursive>
+    <numOfLevels xsi:type="xsd:int">2</numOfLevels>
+    <offset xsi:type="xsd:int">1</offset>
+    <count xsi:type="xsd:int">1</count>
+   </srmLsRequest>
+  </ns1:srmLs>
+ </soapenv:Body>
+</soapenv:Envelope>
+@@

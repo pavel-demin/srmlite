@@ -1,0 +1,48 @@
+$request eval {
+    upvar g2result g2result
+@@
+<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:srmStatusOfGetRequestResponse soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <srmStatusOfGetRequestResponse xsi:type="ns1:srmStatusOfGetRequestResponse">
+        <returnStatus xsi:type="ns1:TReturnStatus">
+          <statusCode xsi:type="ns1:TStatusCode">$${requestState}</statusCode>
+          <explanation xsi:type="xsd:string"@@nillableValue explanation requestStateComment@@>
+        </returnStatus>
+        <arrayOfFileStatuses xsi:type="ns1:ArrayOfTGetRequestFileStatus">
+@@
+}
+foreach file $files {
+    $file eval {
+        upvar g2result g2result
+@@
+          <statusArray xsi:type="ns1:TGetRequestFileStatus">
+            <sourceSURL xsi:type="xsd:anyURI">$${SURL}</sourceSURL>
+            <fileSize xsi:type="xsd:unsignedLong"@@nillableValue fileSize fileSize@@>
+            <status xsi:type="ns1:TReturnStatus">
+              <statusCode xsi:type="ns1:TStatusCode">$${fileState}</statusCode>
+              <explanation xsi:type="xsd:string"@@nillableValue explanation fileStateComment@@>
+            </status>
+            <estimatedWaitTime xsi:type="xsd:int">$${waitTime}</estimatedWaitTime>
+@@
+        if {[string equal $fileState SRM_FILE_PINNED]} {
+@@
+            <remainingPinTime xsi:type="xsd:int"@@nillableValue remainingPinTime fileTime@@>
+            <transferURL xsi:type="xsd:anyURI"@@nillableValue transferURL TURL@@>
+            <transferProtocolInfo xsi:type="ns1:ArrayOfTExtraInfo" xsi:nil="true"/>
+@@
+        }
+@@
+          </statusArray>
+@@
+    }
+}
+@@
+        </arrayOfFileStatuses>
+        <remainingTotalRequestTime xsi:type="xsd:int" xsi:nil="true"/>
+      </srmStatusOfGetRequestResponse>
+    </ns1:srmStatusOfGetRequestResponse>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

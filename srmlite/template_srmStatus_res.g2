@@ -1,0 +1,15 @@
+@@
+<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:$${requestType}Response soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <$${requestType}Response xsi:type="ns1:$${requestType}Response">
+        <returnStatus xsi:type="ns1:TReturnStatus">
+          <statusCode xsi:type="ns1:TStatusCode">$${requestState}</statusCode>
+          <explanation xsi:type="xsd:string">$${explanation}</explanation>
+        </returnStatus>
+      </$${requestType}Response>
+    </ns1:$${requestType}Response>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

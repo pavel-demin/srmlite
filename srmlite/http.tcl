@@ -1,7 +1,7 @@
 # XOTcl implementation for asynchronous HTTP and HTTPs requests
 # author Gustaf Neumann, Stefan Sobernig, Pavel Demin
 # creation-date 2008-04-21
-# cvs-id $Id: http.tcl,v 1.2 2008-04-23 19:27:01 demin Exp $
+# cvs-id $Id: http.tcl,v 1.3 2008-05-03 17:32:08 demin Exp $
 
 package require srmlite::notifier
 
@@ -52,23 +52,29 @@ namespace eval ::srmlite::http {
     #         -request_manager ::listener
     #
 
-    Class create HttpRequest -superclass Notifier \
-        -parameter {
-            {url}
-            {protocol http}
-            {host}
-            {port}
-            {path /}
-            {accept */*}
-            {type text/plain}
-            {agent xohttp/0.1}
-            {timeout 30000}
-        }
+# -------------------------------------------------------------------------
+
+    Class create HttpRequest -superclass Notifier -parameter {
+        {url}
+        {protocol http}
+        {host}
+        {port}
+        {path /}
+        {accept */*}
+        {type text/plain}
+        {agent xohttp/0.1}
+        {timeout 30000}
+        {certProxy}
+    }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc log {level args} {
         my instvar host
         log::log $level "\[server $host\] [join $args { }]"
     }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc set_default_port {protocol} {
         switch $protocol {
@@ -79,34 +85,22 @@ namespace eval ::srmlite::http {
         }
     }
 
+# -------------------------------------------------------------------------
+
     HttpRequest instproc parse_url {} {
         my instvar protocol url host port path
-        if {[regexp {^(http|https|srm|httpg)://([^/]+)(/.*)?$} $url _ protocol host path]} {
+        if {[regexp {^(http|https|srm|httpg)://([^/]+)(/.*)?$} $url -> protocol host path]} {
             # Be friendly and allow strictly speaking invalid urls
             # like "http://www.openacs.org"    (no trailing slash)
             if {$path eq ""} {set path /}
             my set_default_port $protocol
-            regexp {^([^:]+):(.*)$} $host _ host port
+            regexp {^([^:]+):(.*)$} $host -> host port
         } else {
             error "unsupported or invalid url '$url'"
         }
     }
 
-    HttpRequest instproc open_connection {} {
-        my instvar chan host port
-        set chan [socket -async $host $port]
-        fileevent $chan writable [list [self] open_connection_done]
-    }
-
-    HttpRequest instproc open_connection_done {} {
-        my instvar chan
-        fileevent $chan writable {}
-
-        if {[catch {my send_request} err]} {
-            my cancel "Error during send request: $err"
-            return
-        }
-    }
+# -------------------------------------------------------------------------
 
     HttpRequest instproc set_encoding {
         {-translation {auto binary}}
@@ -114,16 +108,19 @@ namespace eval ::srmlite::http {
         #
         # for text, use translation with optional encodings, else set translation binary
         #
+        my instvar chan
         if {[string match "text/*" $type]} {
-            if {[regexp {charset=([^ ]+)$} $type _ encoding]} {
-	fconfigure [my set chan] -translation $translation -encoding [string tolower $encoding]
+            if {[regexp {charset=([^ ]+)$} $type -> encoding]} {
+                fconfigure $chan -translation $translation -encoding [string tolower $encoding]
             } else {
-	fconfigure [my set chan] -translation $translation
+                fconfigure $chan -translation $translation
             }
         } else {
-            fconfigure [my set chan] -translation binary
+            fconfigure $chan -translation binary
         }
     }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc init {} {
         my instvar host port protocol
@@ -140,7 +137,7 @@ namespace eval ::srmlite::http {
                 package require tls
                 if {[info command ::tls::import] eq ""} {
                     error "https requests require the Tcl module TLS to be installed\n\
-                             See e.g. http://tls.sourceforge.net/"
+                           See e.g. http://tls.sourceforge.net/"
                 }
                 #
                 # Add HTTPs handling
@@ -152,7 +149,7 @@ namespace eval ::srmlite::http {
                 package require gss::socket
                 if {[info command ::gss::import] eq ""} {
                     error "httpg and srm requests require the Tcl module gss::socket to be installed\n\
-                             See e.g. http://srmlite.googlecode.com/"
+                           See e.g. http://srmlite.googlecode.com/"
                 }
                 #
                 # Add HTTPg/SRM handling
@@ -160,47 +157,91 @@ namespace eval ::srmlite::http {
                 my mixin add Gss
             }
         }
+        next
     }
 
-    HttpRequest instproc send {{-headers {}} {-query {}}} {
-        my instvar host port protocol
+# -------------------------------------------------------------------------
 
-        my set afterId [after [my set timeout] [self] cancel timeout]
+    HttpRequest instproc destroy {} {
+        my done
+        next
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpRequest instproc send {{-headers {}} {-query {}}} {
+        my set afterId [after [my set timeout] [list [self] failure timeout]]
         my set meta [list]
         my set data {}
 
         my set query $query
         my set headers $headers
 
-        if {[catch {my open_connection} err]} {
-            my cancel "Error during open connection: $err"
-            return
+        if {[catch {my open_connection} result]} {
+            my failure "Error during open connection: $result"
         }
     }
+
+# -------------------------------------------------------------------------
+
+    HttpRequest instproc open_connection {} {
+        my instvar chan host port
+        set chan [socket -async $host $port]
+        fileevent $chan writable [list [self] open_connection_done]
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpRequest instproc open_connection_done {} {
+        my instvar chan host
+        
+        fileevent $chan writable {}
+
+        set result [fconfigure $chan -error]
+
+        if {$result ne {}} {
+            my failure "Cannot connect to $host: $result"
+            return
+        }
+
+        if {[catch {my send_request} result]} {
+            my failure "Error during send request: $result"
+        }
+    }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc send_request {} {
         my instvar chan query host port protocol
 
         fconfigure $chan -blocking false
 
-        set method [expr {$query eq "" ? "GET" : "POST"}]
+        if {[string equal $query {}]} {
+            set method GET
+        } else {
+            set method POST
+        }
+
         puts $chan "$method [my path] HTTP/1.0"
         puts $chan "Accept: [my accept]"
         puts $chan "Host: $host"
         puts $chan "User-Agent: [my agent]"
         foreach {tag value} [my set headers] {
-	#regsub -all \[\n\r\] $value {} value
-	#set tag [string trim $tag]
             puts $chan "$tag: $value"
         }
+
         my $method
     }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc GET {} {
         my instvar chan
         puts $chan ""
         my query_done
     }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc POST {} {
         my instvar chan query
@@ -212,86 +253,83 @@ namespace eval ::srmlite::http {
         my query_done
     }
 
+# -------------------------------------------------------------------------
+
     HttpRequest instproc query_done {} {
         my instvar chan
         flush $chan
+        fconfigure $chan -translation crlf
         fileevent $chan readable [list [self] first_line]
     }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc getLine {var} {
         my upvar $var response
         my instvar chan
 
-        if {[catch {gets $chan response} n]} {
-                my log error $n
+        if {[catch {gets $chan response} readCount]} {
+            my failure "Error during gets: $readCount"
+            return -2
+        }
+
+        if {$readCount == -1} {
+            if {[eof $chan]} {
+                my failure {Broken connection during http transfer}
                 return -2
+            } else {
+                my log warning {No full line available, retrying...}
+                return -1
+            }
         }
 
-        if {$n == -1} {
-                if {[eof $chan]} {
-                        return -2
-                } else {
-                        my log warning "No full line available, retrying..."
-                        return -1
-                }
-        }
-
-        return $n
+        return $readCount
     }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc first_line {} {
-        my instvar chan status_code
-        fconfigure $chan -translation crlf
-        set n [my getLine response]
-        switch -exact -- $n {
-            -2 {
-                my cancel "Broken connection during http transfer"
-                return
-            }
-            -1 {
-                return
-            }
+        my instvar chan code
+
+        if {[my getLine response] < 0} {
+            return
         }
-        if {[regexp {^HTTP/([0-9.]+) +([0-9]+) *} $response _ \
-                responseHttpVersion status_code]} {
+
+        if {[regexp {^HTTP/([0-9.]+) +([0-9]+) *} $response -> version code]} {
             my first_line_done
         } else {
-            my cancel "Unexpected response: $response"
+            my failure "Unexpected response: $response"
         }
     }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc first_line_done {} {
         fileevent [my set chan] readable [list [self] header]
     }
 
+# -------------------------------------------------------------------------
+
     HttpRequest instproc header {} {
-        while {1} {
-            set n [my getLine response]
-            switch -exact -- $n {
-	-2 {
-	    my cancel "Broken connection during http transfer"
-	    return
-	}
-	-1 {
-	    continue
-	}
-	0 {
-                    break
-	}
-	default {
-	    if {[regexp -nocase {^content-length:(.+)$} $response _ length]} {
+        set n [my getLine response]
+
+        if {$n < 0} {
+            return
+        } elseif {$n == 0} {
+            my header_done
+	} else {
+	    if {[regexp -nocase {^content-length:(.+)$} $response -> length]} {
 	        my set content_length [string trim $length]
-	    } elseif {[regexp -nocase {^content-type:(.+)$} $response _ type]} {
+	    } elseif {[regexp -nocase {^content-type:(.+)$} $response -> type]} {
 	        my set type [string trim $type]
 	    }
-	    if {[regexp -nocase {^([^:]+): *(.+)$} $response _ key value]} {
+	    if {[regexp -nocase {^([^:]+): *(.+)$} $response -> key value]} {
 	        my lappend meta [string tolower $key] $value
 	    }
 	}
-            }
-        }
-        my header_done
     }
+
+# -------------------------------------------------------------------------
 
     HttpRequest instproc header_done {} {
         # we have received the header, including potentially the type of the returned data
@@ -299,68 +337,101 @@ namespace eval ::srmlite::http {
         fileevent [my set chan] readable [list [self] data]
     }
 
+# -------------------------------------------------------------------------
+
     HttpRequest instproc data {} {
         my instvar chan
 
         if {[eof $chan]} {
-            my data_done
+            my success
         } elseif {[catch {read $chan} block]} {
-            my cancel "Error during read: $block"
-            return
+            my failure "Error during read: $block"
         } else {
             my append data $block
         }
     }
 
-    HttpRequest instproc data_done {} {
-        my instvar chan
-        after cancel [my set afterId]
-        fileevent $chan readable {}
-        fileevent $chan writable {}
-        catch {::close $chan}
+# -------------------------------------------------------------------------
+
+    HttpRequest instproc success {} {
+        my done
         my notify successCallback [my set data]
     }
 
-    HttpRequest instproc cancel {reason} {
-        my instvar chan
-        if {$reason ne "timeout"} {
-            after cancel [my set afterId]
+# -------------------------------------------------------------------------
+
+    HttpRequest instproc failure {reason} {
+        if {[string equal $reason timeout]} {
+            my done 0
+        } else {
+            my done
         }
-        my log error $reason
-        fileevent $chan readable {}
-        fileevent $chan writable {}
-        catch {::close $chan}
         my notify failureCallback $reason
     }
 
+# -------------------------------------------------------------------------
 
-    #
-    # TLS/SSL support
-    #
+    HttpRequest instproc done {{cancel 1}} {
+        my instvar chan
+        if {$cancel} {
+            after cancel [my set afterId]
+        }
+        my close
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpRequest instproc close {} {
+        my instvar chan
+        if {[my exists chan]} {
+            catch {
+                my log debug {HttpRequest close} $chan
+                fileevent $chan readable {}
+                fileevent $chan writable {}
+                ::close $chan
+                unset chan
+            }
+    	}
+    }
+
+# -------------------------------------------------------------------------
+#
+# TLS/SSL support
+#
 
     Class Tls
+
+# -------------------------------------------------------------------------
+
     Tls instproc send_request {} {
         my instvar chan
         ::tls::import $chan
         next
     }
 
-    #
-    # GSS/GSI support
-    #
+# -------------------------------------------------------------------------
+#
+# GSS/GSI support
+#
 
-    Class Gss -parameter {
-        {certProxy}
-    }
+    Class Gss
+
+# -------------------------------------------------------------------------
+
     Gss instproc send_request {} {
         my instvar chan certProxy
+
+        set certProxyOpts {}
         if {[my exists certProxy]} {
-            gss::import $chan -gssimport $certProxy -server false
-        } else {
-            gss::import $chan -server false
+            set certProxyOpts "-gssimport $certProxy"
         }
+
+        eval [list ::gss::import $chan -server false] $certProxyOpts
+
         next
     }
+
+# -------------------------------------------------------------------------
 
      namespace export HttpRequest
 }

@@ -1,0 +1,22 @@
+@@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:srmAbortFiles soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <srmAbortFilesRequest xsi:type="ns1:srmAbortFilesRequest">
+        <requestToken xsi:type="xsd:string">$${requestToken}</requestToken>
+        <arrayOfSURLs xsi:type="ns1:ArrayOfAnyURI">
+@@
+foreach SURL $SURLS {
+@@
+          <urlArray xsi:type="xsd:anyURI">$${SURL}</urlArray>
+@@
+}
+@@
+        </arrayOfSURLs>
+        <authorizationID xsi:type="xsd:string" xsi:nil="true"/>
+      </srmAbortFilesRequest>
+    </ns1:srmAbortFiles>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@

@@ -21,7 +21,7 @@ checkCertProxy()
 
 }
 
-checkFileSrc()
+checkFileLs()
 {
   if [ ! -e "$1" ]
   then
@@ -29,28 +29,37 @@ checkFileSrc()
     exit 4
   fi
 
+  if [ ! -r "$1" ]
+  then
+    echo "Permission to read denied"
+    exit 5
+  fi
+}
+
+checkFileSrc()
+{
+  if [ ! -e "$1" ]
+  then
+    echo "File does not exist"
+    exit 6
+  fi
+
   if [ ! -f "$1" ]
   then
     echo "Not a regular file"
-    exit 5
+    exit 7
   fi
 
   if [ ! -r "$1" ]
   then
     echo "Permission to read denied"
-    exit 6
+    exit 8
   fi
 }
 
-checkFileDst()
+makeDir()
 {
-  if [ -e "$1" ]
-  then
-    echo "File already exists"
-    exit 7
-  fi
-
-  tmp="$2"
+  tmp="$1"
 
   while [ ! -e "$tmp" ]
   do
@@ -60,48 +69,58 @@ checkFileDst()
   if [ ! -d "$tmp" ]
   then
     echo "Not a directory"
-    exit 8
+    exit 9
   else
     if [ ! -w "$tmp" ]
     then
       echo "Permission to write denied"
-      exit 9
+      exit 10
     fi
 
-    result=`mkdir -p $2`
+    result=`mkdir -p $1`
     if [ $? != 0 ]
     then
       echo "$result"
-      exit 10
+      exit 11
     fi
   fi
 
-  if [ ! -w "$2" ]
+  if [ ! -w "$1" ]
   then
     echo "Permission to write denied"
-    exit 11
+    exit 12
   fi
 }
+
+checkFileDst()
+{
+  if [ -e "$1" ]
+  then
+    echo "File already exists"
+    exit 13
+  fi
+
+  makeDir "$2"
+}
+
 
 checkFileDel()
 {
   if [ ! -e "$1" ]
   then
     echo "File does not exist"
-    exit 12
+    exit 14
   fi
 
   if [ ! -f "$1" ]
   then
     echo "Not a regular file"
-    exit 13
+    exit 15
   fi
 
   if [ ! -w "$1" ]
   then
     echo "Permission to write denied"
-    exit 14
+    exit 16
   fi
 }
-
-

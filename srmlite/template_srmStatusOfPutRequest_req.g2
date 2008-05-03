@@ -1,0 +1,22 @@
+@@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Body>
+    <ns1:srmStatusOfPutRequest soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://srm.lbl.gov/StorageResourceManager">
+      <srmStatusOfPutRequestRequest xsi:type="ns1:srmStatusOfPutRequestRequest">
+        <requestToken xsi:type="xsd:string">$${requestToken}</requestToken>
+        <authorizationID xsi:type="xsd:string" xsi:nil="true"/>
+        <arrayOfTargetSURLs xsi:type="ns1:ArrayOfAnyURI">
+@@
+foreach dstSURL $dstSURLS {
+@@
+          <urlArray xsi:type="xsd:anyURI">$${dstSURL}</urlArray>
+@@
+}
+@@
+        </arrayOfTargetSURLs>
+      </srmStatusOfPutRequestRequest>
+    </ns1:srmStatusOfPutRequest>
+  </soapenv:Body>
+</soapenv:Envelope>
+@@
