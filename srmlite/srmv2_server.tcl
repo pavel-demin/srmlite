@@ -149,6 +149,10 @@ namespace eval ::srmlite::srmv2::server {
                 -userName $userName \
                 -certProxy $certProxy
 
+            if {[string equal $certProxy {}]} {
+                $fileObj unset certProxy
+            }
+
             $requestObj incr queueSize
 
             $fileObj $requestType
@@ -564,21 +568,14 @@ namespace eval ::srmlite::srmv2::server {
 # -------------------------------------------------------------------------
 
     SrmFile instproc failure {} {
+        my done
         my notify failureCallback {}
     }
 
 # -------------------------------------------------------------------------
 
     SrmFile instproc success {} {
-        my instvar client transfer
-        if {[my exists transfer]} {
-            $transfer destroy
-            unset transfer
-        }
-        if {[my exists client]} {
-            $client destroy
-            unset client
-        }
+        my done
         my notify successCallback {}
     }
 
@@ -691,7 +688,11 @@ namespace eval ::srmlite::srmv2::server {
 # -------------------------------------------------------------------------
 
     SrmFile instproc abort {} {
-        my instvar client transfer
+        my instvar state client transfer
+
+        if {[string equal $state abort]} {
+            return
+        }
 
         my set state abort
 
@@ -708,18 +709,26 @@ namespace eval ::srmlite::srmv2::server {
 # -------------------------------------------------------------------------
 
     SrmFile instproc done {} {
-        my instvar client transfer
+        my instvar client transfer certProxy
 
         my set state done
+
+        if {[my exists transfer]} {
+            $transfer destroy
+            unset transfer
+        }
 
         if {[my exists client]} {
             $client destroy
             unset client
         }
 
-        if {[my exists transfer]} {
-            $transfer destroy
-            unset transfer
+        if {[my exists certProxy]} {
+            my log debug "destroy certProxy $certProxy"
+            if {[catch {$certProxy destroy} faultString]} {
+                my log error "Error during certProxy destroy: $faultString"
+            }
+            unset certProxy
         }
     }
 
