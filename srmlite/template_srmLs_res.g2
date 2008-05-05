@@ -124,7 +124,7 @@ foreach file [$request info children] {
 @@
                 }
 @@
-            </arrayOfSubPath>
+            </arrayOfSubPaths>
 @@
             }
         } else {
