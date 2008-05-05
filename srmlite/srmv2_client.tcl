@@ -18,10 +18,10 @@ namespace eval ::srmlite::srmv2::client {
 
     variable resp
     array set resp {
-        get       {TCP_ERROR retry SRM_FAILURE failure SRM_REQUEST_QUEUED token SRM_SUCCESS token}
+        get       {TCP_ERROR retry SRM_FAILURE failure SRM_INVALID_PATH failure SRM_REQUEST_QUEUED token SRM_SUCCESS token}
         put       {TCP_ERROR retry SRM_FAILURE failure SRM_REQUEST_QUEUED token SRM_SUCCESS token}
         token     {SRM_FAILURE failure SRM_SUCCESS status}
-        status    {TCP_ERROR retry SRM_FAILURE failure SRM_REQUEST_QUEUED status SRM_REQUEST_INPROGRESS status SRM_SUCCESS transfer}
+        status    {TCP_ERROR retry SRM_FAILURE failure SRM_INVALID_PATH failure SRM_REQUEST_QUEUED status SRM_REQUEST_INPROGRESS status SRM_SUCCESS transfer}
         getDone   {TCP_ERROR retry SRM_FAILURE success SRM_SUCCESS success}
         putDone   {TCP_ERROR retry SRM_FAILURE success SRM_SUCCESS success}
         abort     {TCP_ERROR retry SRM_FAILURE success SRM_SUCCESS success}
