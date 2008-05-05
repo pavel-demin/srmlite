@@ -305,8 +305,6 @@ namespace eval ::srmlite::srmv2::client {
         my instvar state
         variable resp
 
-        puts "$state,$code"
-
         foreach {retCode newState} $resp($state) {
             if {[string equal $retCode $code]} {
 	        my $newState
