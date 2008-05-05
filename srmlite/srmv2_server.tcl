@@ -108,7 +108,7 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc createRequest {connection requestType isSync SURLS {dstSURLS {}} {sizes {}} {certProxies {}}} {
+    Srmv2Manager instproc createRequest {connection requestType isSync SURLS {dstSURLS {}} {sizes {}} {certProxies {}} {depth 0}} {
 
         set requestId [NewUniqueId]
         set requestObj [self]::${requestId}
@@ -143,6 +143,7 @@ namespace eval ::srmlite::srmv2::server {
                 -frontendService [my frontendService] \
                 -fileState SRM_REQUEST_QUEUED \
                 -submitTime $submitTime \
+                -depth $depth \
                 -fileSize $size \
                 -SURL $SURL \
                 -dstSURL $dstSURL \
@@ -172,7 +173,14 @@ namespace eval ::srmlite::srmv2::server {
 # -------------------------------------------------------------------------
 
     Srmv2Manager instproc srmLs {connection argValues} {
-        my createRequest $connection srmLs 1 [dict get $argValues arrayOfSURLs]
+        set depth 1
+        if {[dict exists $argValues numOfLevels]} {
+            set depth [dict get $argValues numOfLevels]
+        }
+
+        my createRequest $connection srmLs 1 \
+           [dict get $argValues arrayOfSURLs] \
+           {} {} {} $depth
     }
 
 # -------------------------------------------------------------------------
@@ -521,6 +529,7 @@ namespace eval ::srmlite::srmv2::server {
         {lifeTime 7200}
         {waitTime 1}
         {counter 1}
+        {depth 1}
         {fileSize 0}
         {SURL}
         {dstSURL}
@@ -753,10 +762,10 @@ namespace eval ::srmlite::srmv2::server {
 # -------------------------------------------------------------------------
 
     SrmFile instproc srmLs {} {
-        my instvar userName SURL
+        my instvar userName depth SURL
 
         my set state ls
-        [my frontendService] process [list ls [self] $userName $SURL]
+        [my frontendService] process [list ls [self] $userName $depth $SURL]
     }
 
 # -------------------------------------------------------------------------

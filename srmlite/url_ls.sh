@@ -1,8 +1,9 @@
 #! /bin/sh
 
 # Pick up arguments
-hostSrc="$1"
-fileSrc="$2"
+depth="$1"
+hostSrc="$2"
+fileSrc="$3"
 
 dirSrc=`dirname $fileSrc`
 
@@ -10,4 +11,4 @@ dirSrc=`dirname $fileSrc`
 
 checkFileLs $fileSrc $dirSrc
 
-find $fileSrc -maxdepth 1 -exec ls -dln --time-style=long-iso {} \;
+find $fileSrc -maxdepth $depth -exec ls -dln --time-style=long-iso {} \;

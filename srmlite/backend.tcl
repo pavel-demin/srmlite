@@ -30,9 +30,9 @@ proc ExtractHostFile {url} {
 
 # -------------------------------------------------------------------------
 
-proc SrmLs {requestType uniqueId userName SURL} {
+proc SrmLs {requestType uniqueId userName depth SURL} {
 
-    set command "./setuid $userName ./url_ls.sh [ExtractHostFile $SURL]"
+    set command "./setuid $userName ./url_ls.sh $depth [ExtractHostFile $SURL]"
 #    set command "./url_ls.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
@@ -139,7 +139,7 @@ proc GetCommandOutput {requestType uniqueId processId pipe} {
 
 proc Finish {requestType uniqueId processId pipe} {
 
-    global State
+    global State errorCode
     upvar #0 SrmProcesses($processId) process
 
     set hadError 0
@@ -151,6 +151,7 @@ proc Finish {requestType uniqueId processId pipe} {
         if {[catch {close $pipe} result]} {
             set hadError 1
             log::log error $result
+            log::log error $errorCode
         }
     }
 
