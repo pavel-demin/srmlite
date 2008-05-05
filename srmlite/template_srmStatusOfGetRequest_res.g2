@@ -28,7 +28,7 @@ foreach file $files {
 @@
         if {[string equal $fileState SRM_FILE_PINNED]} {
 @@
-            <remainingPinTime xsi:type="xsd:int"@@nillableValue remainingPinTime fileTime@@>
+            <remainingPinTime xsi:type="xsd:int"@@nillableValue remainingPinTime lifeTime@@>
             <transferURL xsi:type="xsd:anyURI"@@nillableValue transferURL TURL@@>
             <transferProtocolInfo xsi:type="ns1:ArrayOfTExtraInfo" xsi:nil="true"/>
 @@

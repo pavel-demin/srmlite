@@ -21,7 +21,7 @@ namespace eval ::srmlite::srmv2::client {
         get       {TCP_ERROR retry SRM_FAILURE failure SRM_REQUEST_QUEUED token SRM_SUCCESS token}
         put       {TCP_ERROR retry SRM_FAILURE failure SRM_REQUEST_QUEUED token SRM_SUCCESS token}
         token     {SRM_FAILURE failure SRM_SUCCESS status}
-        status    {TCP_ERROR retry SRM_FAILURE failure SRM_REQUEST_QUEUED status SRM_SUCCESS transfer}
+        status    {TCP_ERROR retry SRM_FAILURE failure SRM_REQUEST_QUEUED status SRM_REQUEST_INPROGRESS status SRM_SUCCESS transfer}
         getDone   {TCP_ERROR retry SRM_FAILURE success SRM_SUCCESS success}
         putDone   {TCP_ERROR retry SRM_FAILURE success SRM_SUCCESS success}
         abort     {TCP_ERROR retry SRM_FAILURE success SRM_SUCCESS success}
@@ -304,6 +304,8 @@ namespace eval ::srmlite::srmv2::client {
     SrmClient instproc updateState {code} {
         my instvar state
         variable resp
+
+        puts "$state,$code"
 
         foreach {retCode newState} $resp($state) {
             if {[string equal $retCode $code]} {

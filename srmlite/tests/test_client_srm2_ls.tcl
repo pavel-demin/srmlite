@@ -45,7 +45,8 @@ set serviceURL srm://maite.iihe.ac.be:8443/srm/managerv2
 
 set serviceURL srm://ingrid.cism.ucl.ac.be:8443/srm/managerv2
 
-#set serviceURL srm://ingrid-se01.cism.ucl.ac.be:8444/srm/managerv2
+set serviceURL srm://ccsrm.in2p3.fr:8443/srm/managerv2
+
 #set serviceURL srm://ingrid-se02.cism.ucl.ac.be:8443/srm/managerv1
 
 set srcSURLS [list \
@@ -66,6 +67,10 @@ set srcSURLS [list \
 #     srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/11//store/data/2008/2/8/Pass4Skim-TrackerTIF-B2/0000/04A1BEEA-41D7-DC11-A08F-001731AF68CF.root
 #]
 
+
+set srcSURLS [list \
+    srm://ccsrm.in2p3.fr:8443/srm/managerv2?SFN=/pnfs/in2p3.fr/data/cms/data/store/mc/2007/10/19/CSA07-ZeeJets_Pt_1400_1800-1192835597/0005/26DDBA36-4E89-DC11-A2E7-0019B9E4FDCF.root
+]
 
 set ::env(X509_USER_PROXY) $certProxy
 

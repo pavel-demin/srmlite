@@ -28,8 +28,8 @@ foreach file $files {
 @@
         if {[string equal $fileState SRM_SPACE_AVAILABLE]} {
 @@
-            <remainingPinLifetime xsi:type="xsd:int"@@nillableValue remainingPinLifetime fileTime@@>
-            <remainingFileLifetime xsi:type="xsd:int"@@nillableValue remainingFileLifetime fileTime@@>
+            <remainingPinLifetime xsi:type="xsd:int"@@nillableValue remainingPinLifetime lifeTime@@>
+            <remainingFileLifetime xsi:type="xsd:int"@@nillableValue remainingFileLifetime lifeTime@@>
             <transferURL xsi:type="xsd:anyURI"@@nillableValue transferURL TURL@@>
             <transferProtocolInfo xsi:type="ns1:ArrayOfTExtraInfo" xsi:nil="true"/>
 @@

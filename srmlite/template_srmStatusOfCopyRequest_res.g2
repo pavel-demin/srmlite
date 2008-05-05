@@ -26,7 +26,7 @@ foreach file $files {
             </status>
             <fileSize xsi:type="xsd:unsignedLong"@@nillableValue fileSize fileSize@@>
             <estimatedWaitTime xsi:type="xsd:int">$${waitTime}</estimatedWaitTime>
-            <remainingFileLifetime xsi:type="xsd:int"@@nillableValue remainingFileLifetime fileTime@@>
+            <remainingFileLifetime xsi:type="xsd:int"@@nillableValue remainingFileLifetime lifeTime@@>
           </statusArray>
 @@
     }

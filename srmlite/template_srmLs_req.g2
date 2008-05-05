@@ -18,7 +18,7 @@ foreach SURL $SURLS {
     <fileStorageType xsi:type="ns1:TFileStorageType" xsi:nil="true"/>
     <fullDetailedList xsi:type="xsd:boolean">false</fullDetailedList>
     <allLevelRecursive xsi:type="xsd:boolean">false</allLevelRecursive>
-    <numOfLevels xsi:type="xsd:int">2</numOfLevels>
+    <numOfLevels xsi:type="xsd:int">1</numOfLevels>
     <offset xsi:type="xsd:int">1</offset>
     <count xsi:type="xsd:int">1</count>
    </srmLsRequest>

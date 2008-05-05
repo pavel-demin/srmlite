@@ -117,7 +117,7 @@ namespace eval ::srmlite::srmv2::server {
             [my cleanupService] addObject $requestObj
         }
 
-        set startClock [clock seconds]
+        set submitTime [clock seconds]
 
         SrmRequest $requestObj \
 	    -requestState SRM_REQUEST_QUEUED \
@@ -142,7 +142,7 @@ namespace eval ::srmlite::srmv2::server {
                 -callbackRecipient $requestObj \
                 -frontendService [my frontendService] \
                 -fileState SRM_REQUEST_QUEUED \
-                -startClock $startClock \
+                -submitTime $submitTime \
                 -fileSize $size \
                 -SURL $SURL \
                 -dstSURL $dstSURL \
@@ -313,24 +313,15 @@ namespace eval ::srmlite::srmv2::server {
             return
         }
 
-        set currentClock [clock seconds]
+        set currentTime [clock seconds]
 
         if {[llength $SURLS] == 0} {
             set files [$requestObj info children]
 
             foreach fileObj $files {
-                set counter [$fileObj incr counter]
-                $fileObj set waitTime [expr {$counter / 4 * 5 + 1}]
-
-                set startClock [$fileObj startClock]
-                if {[$fileObj fileTime] > 0} {
-                    $fileObj incr fileTime [expr {$startClock - $currentClock}]
-                    if {[$fileObj fileTime] <= 0} {
-                        $fileObj set fileTime 0
-                        $fileObj set fileState SRM_FILE_LIFETIME_EXPIRED
-                    }
-                }
+                $fileObj updateTime $currentTime
             }
+
             $connection respond [${requestType}ResBody $requestObj $files]
             return
         }
@@ -348,17 +339,7 @@ namespace eval ::srmlite::srmv2::server {
             if {[$requestObj existsFile $SURL]} {
                 set fileObj [$requestObj getFile $SURL]
 
-                set counter [$fileObj incr counter]
-                $fileObj set waitTime [expr {$counter / 4 * 5 + 1}]
-
-                set startClock [$fileObj startClock]
-                if {[$fileObj fileTime] > 0} {
-                    $fileObj incr fileTime [expr {$startClock - $currentClock}]
-                    if {[$fileObj fileTime] <= 0} {
-                        $fileObj set fileTime 0
-                        $fileObj set fileState SRM_FILE_LIFETIME_EXPIRED
-                    }
-                }
+                $fileObj updateTime $currentTime
 
                 lappend files $fileObj
             } else {
@@ -370,6 +351,7 @@ namespace eval ::srmlite::srmv2::server {
                 lappend files $fileTmp
             }
         }
+
         $connection respond [${requestType}ResBody $requestTmp $files]
         $requestTmp destroy
     }
@@ -392,14 +374,13 @@ namespace eval ::srmlite::srmv2::server {
                 $fileObj set fileStateComment $explanation
                 $fileObj abort
             }
+
             $connection respond [${requestType}ResBody $requestObj $files]
             return
         }
 
         set requestId [NewUniqueId]
         set requestTmp [self]::${requestId}
-
-        set currentClock [clock seconds]
 
         SrmRequest $requestTmp \
 	    -requestState [$requestObj requestState] \
@@ -425,6 +406,7 @@ namespace eval ::srmlite::srmv2::server {
                 lappend files $fileTmp
             }
         }
+
         $connection respond [${requestType}ResBody $requestTmp $files]
         $requestTmp destroy
     }
@@ -535,10 +517,10 @@ namespace eval ::srmlite::srmv2::server {
 
     Class SrmFile -superclass Notifier -parameter {
         {fileState SRM_REQUEST_QUEUED}
-        {startClock}
+        {submitTime}
+        {lifeTime 7200}
         {waitTime 1}
         {counter 1}
-        {fileTime 7200}
         {fileSize 0}
         {SURL}
         {dstSURL}
@@ -550,9 +532,21 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
+    SrmFile instproc init {} {
+        my instvar submitTime finishTime lifeTime
+        if {[my exists submitTime]} {
+            set finishTime [expr {$submitTime + $lifeTime}]
+        } else {
+            error {submitTime must be specified}
+        }
+        next
+    }
+
+# -------------------------------------------------------------------------
+
     SrmFile instproc log {level args} {
         my instvar host
-        log::log $level "[join $args { }]"
+        log::log $level [join $args { }]
     }
 
 # -------------------------------------------------------------------------
@@ -570,6 +564,23 @@ namespace eval ::srmlite::srmv2::server {
 
         set faultString "Unknown state $state,$code"
         my failure
+    }
+
+# -------------------------------------------------------------------------
+
+    SrmFile instproc updateTime {currentTime} {
+        my instvar counter submitTime finishTime lifeTime waitTime
+
+	incr counter
+        set waitTime [expr {$counter / 4 * 5 + 1}]
+
+        if {$lifeTime > 0} {
+            set lifeTime [expr {$finishTime - $currentTime}]
+            if {$lifeTime <= 0} {
+                set lifeTime 0
+                my set fileState SRM_FILE_LIFETIME_EXPIRED
+            }
+        }
     }
 
 # -------------------------------------------------------------------------

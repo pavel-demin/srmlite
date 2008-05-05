@@ -34,6 +34,8 @@ set serviceURL srm://maite.iihe.ac.be:8443/srm/managerv2
 
 set serviceURL srm://cmssrm.fnal.gov:8443/srm/managerv2
 
+set serviceURL srm://ccsrm.in2p3.fr:8443/srm/managerv2
+
 #set serviceURL srm://ingrid.cism.ucl.ac.be:8443/srm/managerv2
 
 set srcSURLS [list \
@@ -42,6 +44,10 @@ set srcSURLS [list \
 
 set srcSURLS [list \
     srm://cmssrm.fnal.gov:8443/srm/managerv2?SFN=/11//store/data/2008/2/8/Pass4Skim-TrackerTIF-B2/0000/0ED60A50-47D7-DC11-959B-0017312B5DE9.root
+]
+
+set srcSURLS [list \
+    srm://ccsrm.in2p3.fr:8443/srm/managerv2?SFN=/pnfs/in2p3.fr/data/cms/import/LoadTest/store/phedex_monarctest/monarctest_IN2P3-DISK1/LoadTest07_IN2P3_06
 ]
 
 #set srcSURLS [list \
