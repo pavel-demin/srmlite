@@ -98,112 +98,85 @@ namespace eval ::srmlite::srmv2::client {
 # -------------------------------------------------------------------------
 
     SrmClient instproc token {} {
-        my instvar result requestToken
+        my instvar result
 
         my set state token
 
-        if {[catch {dict get $result requestToken} requestToken]} {
-            my set faultString "Request token is not available"
+        if {[dict exists $result requestToken]} {
+            my set requestToken [dict get $result requestToken]
+            my updateState SRM_SUCCESS
+        } else {
+            my set faultString {Request token is not available}
+            my updateState SRM_FAILURE
+        }
+    }
+
+# -------------------------------------------------------------------------
+
+    SrmClient instproc getFromFileStatus {key} {
+        my instvar result
+
+        set arrayOfFileStatuses [dict get $result arrayOfFileStatuses]
+        set fileStatus [lindex $arrayOfFileStatuses 0]
+        return [dict get $fileStatus $key]
+    }
+
+# -------------------------------------------------------------------------
+
+    SrmClient instproc sendRequest {type} {
+        my instvar request requestToken SURL
+
+        if {![my exists requestToken]} {
+            my set faultString {Request token is not available}
             my updateState SRM_FAILURE
             return
         }
 
-        my updateState SRM_SUCCESS
+        my set requestType $type
+
+        $request send \
+           -query [${type}ReqBody $requestToken $SURL] \
+           -headers [srmHeaders $type]
     }
 
 # -------------------------------------------------------------------------
 
     SrmClient instproc status {} {
-        my instvar request result requestType statusType requestToken SURL
-
         my set state status
 
-        if {![my exists requestToken]} {
-            my set faultString "Request token is not available"
-            my updateState SRM_FAILURE
-            return
-        }
-
-        set arrayOfFileStatuses [dict get $result arrayOfFileStatuses]
-        set fileStatus [lindex $arrayOfFileStatuses 0]
-        set estimatedWaitTime [dict get $fileStatus estimatedWaitTime]
+        set estimatedWaitTime [my getFromFileStatus estimatedWaitTime]
         set estimatedWaitTime [expr $estimatedWaitTime * 800]
 
-        set requestType $statusType
-
-        set afterId [after $estimatedWaitTime [list $request send \
-           -query [${statusType}ReqBody $requestToken $SURL] \
-           -headers [srmHeaders $requestType]]]
+        set afterId [after $estimatedWaitTime [myproc sendRequest [my set statusType]]]
     }
 
 # -------------------------------------------------------------------------
 
     SrmClient instproc getDone {} {
-        my instvar request requestType requestToken SURL
-
         my set state getDone
-
-        if {![my exists requestToken]} {
-            my set faultString "Request token is not available"
-            my updateState SRM_FAILURE
-            return
-        }
-
-        set requestType srmReleaseFiles
-        $request send \
-           -query [srmReleaseFilesReqBody $requestToken $SURL] \
-           -headers [srmHeaders $requestType]
+        my sendRequest srmReleaseFiles
     }
 
 # -------------------------------------------------------------------------
 
     SrmClient instproc putDone {} {
-        my instvar request requestType requestToken SURL
-
         my set state putDone
-
-        if {![my exists requestToken]} {
-            my set faultString "Request token is not available"
-            my updateState SRM_FAILURE
-            return
-        }
-
-        set requestType srmPutDone
-        $request send \
-           -query [srmPutDoneReqBody $requestToken $SURL] \
-           -headers [srmHeaders $requestType]
+        my sendRequest srmPutDone
     }
 
 # -------------------------------------------------------------------------
 
     SrmClient instproc abort {} {
-        my instvar request requestType requestToken SURL
-
         my set state abort
-
-        if {![my exists requestToken]} {
-            my set faultString "Request token is not available"
-            my updateState SRM_FAILURE
-            return
-        }
-
-        set requestType srmAbortFiles
-        $request send \
-           -query [srmAbortFilesReqBody $requestToken $SURL] \
-           -headers [srmHeaders $requestType]
+        my sendRequest srmAbortFiles
     }
 
 # -------------------------------------------------------------------------
 
     SrmClient instproc transfer {} {
-        my instvar result
-
         my set state transfer
 
-        set arrayOfFileStatuses [dict get $result arrayOfFileStatuses]
-        set fileStatus [lindex $arrayOfFileStatuses 0]
-
-        my notify successCallback [dict get $fileStatus transferURL]
+        my notify successCallback [my getFromFileStatus transferURL]
     }
 
 # -------------------------------------------------------------------------
@@ -223,7 +196,7 @@ namespace eval ::srmlite::srmv2::client {
             return
         }
 
-        set afterId [after 10000 [list [self] $state]]
+        set afterId [after 10000 [myproc $state]]
     }
 
 # -------------------------------------------------------------------------
@@ -295,8 +268,14 @@ namespace eval ::srmlite::srmv2::client {
 
         set result [dict get $methodDict $methodName]
 
-        my set faultString [dict get $result returnStatus explanation]
-	my updateState [dict get $result returnStatus statusCode]
+        if {[dict exists $result returnStatus explanation] &&
+            [dict get $result returnStatus statusCode]} {
+            my set faultString [dict get $result returnStatus explanation]
+            my updateState [dict get $result returnStatus statusCode]
+        } else {
+            my set faultString {Request status is not available}
+            my updateState SRM_FAILURE
+        }
     }
 
 # -------------------------------------------------------------------------
@@ -307,7 +286,10 @@ namespace eval ::srmlite::srmv2::client {
 
         foreach {retCode newState} $resp($state) {
             if {[string equal $retCode $code]} {
-	        my $newState
+	        if {[catch {my $newState} result]} {
+                    my set faultString $result
+                    my failure
+	        }
     	        return
             }
         }

@@ -162,7 +162,7 @@ namespace eval ::srmlite::gridftp {
         my instvar host chan
 
         set chan [socket -async $host 2811]
-        fileevent $chan writable [list [self] connect_done]
+        fileevent $chan writable [myproc connect_done]
     }
 
 # -------------------------------------------------------------------------
@@ -195,7 +195,7 @@ namespace eval ::srmlite::gridftp {
         fileevent $chan writable {}
 
         fconfigure $chan -blocking false -translation {auto crlf} -buffering line
-        fileevent $chan readable [list [self] GetInput]
+        fileevent $chan readable [myproc GetInput]
 
         if {[my exists certProxy]} {
             my set context [gss::context $chan -gssimport $certProxy]

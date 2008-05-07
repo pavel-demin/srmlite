@@ -1,7 +1,7 @@
 # XOTcl implementation for asynchronous HTTP and HTTPs requests
 # author Gustaf Neumann, Stefan Sobernig, Pavel Demin
 # creation-date 2008-04-21
-# cvs-id $Id: http.tcl,v 1.3 2008-05-03 17:32:08 demin Exp $
+# cvs-id $Id: http.tcl,v 1.4 2008-05-07 23:07:17 demin Exp $
 
 package require srmlite::notifier
 
@@ -170,7 +170,7 @@ namespace eval ::srmlite::http {
 # -------------------------------------------------------------------------
 
     HttpRequest instproc send {{-headers {}} {-query {}}} {
-        my set afterId [after [my set timeout] [list [self] failure timeout]]
+        my set afterId [after [my set timeout] [myproc failure timeout]]
         my set meta [list]
         my set data {}
 
@@ -187,14 +187,14 @@ namespace eval ::srmlite::http {
     HttpRequest instproc open_connection {} {
         my instvar chan host port
         set chan [socket -async $host $port]
-        fileevent $chan writable [list [self] open_connection_done]
+        fileevent $chan writable [myproc open_connection_done]
     }
 
 # -------------------------------------------------------------------------
 
     HttpRequest instproc open_connection_done {} {
         my instvar chan host
-        
+
         fileevent $chan writable {}
 
         set result [fconfigure $chan -error]
@@ -259,7 +259,7 @@ namespace eval ::srmlite::http {
         my instvar chan
         flush $chan
         fconfigure $chan -translation crlf
-        fileevent $chan readable [list [self] first_line]
+        fileevent $chan readable [myproc first_line]
     }
 
 # -------------------------------------------------------------------------
@@ -305,7 +305,7 @@ namespace eval ::srmlite::http {
 # -------------------------------------------------------------------------
 
     HttpRequest instproc first_line_done {} {
-        fileevent [my set chan] readable [list [self] header]
+        fileevent [my set chan] readable [myproc header]
     }
 
 # -------------------------------------------------------------------------
@@ -334,7 +334,7 @@ namespace eval ::srmlite::http {
     HttpRequest instproc header_done {} {
         # we have received the header, including potentially the type of the returned data
         my set_encoding [my type]
-        fileevent [my set chan] readable [list [self] data]
+        fileevent [my set chan] readable [myproc data]
     }
 
 # -------------------------------------------------------------------------

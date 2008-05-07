@@ -66,7 +66,7 @@ namespace eval ::srmlite::httpd {
 	    set myaddrOpts "-myaddr $addr"
         }
 
-        set chan [eval [list socket -server [list [self] accept]] $myaddrOpts $port]
+        set chan [eval [list socket -server [myproc accept]] $myaddrOpts $port]
 
     }
 
@@ -155,7 +155,7 @@ namespace eval ::srmlite::httpd {
             my unset postdata
         }
 
-        my set afterId [after $timeout [list [self] error 408]]
+        my set afterId [after $timeout [myproc error 408]]
     }
 
 # -------------------------------------------------------------------------
@@ -164,7 +164,7 @@ namespace eval ::srmlite::httpd {
         my instvar chan bufsize
 
         fconfigure $chan -blocking 0 -buffersize $bufsize -translation {auto crlf}
-        fileevent $chan readable [list [self] firstLine]
+        fileevent $chan readable [myproc firstLine]
     }
 
 # -------------------------------------------------------------------------
@@ -221,7 +221,7 @@ namespace eval ::srmlite::httpd {
 # -------------------------------------------------------------------------
 
     HttpConnection instproc firstLineDone {} {
-        fileevent [my set chan] readable [list [self] header]
+        fileevent [my set chan] readable [myproc header]
     }
 
 # -------------------------------------------------------------------------
@@ -274,7 +274,7 @@ namespace eval ::srmlite::httpd {
             }
             my set postdata {}
             fconfigure $chan -translation {binary crlf}
-            fileevent $chan readable [list [self] data]
+            fileevent $chan readable [myproc data]
         } elseif {$requiresBody($method)} {
             my error 411 {Confusing mime headers}
             return
@@ -346,7 +346,7 @@ namespace eval ::srmlite::httpd {
     HttpConnection instproc respond {result} {
         my instvar chan version reqleft mime
 
-        fileevent [my set chan] readable [list [self] firstLine]
+        fileevent [my set chan] readable [myproc firstLine]
 
         puts $chan "HTTP/1.$version 200 Data follows"
         puts $chan "Date: [my date [clock seconds]]"

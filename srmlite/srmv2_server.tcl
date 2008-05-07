@@ -729,6 +729,7 @@ namespace eval ::srmlite::srmv2::server {
         }
 
         if {[my exists client]} {
+            $client cancel
             $client abort
         }
     }

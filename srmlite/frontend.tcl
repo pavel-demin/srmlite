@@ -24,7 +24,7 @@ namespace eval ::srmlite::frontend {
         my instvar in out
         fconfigure $in -blocking false -buffering line
         fconfigure $out -blocking false -buffering line
-        fileevent $in readable [list [self] GetInput]
+        fileevent $in readable [myproc GetInput]
         next
     }
 
