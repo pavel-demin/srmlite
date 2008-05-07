@@ -269,7 +269,7 @@ namespace eval ::srmlite::srmv2::client {
         set result [dict get $methodDict $methodName]
 
         if {[dict exists $result returnStatus explanation] &&
-            [dict get $result returnStatus statusCode]} {
+            [dict exists $result returnStatus statusCode]} {
             my set faultString [dict get $result returnStatus explanation]
             my updateState [dict get $result returnStatus statusCode]
         } else {
