@@ -154,7 +154,7 @@ case $cli-$dyn-$gui in 0-0-0) cli=1 dyn=1 gui=1 ;; esac
     echo ;;
   esac
   
-  case $cli in 1) targets="$targets tclkit-cli globus-url-copy globus-gridftp-server" ;; esac
+  case $cli in 1) targets="$targets tclkit-cli getuser setuser globus-gridftp-server" ;; esac
   case $dyn in 1) targets="$targets tclkit-dyn" ;; esac
   case $gui in 1) targets="$targets tclkit-gui" ;; esac
 
