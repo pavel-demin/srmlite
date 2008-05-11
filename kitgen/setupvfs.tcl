@@ -44,6 +44,8 @@ load {} vfs ;# vlerq is already loaded by now
 
 load {} tls
 load {} dict
+load {} sqlite
+load {} xotcl
 load {} tdom
 load {} starfishLib
 load {} g2lite
@@ -58,6 +60,8 @@ set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   starfish0@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
                   dict8@ dict[package require dict] \
+                  sqlite3@ sqlite[package require sqlite] \
+                  xotcl1@ xotcl[package require XOTcl] \
                   g2lite0@ g2lite[package require g2lite] \
                   gss_socket0@ gss_socket[package require gss::socket]]
                
@@ -101,6 +105,9 @@ set clifiles {
   lib/vqtcl4@/pkgIndex.tcl
   lib/vqtcl4@/ratcl.tcl
   lib/dict8@/pkgIndex.tcl
+  lib/sqlite3@/pkgIndex.tcl
+  lib/xotcl1@/pkgIndex.tcl
+  lib/xotcl1@/lib
   lib/tdom0@/pkgIndex.tcl
   lib/tdom0@/tdom.tcl
   lib/starfish0@/pkgIndex.tcl

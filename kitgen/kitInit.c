@@ -13,7 +13,7 @@
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
  *
- * RCS: @(#) $Id: kitInit.c,v 1.2 2007-11-02 23:47:55 demin Exp $
+ * RCS: @(#) $Id: kitInit.c,v 1.3 2008-05-11 20:36:50 demin Exp $
  */
 
 #ifdef KIT_INCLUDES_TK
@@ -51,6 +51,8 @@ Tcl_AppInitProc	Tls_Init, Tls_SafeInit, Tdom_Init, Tdom_SafeInit;
 Tcl_AppInitProc G2lite_Init, Gss_Init, Gss_SafeInit;
 Tcl_AppInitProc Gssctx_Init, Gssctx_SafeInit;
 Tcl_AppInitProc Dict_Init;
+Tcl_AppInitProc Xotcl_Init;
+Tcl_AppInitProc Sqlite_Init, Sqlite_SafeInit;
 Tcl_AppInitProc Tclx_Init, Tclx_SafeInit;
 Tcl_AppInitProc Starfish_Init, Starfish_SafeInit;
 
@@ -177,12 +179,14 @@ TclKit_AppInit(Tcl_Interp *interp)
 #endif
 
     Tcl_StaticPackage(0, "dict", Dict_Init, NULL);
+    Tcl_StaticPackage(0, "XOTcl", Xotcl_Init, NULL);
     Tcl_StaticPackage(0, "g2lite", G2lite_Init, NULL);
     Tcl_StaticPackage(0, "gss", Gss_Init, Gss_SafeInit);
     Tcl_StaticPackage(0, "gssctx", Gssctx_Init, Gssctx_SafeInit);
     Tcl_StaticPackage(0, "tls", Tls_Init, Tls_SafeInit);
     Tcl_StaticPackage(0, "tdom", Tdom_Init, Tdom_SafeInit);
     Tcl_StaticPackage(0, "starfishLib", Starfish_Init, Starfish_SafeInit);
+    Tcl_StaticPackage(0, "sqlite", Sqlite_Init, Sqlite_SafeInit);
     Tcl_StaticPackage(0, "Tclx", Tclx_Init, Tclx_SafeInit);
 
     /* the tcl_rcFileName variable only exists in the initial interpreter */
