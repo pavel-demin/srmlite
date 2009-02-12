@@ -34,6 +34,7 @@ namespace eval ::srmlite::utilities {
         --x 1
         --- 0
         - {}
+        + {}
         d {}
         l {}
         p {}
