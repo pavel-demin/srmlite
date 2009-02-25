@@ -43,7 +43,6 @@ if {[llength $argv] != 2} {
 load {} vfs ;# vlerq is already loaded by now
 
 load {} tls
-load {} dict
 load {} sqlite
 load {} xotcl
 load {} tdom
@@ -59,12 +58,11 @@ set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   tls1@ tls[package require tls] \
                   starfish0@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
-                  dict8@ dict[package require dict] \
                   sqlite3@ sqlite[package require sqlite] \
                   xotcl1@ xotcl[package require XOTcl] \
                   g2lite0@ g2lite[package require g2lite] \
                   gss_socket0@ gss_socket[package require gss::socket]]
-               
+
 if {$debugOpt} {
   puts "Starting [info script]"
   puts "     exe: [info nameofexe]"
@@ -104,10 +102,8 @@ set clifiles {
   lib/vqtcl4@/mklite.tcl
   lib/vqtcl4@/pkgIndex.tcl
   lib/vqtcl4@/ratcl.tcl
-  lib/dict8@/pkgIndex.tcl
   lib/sqlite3@/pkgIndex.tcl
   lib/xotcl1@/pkgIndex.tcl
-  lib/xotcl1@/lib
   lib/tdom0@/pkgIndex.tcl
   lib/tdom0@/tdom.tcl
   lib/starfish0@/pkgIndex.tcl
@@ -125,15 +121,15 @@ set clifiles {
   lib/tls1@/tls.tcl
   lib/g2lite0@/pkgIndex.tcl
   lib/gss_socket0@/pkgIndex.tcl
-  lib/tcllib1.10/pkgIndex.tcl
-  lib/tcllib1.10/asn
-  lib/tcllib1.10/base64
-  lib/tcllib1.10/comm
-  lib/tcllib1.10/ldap
-  lib/tcllib1.10/log
-  lib/tcllib1.10/math
-  lib/tcllib1.10/snit
-  lib/tcllib1.10/uri
+  lib/tcllib1.11/pkgIndex.tcl
+  lib/tcllib1.11/asn
+  lib/tcllib1.11/base64
+  lib/tcllib1.11/comm
+  lib/tcllib1.11/ldap
+  lib/tcllib1.11/log
+  lib/tcllib1.11/math
+  lib/tcllib1.11/snit
+  lib/tcllib1.11/uri
   lib/tclx8.4/pkgIndex.tcl
   lib/tclx8.4/arrayprocs.tcl
   lib/tclx8.4/autoload.tcl
