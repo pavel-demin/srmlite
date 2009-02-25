@@ -22,6 +22,11 @@ zstreamincmd(ClientData cd, Tcl_Interp *ip, int objc, Tcl_Obj *CONST objv[])
 
   static CONST84 char* cmds[] = { "fill", "drain", NULL, };
 
+  if (objc < 2 || objc > 3) {
+    Tcl_WrongNumArgs(ip, 2, objv, "fill|drain data");
+    return TCL_ERROR;
+  }
+
   if (Tcl_GetIndexFromObj(ip, objv[1], cmds, "option", 0, &index) != TCL_OK)
     return TCL_ERROR;
 
@@ -141,6 +146,11 @@ ZlibCmd(ClientData dummy, Tcl_Interp *ip, int objc, Tcl_Obj *CONST objv[])
       wbits = MAX_WBITS;
     case 5: /* inflate data ?bufsize? -> data */
     {
+      if (flag < 1) {
+        Tcl_SetResult(ip, "invalid buffer size", TCL_STATIC);
+        return TCL_ERROR;
+      }
+
       if (objc < 4)
       	flag = 16 * 1024;
 
