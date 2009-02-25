@@ -31,7 +31,6 @@ OPENSSL_OPTS = --prefix=$(OUTDIR) --openssldir=$(OUTDIR) no-threads no-shared no
 export OPENSSL_INCLUDES := -I$(OUTDIR)/include
 export OPENSSL_CFLAGS := -I$(OUTDIR)/include
 export OPENSSL_LDFLAGS := -L$(OUTDIR)/lib
-#export OPENSSL_LIBS := $(OUTDIR)/lib/libssl$A $(OUTDIR)/lib/libcrypto$A
 export OPENSSL_LIBS := -lssl -lcrypto -ldl
 
 GLOBUS_FLAVOR = gcc32
