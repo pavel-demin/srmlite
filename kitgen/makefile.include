@@ -58,7 +58,7 @@ tclkit-gui$(EXE): kit-cli$(EXE) kit-gui$(EXE) ../../setupvfs.tcl build/files
 
 kit-cli$(EXE): build/tcl build/tclvfs build/vqtcl build/zlib \
 	build/globus build/gss_socket build/tls build/tdom build/starfish \
-	build/tcllib build/tclx build/xotcl build/sqlite $(CLIOBJ)
+	build/tcllib build/tclx build/dict build/xotcl build/sqlite $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
 	  build/lib/vfs1*/*vfs1*$A build/lib/vqtcl4*/*vqtcl4*$A \
@@ -66,6 +66,7 @@ kit-cli$(EXE): build/tcl build/tclvfs build/vqtcl build/zlib \
 	  build/lib/tdom0*/libtdom0*$A \
 	  build/lib/starfish0*/libstarfish0*$A \
 	  build/lib/tclx8*/libtclx8*$A \
+	  build/lib/dict8*/libdict8*$A \
 	  build/lib/sqlite3*/libsqlite3*$A \
 	  build/lib/xotcl1*/libxotcl1*$A \
 	  build/lib/tls1*/libtls1*$A \
@@ -89,7 +90,7 @@ kit-cli$(EXE): build/tcl build/tclvfs build/vqtcl build/zlib \
 
 kit-gui$(EXE): build/tcl build/tk build/tclvfs build/vqtcl build/zlib \
 	build/globus build/gss_socket build/tls build/tdom build/starfish \
-	build/tcllib build/tclx build/xotcl build/sqlite $(GUIOBJ)
+	build/tcllib build/tclx build/dict build/xotcl build/sqlite $(GUIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(GUIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
 	  build/lib/vfs1*/*vfs1*$A build/lib/vqtcl4*/*vqtcl4*$A \
@@ -98,6 +99,7 @@ kit-gui$(EXE): build/tcl build/tk build/tclvfs build/vqtcl build/zlib \
 	  build/lib/tdom0*/libtdom0*$A \
 	  build/lib/starfish0*/libstarfish0*$A \
 	  build/lib/tclx8*/libtclx8*$A \
+	  build/lib/dict8*/libdict8*$A \
 	  build/lib/sqlite3*/libsqlite3*$A \
 	  build/lib/xotcl1*/libxotcl1*$A \
 	  build/lib/tls1*/libtls1*$A \
@@ -209,6 +211,11 @@ build/tcllib: build/tcl
 build/tclx: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/tclx/configure $(STATIC) $(TCLDIR) $(TCLX_OPTS) && \
+	  $(MAKE) install
+
+build/dict: build/tcl
+	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh ../../../tclDict/configure $(STATIC) $(TCLDIR) $(DICT_OPTS) && \
 	  $(MAKE) install
 
 build/xotcl: build/tcl

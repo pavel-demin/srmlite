@@ -43,6 +43,7 @@ if {[llength $argv] != 2} {
 load {} vfs ;# vlerq is already loaded by now
 
 load {} tls
+load {} dict
 load {} sqlite
 load {} xotcl
 load {} tdom
@@ -58,6 +59,7 @@ set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   tls1@ tls[package require tls] \
                   starfish0@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
+                  dict8@ dict[package require dict] \
                   sqlite3@ sqlite[package require sqlite] \
                   xotcl1@ xotcl[package require XOTcl] \
                   g2lite0@ g2lite[package require g2lite] \
@@ -102,6 +104,7 @@ set clifiles {
   lib/vqtcl4@/mklite.tcl
   lib/vqtcl4@/pkgIndex.tcl
   lib/vqtcl4@/ratcl.tcl
+  lib/dict8@/pkgIndex.tcl
   lib/sqlite3@/pkgIndex.tcl
   lib/xotcl1@/pkgIndex.tcl
   lib/tdom0@/pkgIndex.tcl
