@@ -128,6 +128,8 @@ set clifiles {
   lib/tcllib1.11/asn
   lib/tcllib1.11/base64
   lib/tcllib1.11/comm
+  lib/tcllib1.11/cmdline
+  lib/tcllib1.11/fileutil
   lib/tcllib1.11/ldap
   lib/tcllib1.11/log
   lib/tcllib1.11/math
