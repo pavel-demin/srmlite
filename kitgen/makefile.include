@@ -39,9 +39,11 @@ GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts
 #GSS_OPTS = --disable-threads --enable-64bit --with-globus=$(OUTDIR)
 GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
 TLS_OPTS = --disable-threads --with-ssl-dir=$(OUTDIR)
+VFS_OPTS = --disable-threads
 TCLX_OPTS = --disable-threads
 DICT_OPTS = --disable-threads
 XOTCL_OPTS = --disable-threads
+VLERQ_OPTS = --disable-threads
 SQLITE_OPTS = --disable-threads
 
 globus-gridftp-server: build/globus
