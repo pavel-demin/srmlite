@@ -72,6 +72,7 @@ untar:
 	  mv $(GLOBUS_SRC) globus && \
 	  mv starfish-0.9/src/starfish ./ && \
 	  mv starfish-0.9/tcl starfish/ && \
+	  patch -p 0 < ../tclvfs-matchindirectory.patch && \
 	  patch -p 0 < ../globus-export_sec_context.patch && \
 	  patch -p 0 < ../starfish-noyp.patch && rm -rf starfish-0.9
 	mkdir -p 8.4 && cd 8.4 && \
