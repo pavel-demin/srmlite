@@ -370,7 +370,7 @@ namespace eval ::srmlite::srmv2::server {
 
         set requestObj [self]::${requestToken}
         if {! [Object isobject $requestObj]} {
-            $connection respond [srmStatusResBody SRM_INVALID_REQUEST {Unknown request token}]
+            $connection respond [srmStatusResBody $requestType SRM_INVALID_REQUEST {Unknown request token}]
             return
         }
 
