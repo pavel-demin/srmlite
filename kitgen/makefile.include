@@ -46,6 +46,7 @@ DICT_OPTS = --disable-threads
 XOTCL_OPTS = --disable-threads
 VLERQ_OPTS = --disable-threads
 SQLITE_OPTS = --disable-threads
+ZLIB_OPTS = --prefix=$(OUTDIR)
 
 globus-gridftp-server: build/globus
 	cp build/sbin/$@ . && $(STRIP) $@
@@ -172,7 +173,9 @@ build/vqtcl: build/tcl
 
 build/zlib: build/tcl
 	cp -R ../../8.x/zlib/. $@
-	cd $@ && $(MAKE) install prefix=.. CC="$(CC)" CFLAGS="-O $(CFLAGS)"
+	cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/zlib/configure $(ZLIB_OPTS) && \
+	  $(MAKE) install
 
 build/openssl:
 	cp -R ../../8.x/openssl/. $@
