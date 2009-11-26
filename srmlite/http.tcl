@@ -1,7 +1,7 @@
 # XOTcl implementation for asynchronous HTTP and HTTPs requests
 # author Gustaf Neumann, Stefan Sobernig, Pavel Demin
 # creation-date 2008-04-21
-# cvs-id $Id: http.tcl,v 1.4 2008-05-07 23:07:17 demin Exp $
+# cvs-id $Id: http.tcl,v 1.5 2009-11-26 13:36:51 demin Exp $
 
 package require srmlite::notifier
 
@@ -258,7 +258,7 @@ namespace eval ::srmlite::http {
     HttpRequest instproc query_done {} {
         my instvar chan
         flush $chan
-        fconfigure $chan -translation crlf
+        fconfigure $chan -translation auto
         fileevent $chan readable [myproc first_line]
     }
 

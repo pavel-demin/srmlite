@@ -165,7 +165,11 @@ proc SoapDecompose {node} {
             }
         } else {
             foreach element $elementNodes {
-                lappend result [$element nodeName] [SoapDecompose $element]
+                set name [$element localName]
+                if {[string equal $name {}]} {
+                    set name [$element nodeName]
+                }
+                lappend result $name [SoapDecompose $element]
             }
         }
     }
