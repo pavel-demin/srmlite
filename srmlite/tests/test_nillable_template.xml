@@ -1,0 +1,10 @@
+@@
+test
+@@
+$request eval {
+upvar g2result g2result
+@@
+begin
+end
+@@
+}
