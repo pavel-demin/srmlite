@@ -26,12 +26,16 @@ namespace eval ::srmlite::utilities {
     variable permDict
     set permDict {
         rwx 7
+        rws 7
         rw- 6
         r-x 5
+        r-s 5
         r-- 4
         -wx 3
+        -ws 3
         -w- 2
         --x 1
+        --s 1
         --- 0
         - {}
         + {}
@@ -114,7 +118,7 @@ namespace eval ::srmlite::utilities {
         variable permDict
 	variable permArray
         set permMode [string map $permDict $mode]
-        return $permArray([string index $permMode 1])
+        return $permArray([string index $permMode 2])
     }
 
 # -------------------------------------------------------------------------
