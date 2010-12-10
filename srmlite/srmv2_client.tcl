@@ -18,7 +18,7 @@ namespace eval ::srmlite::srmv2::client {
 
     variable resp
     array set resp {
-        get       {TCP_ERROR retry SRM_FAILURE failure SRM_INVALID_PATH failure SRM_REQUEST_QUEUED token SRM_SUCCESS token}
+        get       {TCP_ERROR retry SRM_FAILURE failure SRM_INVALID_PATH failure SRM_REQUEST_QUEUED token SRM_REQUEST_INPROGRESS token SRM_SUCCESS transfer}
         put       {TCP_ERROR retry SRM_FAILURE failure SRM_REQUEST_QUEUED token SRM_SUCCESS token}
         token     {SRM_FAILURE failure SRM_SUCCESS status}
         status    {TCP_ERROR retry SRM_FAILURE failure SRM_INVALID_PATH failure SRM_REQUEST_QUEUED status SRM_REQUEST_INPROGRESS status SRM_SUCCESS transfer}
@@ -144,8 +144,9 @@ namespace eval ::srmlite::srmv2::client {
     SrmClient instproc status {} {
         my set state status
 
-        set estimatedWaitTime [my getFromFileStatus estimatedWaitTime]
-        set estimatedWaitTime [expr $estimatedWaitTime * 800]
+#        set estimatedWaitTime [my getFromFileStatus estimatedWaitTime]
+#        set estimatedWaitTime [expr $estimatedWaitTime * 800]
+        set estimatedWaitTime 10
 
         set afterId [after $estimatedWaitTime [myproc sendRequest [my set statusType]]]
     }
@@ -175,7 +176,6 @@ namespace eval ::srmlite::srmv2::client {
 
     SrmClient instproc transfer {} {
         my set state transfer
-
         my notify successCallback [my getFromFileStatus transferURL]
     }
 
