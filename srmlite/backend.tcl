@@ -1,4 +1,3 @@
-
 package require Tclx
 package require dict
 
@@ -11,6 +10,9 @@ array set State {
     in stdout
     out stdin
 }
+
+set QueueSize 0
+set QueueData [list]
 
 # -------------------------------------------------------------------------
 
@@ -139,7 +141,7 @@ proc GetCommandOutput {requestType uniqueId processId pipe} {
 
 proc Finish {requestType uniqueId processId pipe} {
 
-    global State errorCode
+    global State QueueSize QueueData errorCode
     upvar #0 SrmProcesses($processId) process
 
     set hadError 0
@@ -167,7 +169,15 @@ proc Finish {requestType uniqueId processId pipe} {
         set output [dict get $process output]
         unset process
     }
+    
+    incr QueueSize -1
 
+    if {$QueueSize < 10 && [llength $QueueData] > 0} {
+        set line [lindex $QueueData 0]
+        set QueueData [lreplace $QueueData [set QueueData 0] 0]
+        Start $line
+    }
+    
     puts $State(out) [list $state $requestType $uniqueId $output]
 }
 
@@ -188,7 +198,7 @@ proc Timeout {seconds} {
 
 proc GetInput {chan} {
 
-    global State
+    global State QueueSize QueueData
 
     if {[catch {gets $chan line} readCount]} {
         log::log error $readCount
@@ -207,6 +217,19 @@ proc GetInput {chan} {
     }
 
     log::log debug $line
+    
+    if {$QueueSize < 10} {
+        Start $line
+    } else {
+        lappend QueueData $line
+    }
+}
+
+# -------------------------------------------------------------------------
+
+proc Start {line} {
+
+    global QueueSize QueueData
 
     set requestType [lindex $line 0]
 
@@ -233,8 +256,11 @@ proc GetInput {chan} {
             log::log error "Unknown request type $requestType"
         }
     }
+    
+    incr QueueSize
 }
 
 # -------------------------------------------------------------------------
 
 package provide srmlite::backend 0.2
+
