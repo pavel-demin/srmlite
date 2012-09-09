@@ -53,7 +53,7 @@ AC_DEFUN([SG_PACKAGE_GLOBUS],
   AC_MSG_CHECKING(if compiler supported by globus tools)
   case x$CC in
   xg++|xgcc)
-    GLOBUS_BASE_MODEL="gcc32"
+    GLOBUS_BASE_MODEL="gcc32dbg"
     ;;
   *)
     AC_MSG_ERROR([no ($CC)])
@@ -84,7 +84,7 @@ AC_DEFUN([SG_PACKAGE_GLOBUS],
   AC_MSG_CHECKING(if compiler supported by globus tools)
   case x$CC in
   xg++|xgcc)
-    GLOBUS_MODEL="gcc32"
+    GLOBUS_MODEL="gcc32dbg"
     ;;
   *)
     AC_MSG_ERROR([no ($CC)])
@@ -94,7 +94,7 @@ AC_DEFUN([SG_PACKAGE_GLOBUS],
   xyes) GLOBUS_MODEL="`echo $GLOBUS_MODEL | sed -e 's/32/64/g'`";;
   esac
 
-  CFLAGS="$CFLAGS -I${GLOBUS_DIR}/include/${GLOBUS_MODEL}"
+  CFLAGS="$CFLAGS -I${GLOBUS_DIR}/include/globus -I${GLOBUS_DIR}/include/globus/${GLOBUS_MODEL}"
 
   AC_MSG_RESULT(yes ($GLOBUS_MODEL))
   AC_SUBST(GLOBUS_MODEL)
