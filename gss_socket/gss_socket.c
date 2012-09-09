@@ -1328,8 +1328,7 @@ GssNotifyProc(ClientData instanceData, int mask)
       mask &= ~(TCL_WRITABLE);
     }
 
-    if(!(statePtr->flags & GSS_TCL_EOF) &&
-       (statePtr->intWatchMask & TCL_WRITABLE))
+    if(statePtr->intWatchMask & TCL_WRITABLE)
     {
       GssWriteToken(statePtr);
     }
@@ -1521,7 +1520,7 @@ GssImportObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
   statePtr->intWatchMask |= TCL_READABLE;
   (*statePtr->parentWatchProc) (statePtr->parentInstData, statePtr->intWatchMask);
 
-  statePtr->writeInBufSize = 32768;
+  statePtr->writeInBufSize = 16384;
   statePtr->writeInBuf.length = 0;
   statePtr->writeInBuf.value = ckalloc(statePtr->writeInBufSize);
 
