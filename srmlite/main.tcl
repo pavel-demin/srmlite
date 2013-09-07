@@ -79,9 +79,6 @@ proc frontend {pipein pipeout} {
     id group $Cfg(frontendGroup)
     id user $Cfg(frontendUser)
 
-    set ::env(GRIDMAP) $Cfg(gridMapFile)
-    set ::env(GRIDMAPDIR) $Cfg(gridMapDir)
-
     set fid [open $Cfg(frontendLog) w]
     fconfigure $fid -blocking 0 -buffering line
     log::lvChannelForall $fid
