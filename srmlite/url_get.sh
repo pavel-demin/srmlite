@@ -6,8 +6,8 @@ fileSrc="$2"
 
 dirSrc=`dirname $fileSrc`
 
-. url_common.sh
+. ./url_common.sh
 
 checkFileSrc $fileSrc $dirSrc
 
-ls -l --time-style=long-iso $fileSrc
+ls -lL --time-style=long-iso $fileSrc

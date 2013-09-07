@@ -6,8 +6,8 @@ fileDst="$2"
 
 dirDst=`dirname $fileDst`
 
-. url_common.sh
+. ./url_common.sh
 
 checkFileDst $fileDst $dirDst
 
-touch $fileDst
+# touch $fileDst

@@ -7,8 +7,8 @@ fileSrc="$3"
 
 dirSrc=`dirname $fileSrc`
 
-. url_common.sh
+. ./url_common.sh
 
 checkFileLs $fileSrc $dirSrc
 
-find $fileSrc -maxdepth $depth -exec ls -dln --time-style=long-iso {} \;
+find $fileSrc -maxdepth $depth -exec ls -dlLn --time-style=long-iso {} \;

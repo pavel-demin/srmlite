@@ -101,26 +101,29 @@ checkFileDst()
   fi
 
   makeDir "$2"
+
+  ./makeFile squirrel.config "$1"
 }
 
 
 checkFileDel()
 {
-  if [ ! -e "$1" ]
+  if [ ! -L "$1" ] && [ ! -e "$2" ]
   then
     echo "File does not exist"
     exit 14
   fi
 
-  if [ ! -f "$1" ]
+  if [ -e "$2" ] && [ ! -f "$2" ]
   then
     echo "Not a regular file"
     exit 15
   fi
 
-  if [ ! -w "$1" ]
+  if [ -e "$2" ] && [ ! -w "$2" ]
   then
     echo "Permission to write denied"
     exit 16
   fi
 }
+

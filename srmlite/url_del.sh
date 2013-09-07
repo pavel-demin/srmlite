@@ -4,10 +4,11 @@
 hostSrc="$1"
 fileSrc="$2"
 
-dirSrc=`dirname $fileSrc`
+fileDst=`readlink $fileSrc`
 
-. url_common.sh
+. ./url_common.sh
 
-checkFileDel $fileSrc $dirSrc
+checkFileDel $fileSrc $fileDst
 
-rm -f $fileSrc
+rm -f $fileSrc $fileDst
+
