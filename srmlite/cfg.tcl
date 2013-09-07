@@ -15,8 +15,6 @@ array set CfgValidators {
     frontendPort ValidatePort
     frontendLog ValidateFrontendLog
     backendLog ValidateBackendLog
-    gridMapDir ValidateGridMapDir
-    gridMapFile ValidateGridMapFile
     srmv1Prefix ValidateEverything
     srmv2Prefix ValidateEverything
 }
@@ -32,8 +30,6 @@ array set Cfg {
     frontendPort 8443
     frontendLog logs/frontend.log
     backendLog logs/backend.log
-    gridMapDir /etc/grid-security/gridmapdir
-    gridMapFile /etc/grid-security/grid-mapfile
     srmv1Prefix /srm/managerv1
     srmv2Prefix /srm/managerv2
 }
@@ -52,17 +48,6 @@ proc ValidatePort {dummy} {
 
 proc ValidateChrootDir {dummy} {
 }
-
-# -------------------------------------------------------------------------
-
-proc ValidateGridMapDir {dummy} {
-}
-
-# -------------------------------------------------------------------------
-
-proc ValidateGridMapFile {dummy} {
-}
-
 
 # -------------------------------------------------------------------------
 
