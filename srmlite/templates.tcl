@@ -1,4 +1,3 @@
-package require dict
 package require g2lite
 
 package require srmlite::utilities

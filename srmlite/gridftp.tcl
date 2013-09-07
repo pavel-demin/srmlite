@@ -1,6 +1,4 @@
-
 package require gss::context
-package require dict
 package require log
 
 package require srmlite::notifier

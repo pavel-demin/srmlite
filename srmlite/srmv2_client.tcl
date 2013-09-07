@@ -1,4 +1,3 @@
-package require dict
 package require tdom
 package require log
 

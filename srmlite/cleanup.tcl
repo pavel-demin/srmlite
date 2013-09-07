@@ -1,5 +1,4 @@
 package require log
-package require dict
 package require Tclx
 package require XOTcl
 

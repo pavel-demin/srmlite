@@ -1,5 +1,4 @@
 package require Tclx
-package require dict
 
 package require srmlite::utilities
 namespace import ::srmlite::utilities::LogRotate
