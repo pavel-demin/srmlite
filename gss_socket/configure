@@ -10665,7 +10665,7 @@ $as_echo "$as_me: error: unable to find GLOBUS. Please set the env variable GLOB
 $as_echo_n "checking if compiler supported by globus tools... " >&6; }
   case x$CC in
   xg++|xgcc)
-    GLOBUS_BASE_MODEL="gcc32dbg"
+    GLOBUS_BASE_MODEL="gcc32"
     ;;
   *)
     { { $as_echo "$as_me:$LINENO: error: no ($CC)" >&5
@@ -10702,7 +10702,7 @@ fi
 $as_echo_n "checking if compiler supported by globus tools... " >&6; }
   case x$CC in
   xg++|xgcc)
-    GLOBUS_MODEL="gcc32dbg"
+    GLOBUS_MODEL="gcc32"
     ;;
   *)
     { { $as_echo "$as_me:$LINENO: error: no ($CC)" >&5
