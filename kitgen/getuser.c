@@ -59,6 +59,13 @@ int main(int argc, char *argv[])
                                                "srm", NULL,
                                                gssUser, 256);
   fclose(stderr);
+
+  if(result != GLOBUS_SUCCESS)
+  {
+    printf("%s\n", globus_error_print_chain(globus_error_get(result)));
+    return 1;
+  }
+
   printf("%s\n", gssUser);
 
   return 0;

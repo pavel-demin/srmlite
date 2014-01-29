@@ -1,4 +1,4 @@
-# setupvfs.tcl -- new tclkit-{cli,dyn,gui} generation bootstrap
+# setupvfs.tcl -- new tclkit-{cli,gui} generation bootstrap
 #
 # jcw, 2006-11-16
 
@@ -12,10 +12,10 @@ if {[lindex $argv 0] ne "-init-"} {
 set argv [lrange $argv 2 end] ;# strip off the leading "-init- setupvfs.tcl"
 
 set debugOpt 0
-set encOpt 0 
-set msgsOpt 0 
+set encOpt 0
+set msgsOpt 0
 set threadOpt 0
-set tzOpt 0 
+set tzOpt 0
 
 while {1} {
   switch -- [lindex $argv 0] {
@@ -31,7 +31,7 @@ while {1} {
 
 if {[llength $argv] != 2} {
   puts stderr "Usage: [file tail [info nameofexe]] -init- [info script]\
-    ?-d? ?-e? ?-m? ?-t? ?-z? destfile (cli|dyn|gui)
+    ?-d? ?-e? ?-m? ?-t? ?-z? destfile (cli|gui)
     -d    output some debugging info from this setup script
     -e    include all encodings i.s.o. 7 basic ones (encodings/)
     -m    include all localized message files (tcl 8.5, msgs/)
@@ -40,11 +40,10 @@ if {[llength $argv] != 2} {
   exit 1
 }
 
-load {} vfs ;# vlerq is already loaded by now
-
+load {} zlib
+load {} vfs
 load {} tls
-load {} dict
-load {} sqlite
+load {} sqlite3
 load {} xotcl
 load {} tdom
 load {} starfishLib
@@ -54,13 +53,12 @@ load {} gss
 # map of proper version numbers to replace @ markers in paths given to vfscopy
 # this relies on having all necessary extensions already loaded at this point
 set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
+                  zlib1@ zlib[package require zlib] \
                   vfs1@ vfs[package require vfs] \
-                  vqtcl4@ vqtcl[package require vlerq] \
                   tls1@ tls[package require tls] \
-                  starfish0@ starfish[package require starfishLib] \
+                  starfish1@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
-                  dict8@ dict[package require dict] \
-                  sqlite3@ sqlite[package require sqlite] \
+                  sqlite3@ sqlite[package require sqlite3] \
                   xotcl1@ xotcl[package require XOTcl] \
                   g2lite0@ g2lite[package require g2lite] \
                   gss_socket0@ gss_socket[package require gss::socket]]
@@ -77,9 +75,16 @@ if {$debugOpt} {
 
 set tcl_library ../tcl/library
 source ../tcl/library/init.tcl ;# for tcl::CopyDirectory
-source ../../8.x/tclvfs/library/vfsUtils.tcl
-source ../../8.x/tclvfs/library/vfslib.tcl ;# override vfs::memchan/vfsUtils.tcl
-source ../../8.x/vqtcl/library/m2mvfs.tcl
+
+# Create package index files for the static extensions.
+set exts {g2lite XOTcl zlib Tclx}
+foreach ext $exts {
+  load {} $ext
+  set dst [file join lib "[string tolower $ext][package provide $ext]" pkgIndex.tcl]
+  puts $dst
+  set index($dst) "package ifneeded $ext [package provide $ext] {load {} [string tolower $ext]}"
+}
+set index(lib/sqlite[package provide sqlite3]/pkgIndex.tcl) "package ifneeded sqlite3 [package provide sqlite3] {load {} sqlite3}"
 
 set clifiles {
   boot.tcl
@@ -99,42 +104,37 @@ set clifiles {
   lib/vfs1@/vfslib.tcl
   lib/vfs1@/vfsUtils.tcl
   lib/vfs1@/zipvfs.tcl
-  lib/vqtcl4@/m2mvfs.tcl
-  lib/vqtcl4@/mkclvfs.tcl
-  lib/vqtcl4@/mklite.tcl
-  lib/vqtcl4@/pkgIndex.tcl
-  lib/vqtcl4@/ratcl.tcl
-  lib/dict8@/pkgIndex.tcl
   lib/sqlite3@/pkgIndex.tcl
   lib/xotcl1@/pkgIndex.tcl
   lib/tdom0@/pkgIndex.tcl
   lib/tdom0@/tdom.tcl
-  lib/starfish0@/pkgIndex.tcl
-  lib/starfish0@/pkgStarfish.tcl
-  lib/starfish0@/pkgStarfishBase.tcl
-  lib/starfish0@/pkgStarfishGui.tcl
-  lib/starfish0@/pkgStarfishLib.tcl
-  lib/starfish0@/conn.tcl
-  lib/starfish0@/dialog.tcl
-  lib/starfish0@/gui.tcl
-  lib/starfish0@/meta.tcl
-  lib/starfish0@/misc.tcl
-  lib/starfish0@/tree.tcl
+  lib/starfish1@/pkgIndex.tcl
+  lib/starfish1@/pkgStarfish.tcl
+  lib/starfish1@/pkgStarfishBase.tcl
+  lib/starfish1@/pkgStarfishGui.tcl
+  lib/starfish1@/pkgStarfishLib.tcl
+  lib/starfish1@/conn.tcl
+  lib/starfish1@/dialog.tcl
+  lib/starfish1@/gui.tcl
+  lib/starfish1@/meta.tcl
+  lib/starfish1@/misc.tcl
+  lib/starfish1@/tree.tcl
   lib/tls1@/pkgIndex.tcl
   lib/tls1@/tls.tcl
   lib/g2lite0@/pkgIndex.tcl
   lib/gss_socket0@/pkgIndex.tcl
-  lib/tcllib1.11/pkgIndex.tcl
-  lib/tcllib1.11/asn
-  lib/tcllib1.11/base64
-  lib/tcllib1.11/comm
-  lib/tcllib1.11/cmdline
-  lib/tcllib1.11/fileutil
-  lib/tcllib1.11/ldap
-  lib/tcllib1.11/log
-  lib/tcllib1.11/math
-  lib/tcllib1.11/snit
-  lib/tcllib1.11/uri
+  lib/zlib1@/pkgIndex.tcl
+  lib/tcllib1.15/pkgIndex.tcl
+  lib/tcllib1.15/asn
+  lib/tcllib1.15/base64
+  lib/tcllib1.15/comm
+  lib/tcllib1.15/cmdline
+  lib/tcllib1.15/fileutil
+  lib/tcllib1.15/ldap
+  lib/tcllib1.15/log
+  lib/tcllib1.15/math
+  lib/tcllib1.15/snit
+  lib/tcllib1.15/uri
   lib/tclx8.4/pkgIndex.tcl
   lib/tclx8.4/arrayprocs.tcl
   lib/tclx8.4/autoload.tcl
@@ -153,7 +153,8 @@ set clifiles {
   lib/tclx8.4/showproc.tcl
   lib/tclx8.4/stringfile.tcl
   lib/tclx8.4/tcllib.tcl
-  lib/tclx8.4/tclx.tcl}
+  lib/tclx8.4/tclx.tcl
+}
 
 set guifiles {
   tclkit.ico
@@ -176,7 +177,6 @@ set guifiles {
   lib/tk8@/palette.tcl
   lib/tk8@/panedwindow.tcl
   lib/tk8@/pkgIndex.tcl
-  lib/tk8@/prolog.ps
   lib/tk8@/safetk.tcl
   lib/tk8@/scale.tcl
   lib/tk8@/scrlbar.tcl
@@ -188,6 +188,15 @@ set guifiles {
   lib/tk8@/tkfbox.tcl
   lib/tk8@/unsupported.tcl
   lib/tk8@/xmfbox.tcl
+  lib/BLT2.4/pkgIndex.tcl
+  lib/BLT2.4/graph.tcl
+  lib/BLT2.4/tabnotebook.tcl
+  lib/BLT2.4/treeview.cur
+  lib/BLT2.4/treeview.xbm
+  lib/BLT2.4/treeview.tcl
+  lib/BLT2.4/treeview_m.xbm
+  lib/BLT2.4/bltCanvEps.pro
+  lib/BLT2.4/bltGraph.pro
 }
 
 if {$encOpt} {
@@ -208,9 +217,9 @@ if {$threadOpt} {
 
 if {$tcl_version eq "8.4"} {
   lappend clifiles lib/tcl8@/http2.5 \
-            		   lib/tcl8@/ldAout.tcl \
-            		   lib/tcl8@/msgcat1.3 \
-            		   lib/tcl8@/tcltest2.2
+            	   lib/tcl8@/ldAout.tcl \
+            	   lib/tcl8@/msgcat1.3 \
+            	   lib/tcl8@/tcltest2.2
 } else {
   lappend clifiles lib/tcl8 \
                    lib/tcl8@/clock.tcl \
@@ -231,133 +240,155 @@ if {$tcl_version eq "8.4"} {
 #   2) build/files/a/b/c
 #   3) build/a/b/c
 
-proc locatefile {f} {
-  set a [file split $f]
-  set n "build/files/[lindex $a end-1]-[lindex $a end]"
-  if {[file exists $n]} {
-    if {$::debugOpt} {
-      puts "  $n  ==>  \$vfs/$f"
+proc timet_to_dos {time_t} {
+    set s [clock format $time_t -format {%Y %m %e %k %M %S}]
+    scan $s {%d %d %d %d %d %d} year month day hour min sec
+    expr {(($year-1980) << 25) | ($month << 21) | ($day << 16)
+          | ($hour << 11) | ($min << 5) | ($sec >> 1)}
+}
+
+proc walk {path} {
+    set result {}
+    set files [glob -nocomplain -types f -directory $path *]
+    foreach file $files {
+        set excluded 0
+        foreach glob $excludes {
+            if {[string match $glob $file]} {
+                set excluded 1
+                break
+            }
+        }
+        if {!$excluded} {lappend result $file}
     }
+    foreach dir [glob -nocomplain -types d -directory $path $match] {
+        set subdir [walk $dir $excludes $match]
+        if {[llength $subdir]>0} {
+            set result [concat $result $dir $subdir]
+        }
+    }
+    return $result
+}
+
+proc mkzipfile {zipchan dst {comment {}}} {
+  global index
+
+  set mtime [timet_to_dos [clock seconds]]
+  set utfpath [encoding convertto utf-8 $dst]
+  set utfcomment [encoding convertto utf-8 $comment]
+  set flags [expr {(1<<10)}] ;# use utf-8
+  set method 0               ;# store 0, deflate 8
+  set attr 0                 ;# text or binary (default binary)
+  set extra ""
+  set crc 0
+  set csize 0
+  set version 20
+
+  if {[info exists index($dst)]} {
+    set data $index($dst)
   } else {
-    set n build/files/$f
-    if {[file exists $n]} {
+    set a [file split $dst]
+    set src build/files/[lindex $a end-1]-[lindex $a end]
+    if {[file exists $src]} {
       if {$::debugOpt} {
-        puts "  $n  ==>  \$vfs/$f"
+        puts "  $src  ==>  $dst"
       }
     } else {
-      set n build/$f
+      set src build/files/$dst
+      if {[file exists $src]} {
+        if {$::debugOpt} {
+          puts "  $src  ==>  $dst"
+        }
+      } else {
+        set src build/$dst
+      }
+    }
+    if {[file isfile $src]} {
+      set mtime [timet_to_dos [file mtime $src]]
+      set fin [open $src r]
+      fconfigure $fin -translation binary -encoding binary
+      set data [read $fin]
+      close $fin
+    } else {
+      error "cannot find $src"
     }
   }
-  return $n
+
+  set attrex 0x81b60000  ;# 0o100666 (-rw-rw-rw-)
+  if {[file extension $dst] eq ".tcl"} {
+    set attr 1         ;# text
+  }
+
+  set size [string length $data]
+  set crc [zlib crc32 $data]
+  set cdata [zlib deflate $data]
+  if {[string length $cdata] < $size} {
+    set method 8
+    set data $cdata
+  }
+  set csize [string length $data]
+
+
+  set local [binary format a4sssiiiiss PK\03\04 \
+    $version $flags $method $mtime $crc $csize $size \
+    [string length $utfpath] [string length $extra]]
+  append local $utfpath $extra
+
+  set offset [tell $zipchan]
+  puts -nonewline $zipchan $local
+  puts -nonewline $zipchan $data
+
+  set hdr [binary format a4ssssiiiisssssii PK\01\02 0x0317 \
+    $version $flags $method $mtime $crc $csize $size \
+    [string length $utfpath] [string length $extra]\
+    [string length $utfcomment] 0 $attr $attrex $offset]
+  append hdr $utfpath $extra $utfcomment
+
+  return $hdr
 }
 
-# copy file to m2m-mounted vfs
-proc vfscopy {argv} {
-  global vfs versmap
+# copy file to vfs
+proc vfscopy {zf argv} {
+  global versmap count cd
   
   foreach f $argv {
-    set f [string map $versmap $f]
-    
-    set d $vfs/[file dirname $f]
-    if {![file isdir $d]} {
-      file mkdir $d
+    set dst [string map $versmap $f]
+
+    if {[file isdirectory build/$dst]} {
+      vfscopy $zf [glob -nocomplain -tails -directory build $dst/*]
+      continue
     }
 
-    set src [locatefile $f]
-    set dest $vfs/$f
-    
-    switch -- [file extension $src] {
-      .tcl - .txt - .msg - .test {
-        # get line-endings right for text files - this is crucial for boot.tcl
-        # and several scripts in lib/vlerq4/ which are loaded before vfs works
-        set fin [open $src r]
-        set fout [open $dest w]
-        fconfigure $fout -translation lf
-        fcopy $fin $fout
-        close $fin
-        close $fout
-      }
-      default {
-        file copy $src $dest
-      }
-    }
-    
-    file mtime $dest [file mtime $src]
+    append cd [mkzipfile $zf $dst]
+    incr count
   }
 }
 
-set vfs [lindex $argv 0]
-vfs::m2m::Mount $vfs $vfs
+set zf [open [lindex $argv 0] a]
+fconfigure $zf -translation binary -encoding binary
 
-switch [info sharedlibext] {
-  .dll {
-    catch {
-      # avoid hard-wiring a Thread extension version number in here
-      set dll [glob build/bin/thread2*.dll]
-      load $dll
-      set vsn [package require Thread]
-      file copy -force $dll build/lib/libthread$vsn.dll
-      unset dll vsn
-    }
-    # create dde and registry pkgIndex files with the right version
-    foreach ext {dde registry} {
-      if {[catch {
-          load {} $ext
-          set extdir [file join $vfs lib $ext]
-          file mkdir $extdir
-          set f [open $extdir/pkgIndex.tcl w]
-          puts $f "package ifneeded $ext [package provide $ext] {load {} $ext}"
-          close $f
-      } err]} { puts "ERROR: $err"}
-    }
-    catch {
-      file delete [glob build/lib/libtk8?.a] ;# so only libtk8?s.a will be found
-    }
-    catch {
-      file copy -force [glob build/bin/tk8*.dll] build/lib/libtk$tcl_version.dll
-    }
-  }
-  .so {
-    catch {
-      # for some *BSD's, lib names have no dot and/or end with a version number
-      file rename [glob build/lib/libtk8*.so*] build/lib/libtk$tcl_version.so
-    }
-  }
-}
-
-# Create package index files for the static extensions.
-# verq registry dde and vfs are handled above or using files/*
-set exts {zlib rechan}
-if {[package vcompare [package provide Tcl] 8.4] == 0} { lappend exts pwb }
-foreach ext $exts {
-    load {} $ext
-    set extdir [file join $vfs lib $ext]
-    file mkdir $extdir
-    set f [open $extdir/pkgIndex.tcl w]
-    puts $f "package ifneeded $ext [package provide $ext] {load {} $ext}"
-    close $f
-}
+set count 0
+set cd ""
 
 switch [lindex $argv 1] {
   cli {
-    vfscopy $clifiles
+    vfscopy $zf $clifiles
   }
   gui {
-    vfscopy $clifiles
-    vfscopy $guifiles
-  }
-  dyn {
-    vfscopy $clifiles
-    vfscopy $guifiles
-    vfscopy lib/libtk$tcl_version[info sharedlibext]
+    vfscopy $zf $clifiles
+    vfscopy $zf $guifiles
   }
   default {
-    puts stderr "Unknown type, must be one of: cli, dyn, gui"
+    puts stderr "Unknown type, must be cli or gui"
     exit 1
   }
 }
 
-vfs::unmount $vfs
+set cdoffset [tell $zf]
+set endrec [binary format a4ssssiis PK\05\06 0 0 \
+    $count $count [string length $cd] $cdoffset 0]
+puts -nonewline $zf $cd
+puts -nonewline $zf $endrec
+close $zf
 
 if {$debugOpt} {
   puts "\nDone with [info script]"

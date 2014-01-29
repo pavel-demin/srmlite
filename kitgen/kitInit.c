@@ -1,4 +1,4 @@
-/* 
+/*
  * tclAppInit.c --
  *
  *  Provides a default version of the main program and Tcl_AppInit
@@ -13,7 +13,7 @@
  * See the file "license.terms" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
  *
- * RCS: @(#) $Id: kitInit.c,v 1.3 2008-05-11 20:36:50 demin Exp $
+ * RCS: @(#) $Id: kitInit.c,v 1.3 2008/05/11 20:36:50 demin Exp $
  */
 
 #ifdef KIT_INCLUDES_TK
@@ -34,28 +34,24 @@
 extern Tcl_Obj* TclGetStartupScriptPath();
 extern void TclSetStartupScriptPath(Tcl_Obj*);
 
-Tcl_AppInitProc	Pwb_Init, Rechan_Init, Vfs_Init, Zlib_Init;
-#ifdef KIT_LITE
-Tcl_AppInitProc	Vlerq_Init, Vlerq_SafeInit;
-#else
-Tcl_AppInitProc	Mk4tcl_Init;
-#endif
+Tcl_AppInitProc	Vfs_Init, Zlib_Init;
 #ifdef TCL_THREADS
 Tcl_AppInitProc	Thread_Init;
 #endif
 #ifdef _WIN32
 Tcl_AppInitProc	Dde_Init, Registry_Init;
 #endif
+#ifdef KIT_INCLUDES_TK
+Tcl_AppInitProc	Blt_Init, Blt_SafeInit;
+#endif
 
-Tcl_AppInitProc	Tls_Init, Tls_SafeInit, Tdom_Init, Tdom_SafeInit;
+Tcl_AppInitProc Tls_Init, Tls_SafeInit, Tdom_Init, Tdom_SafeInit;
 Tcl_AppInitProc G2lite_Init, Gss_Init, Gss_SafeInit;
 Tcl_AppInitProc Gssctx_Init, Gssctx_SafeInit;
-Tcl_AppInitProc Dict_Init;
 Tcl_AppInitProc Xotcl_Init;
-Tcl_AppInitProc Sqlite_Init, Sqlite_SafeInit;
+Tcl_AppInitProc Sqlite3_Init;
 Tcl_AppInitProc Tclx_Init, Tclx_SafeInit;
 Tcl_AppInitProc Starfish_Init, Starfish_SafeInit;
-
 
 #ifdef WIN32
 #define DEV_NULL "NUL"
@@ -65,47 +61,14 @@ Tcl_AppInitProc Starfish_Init, Starfish_SafeInit;
 
 static void TclKit_InitStdChannels(void);
 
-/*
- *  Attempt to load a "boot.tcl" entry from the embedded MetaKit file.
- *  This code uses either the Mk4tcl or the vlerq extension (-DKIT_LITE).
- *  If there isn't one, try to open a regular "setup.tcl" file instead.
- *  If that fails, this code will throw an error, using a message box.
- *
- * The appInitCmd will only be run once in the main (initial) interpreter.
- * The preInitCmd will be registered to run in any created interpreter.
- */
-
-static char appInitCmd[] = 
+static char appInitCmd[] =
 "proc tclKitInit {} {\n"
     "rename tclKitInit {}\n"
-    "catch {load {} zlib}\n"
     "if {![info exists ::tcl::basekit]} {\n"
         "namespace eval ::tcl { variable basekit [info nameofexecutable] }\n"
     "}\n"
-#ifdef KIT_LITE
-    "load {} vlerq\n"
-    "namespace eval ::vlerq {}\n"
-    "if {[catch { vlerq open $::tcl::basekit } ::vlerq::starkit_root]} {\n"
-      "set n -1\n"
-    "} else {\n"
-      "set files [vlerq get $::vlerq::starkit_root 0 dirs 0 files]\n"
-      "set n [lsearch [vlerq get $files * name] boot.tcl]\n"
-    "}\n"
-    "if {$n >= 0} {\n"
-        "array set a [vlerq get $files $n]\n"
-#else
-    "load {} Mk4tcl\n"
-    "mk::file open exe $::tcl::basekit -readonly\n"
-    "set n [mk::select exe.dirs!0.files name boot.tcl]\n"
-    "if {[llength $n] == 1} {\n"
-        "array set a [mk::get exe.dirs!0.files!$n]\n"
-#endif
-        "if {![info exists a(contents)]} { error {no boot.tcl file} }\n"
-        "if {$a(size) != [string length $a(contents)]} {\n"
-        	"set a(contents) [zlib decompress $a(contents)]\n"
-        "}\n"
-        "if {$a(contents) eq \"\"} { error {empty boot.tcl} }\n"
-        "uplevel #0 $a(contents)\n"
+    "if {[file isfile /zvfs/boot.tcl]} {\n"
+        "source /zvfs/boot.tcl\n"
     "} elseif {[lindex $::argv 0] eq \"-init-\"} {\n"
         "uplevel #0 { source [lindex $::argv 1] }\n"
         "exit\n"
@@ -116,33 +79,15 @@ static char appInitCmd[] =
 "tclKitInit"
 ;
 
-static char preInitCmd[] =
-"proc tclKitPreInit {} {\n"
-    "rename tclKitPreInit {}\n"
-    /* In 8.5 we need to set these paths for child interps */
-    "global tcl_library tcl_libPath tcl_version\n"
-    "set noe [info nameofexecutable]\n"
-    "set tcl_library [file join $noe lib tcl$tcl_version]\n"
-    "set tcl_libPath [list $tcl_library [file join $noe lib]]\n"
-    "set tcl_pkgPath [list $tcl_library [file join $noe lib]]\n"
-"}\n"
-"tclKitPreInit"
-;
-
 static const char initScript[] =
-"if {[file isfile [file join $::tcl::basekit main.tcl]]} {\n"
+"if {[file isfile [file join /zvfs main.tcl]]} {\n"
     "if {[info commands console] != {}} { console hide }\n"
     "set tcl_interactive 0\n"
     "incr argc\n"
     "set argv [linsert $argv 0 $argv0]\n"
-    "set argv0 [file join $::tcl::basekit main.tcl]\n"
+    "set argv0 [file join /zvfs main.tcl]\n"
 "} else continue\n"
 ;
-
-/*
- * If set, this is the path to the base kit
- */
-static char *tclKitPath = NULL;
 
 #ifdef WIN32
 __declspec(dllexport) int
@@ -156,15 +101,6 @@ TclKit_AppInit(Tcl_Interp *interp)
      */
     TclKit_InitStdChannels();
 
-#ifdef KIT_LITE
-    Tcl_StaticPackage(0, "vlerq", Vlerq_Init, Vlerq_SafeInit);
-#else
-    Tcl_StaticPackage(0, "Mk4tcl", Mk4tcl_Init, NULL);
-#endif
-#if 10 * TCL_MAJOR_VERSION + TCL_MINOR_VERSION < 85
-    Tcl_StaticPackage(0, "pwb", Pwb_Init, NULL);
-#endif
-    Tcl_StaticPackage(0, "rechan", Rechan_Init, NULL);
     Tcl_StaticPackage(0, "vfs", Vfs_Init, NULL);
     Tcl_StaticPackage(0, "zlib", Zlib_Init, NULL);
 #ifdef TCL_THREADS
@@ -176,9 +112,9 @@ TclKit_AppInit(Tcl_Interp *interp)
 #endif
 #ifdef KIT_INCLUDES_TK
     Tcl_StaticPackage(0, "Tk", Tk_Init, Tk_SafeInit);
+    Tcl_StaticPackage(0, "Blt", Blt_Init, Blt_SafeInit);
 #endif
 
-    Tcl_StaticPackage(0, "dict", Dict_Init, NULL);
     Tcl_StaticPackage(0, "XOTcl", Xotcl_Init, NULL);
     Tcl_StaticPackage(0, "g2lite", G2lite_Init, NULL);
     Tcl_StaticPackage(0, "gss", Gss_Init, Gss_SafeInit);
@@ -186,7 +122,7 @@ TclKit_AppInit(Tcl_Interp *interp)
     Tcl_StaticPackage(0, "tls", Tls_Init, Tls_SafeInit);
     Tcl_StaticPackage(0, "tdom", Tdom_Init, Tdom_SafeInit);
     Tcl_StaticPackage(0, "starfishLib", Starfish_Init, Starfish_SafeInit);
-    Tcl_StaticPackage(0, "sqlite", Sqlite_Init, Sqlite_SafeInit);
+    Tcl_StaticPackage(0, "sqlite3", Sqlite3_Init, NULL);
     Tcl_StaticPackage(0, "Tclx", Tclx_Init, Tclx_SafeInit);
 
     /* the tcl_rcFileName variable only exists in the initial interpreter */
@@ -196,57 +132,23 @@ TclKit_AppInit(Tcl_Interp *interp)
     Tcl_SetVar(interp, "tcl_rcFileName", "~/.tclkitrc", TCL_GLOBAL_ONLY);
 #endif
 
-    if (tclKitPath != NULL) {
-      	/*
-      	 * If we have a tclKitPath set, then set that to ::tcl::basekit.
-      	 * This will be used instead of 'info nameofexecutable' for
-      	 * determining the location of the base kit.  This is necessary
-      	 * for DLL-based starkits.
-      	 *
-      	 * This code equates to:
-      	 *   namespace eval ::tcl [list variable basekit $tclKitPath]
-      	 * Could consider using Tcl_LinkVar instead.
-      	 */
-      	Tcl_Obj *objPtr;
-      	Tcl_Obj *evobjPtr;
+    Zvfs_Init(interp);
+    Tcl_SetVar(interp, "extname", "", TCL_GLOBAL_ONLY);
+    Zvfs_Mount(interp, (char *)Tcl_GetNameOfExecutable(), "/zvfs");
+    Tcl_SetVar2(interp, "env", "TCL_LIBRARY", "/zvfs/lib/tcl", TCL_GLOBAL_ONLY);
+    Tcl_SetVar2(interp, "env", "TK_LIBRARY", "/zvfs/lib/tk", TCL_GLOBAL_ONLY);
 
-      	evobjPtr = Tcl_NewObj();
-      	Tcl_ListObjAppendElement(interp, evobjPtr,
-      		Tcl_NewStringObj("variable", -1));
-      	Tcl_ListObjAppendElement(interp, evobjPtr,
-      		Tcl_NewStringObj("basekit", -1));
-      	Tcl_ListObjAppendElement(interp, evobjPtr,
-      		Tcl_NewStringObj(tclKitPath, -1));
-      	Tcl_IncrRefCount(evobjPtr);
-
-      	objPtr = Tcl_NewObj();
-      	Tcl_ListObjAppendElement(interp, objPtr,
-      		Tcl_NewStringObj("namespace", -1));
-      	Tcl_ListObjAppendElement(interp, objPtr,
-      		Tcl_NewStringObj("eval", -1));
-      	Tcl_ListObjAppendElement(interp, objPtr,
-      		Tcl_NewStringObj("::tcl", -1));
-      	Tcl_ListObjAppendElement(interp, objPtr, evobjPtr);
-      	Tcl_IncrRefCount(objPtr);
-      	if (Tcl_EvalObjEx(interp, objPtr, TCL_GLOBAL_ONLY) != TCL_OK) {
-      	    Tcl_DecrRefCount(objPtr);
-      	    Tcl_DecrRefCount(evobjPtr);
-      	    goto error;
-      	}
-      	Tcl_DecrRefCount(objPtr);
-      	Tcl_DecrRefCount(evobjPtr);
-    }
-
-    TclSetPreInitScript(preInitCmd);
     if ((Tcl_EvalEx(interp, appInitCmd, -1, TCL_EVAL_GLOBAL) == TCL_ERROR)
 	    || (Tcl_Init(interp) == TCL_ERROR))
         goto error;
 
-#if defined(KIT_INCLUDES_TK) && defined(_WIN32)
+#ifdef KIT_INCLUDES_TK
     if (Tk_Init(interp) == TCL_ERROR)
         goto error;
+#ifdef _WIN32
     if (Tk_CreateConsoleWindow(interp) == TCL_ERROR)
         goto error;
+#endif
 #endif
 
     /* messy because TclSetStartupScriptPath is called slightly too late */
@@ -270,29 +172,6 @@ error:
     /* we won't reach this, but we need the return */
 #endif
     return TCL_ERROR;
-}
-
-#ifdef WIN32
-__declspec(dllexport) char *
-#else
-extern char *
-#endif
-TclKit_SetKitPath(CONST char *kitPath)
-{
-    /*
-     * Allow someone to define an alternate path to the base kit
-     * than 'info nameofexecutable'.
-     */
-    if (kitPath) {
-      	int len = strlen(kitPath);
-      	if (tclKitPath) {
-      	    ckfree(tclKitPath);
-      	}
-      	tclKitPath = (char *) ckalloc(len + 1);
-      	memcpy(tclKitPath, kitPath, len);
-      	tclKitPath[len] = '\0';
-    }
-    return tclKitPath;
 }
 
 static void

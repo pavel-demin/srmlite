@@ -67,7 +67,7 @@ case $cli-$dyn-$gui in 0-0-0) cli=1 dyn=1 gui=1 ;; esac
       ;;
       
     Linux)
-      echo "LDFLAGS    = -ldl -lm"
+      echo "LDFLAGS    = -ldl -lm -lltdl"
       echo "GUI_OPTS   = -L/usr/X11R6/lib -lX11 -lXss"
       case $b64 in 1)
         echo "CFLAGS     += -m64" ;; 
@@ -84,9 +84,9 @@ case $cli-$dyn-$gui in 0-0-0) cli=1 dyn=1 gui=1 ;; esac
       ;;
 
     MINGW*)
-      echo 'LDFLAGS    = build/lib/dde1*/tcldde1*.a build/lib/reg1*/tclreg1*.a'
+      echo 'LDFLAGS    = -lws2_32 build/lib/dde1*/tcldde1*.a build/lib/reg1*/tclreg1*.a'
       echo 'GUI_OPTS   = -lgdi32 -lcomdlg32 -limm32 -lcomctl32 -lshell32'
-      echo 'GUI_OPTS  += -lole32 -loleaut32 -luuid'
+      echo 'GUI_OPTS  += -lole32 -loleaut32 -luuid -lwinspool'
       echo 'GUI_OPTS  += build/tk/wish.res.o -mwindows'
       echo 'CLIOBJ     = $(OBJ) $(OUTDIR)/tclAppInit.o $(OUTDIR)/tclkitsh.res.o'
       echo 'DYNOBJ     = $(CLIOBJ) $(OUTDIR)/tkdyn/wish.res.o'
@@ -154,7 +154,7 @@ case $cli-$dyn-$gui in 0-0-0) cli=1 dyn=1 gui=1 ;; esac
     echo ;;
   esac
   
-  case $cli in 1) targets="$targets tclkit-cli getuser setuser globus-gridftp-server" ;; esac
+  case $cli in 1) targets="$targets tclkit-cli" ;; esac
   case $dyn in 1) targets="$targets tclkit-dyn" ;; esac
   case $gui in 1) targets="$targets tclkit-gui" ;; esac
 

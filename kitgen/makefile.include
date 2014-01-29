@@ -15,11 +15,9 @@
 EXTDIR = ../../../../8.x
 STATIC = --disable-shared --enable-static
 OUTDIR = $(shell pwd)/build
-OBJ    = $(OUTDIR)/pwb$O $(OUTDIR)/rechan$O $(OUTDIR)/zlib$O \
-	 $(OUTDIR)/g2lite$O
+OBJ    = $(OUTDIR)/zvfs$O $(OUTDIR)/zlib$O $(OUTDIR)/g2lite$O
 CLIOBJ ?= $(OBJ) $(OUTDIR)/tclAppInit$O
-GUIOBJ ?= $(CLIOBJ)
-TCLDIR = --with-tcl=../lib --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR)
+TCLDIR = --with-tcl=$(OUTDIR)/lib --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR)
 STRIP ?= strip
 UPX   ?= :
 O     ?=.o
@@ -33,18 +31,17 @@ export OPENSSL_CFLAGS := -I$(OUTDIR)/include
 export OPENSSL_LDFLAGS := -L$(OUTDIR)/lib
 export OPENSSL_LIBS := -lssl -lcrypto -ldl
 
-GLOBUS_FLAVOR = gcc32
-GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts="--static"
+GLOBUS_FLAVOR = gcc64
+GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts="--enable-static"
 
-#GSS_OPTS = --disable-threads --enable-64bit --with-globus=$(OUTDIR)
-GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
+GSS_OPTS = --disable-threads --enable-64bit --with-globus=$(OUTDIR)
+#GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
 TLS_OPTS = --disable-threads --with-ssl-dir=$(OUTDIR)
+TCLZLIB_OPTS = --disable-threads
 VFS_OPTS = --disable-threads
 TDOM_OPTS = --disable-threads
 TCLX_OPTS = --disable-threads
-DICT_OPTS = --disable-threads
 XOTCL_OPTS = --disable-threads
-VLERQ_OPTS = --disable-threads
 SQLITE_OPTS = --disable-threads
 ZLIB_OPTS = --prefix=$(OUTDIR)
 
@@ -55,92 +52,54 @@ tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 	cp kit-cli$(EXE) $@ && $(STRIP) $@ && $(UPX) $@
 	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ cli
 
-tclkit-gui$(EXE): kit-cli$(EXE) kit-gui$(EXE) ../../setupvfs.tcl build/files
-	cp kit-gui$(EXE) $@ && $(STRIP) $@ && $(UPX) $@
-	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ gui
-
-kit-cli$(EXE): build/tcl build/tclvfs build/vqtcl build/zlib \
-	build/globus build/gss_socket build/tls build/tdom build/starfish \
-	build/tcllib build/tclx build/dict build/xotcl build/sqlite $(CLIOBJ)
+kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
+	build/globus build/gss_socket \
+	build/tls build/tdom build/starfish \
+	build/tdom build/tclx build/tcllib build/xotcl build/sqlite $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
-	  build/lib/vfs1*/*vfs1*$A build/lib/vqtcl4*/*vqtcl4*$A \
+	  build/lib/vfs1*/*vfs1*$A \
 	  build/lib/libz$A build/lib/*tcl8*$A \
-	  build/lib/tdom0*/libtdom0*$A \
-	  build/lib/starfish0*/libstarfish0*$A \
+	  build/lib/tdom0*/*tdom0*$A \
+	  build/lib/starfish1*/libstarfish1*$A \
 	  build/lib/tclx8*/libtclx8*$A \
-	  build/lib/dict8*/libdict8*$A \
-	  build/lib/sqlite3*/libsqlite3*$A \
-	  build/lib/xotcl1*/libxotcl1*$A \
+	  build/lib/sqlite3*/*sqlite3*$A \
+	  build/lib/xotcl1*/*xotcl1*$A \
 	  build/lib/tls1*/libtls1*$A \
 	  build/lib/gss_socket0*/libgss_socket0*$A \
-	  build/lib/libglobus_gss_assist_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gssapi_gsi_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_proxy_core_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_credential_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_callback_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_oldgaa_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_sysconfig_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_cert_utils_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_openssl_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_openssl_error_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_callout_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_proxy_ssl_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_common_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libltdl_$(GLOBUS_FLAVOR)$A \
+	  build/lib64/libglobus_gss_assist$A \
+	  build/lib64/libglobus_gssapi_gsi$A \
+	  build/lib64/libglobus_gsi_proxy_core$A \
+	  build/lib64/libglobus_gsi_credential$A \
+	  build/lib64/libglobus_gsi_callback$A \
+	  build/lib64/libglobus_oldgaa$A \
+	  build/lib64/libglobus_gsi_sysconfig$A \
+	  build/lib64/libglobus_gsi_cert_utils$A \
+	  build/lib64/libglobus_openssl$A \
+	  build/lib64/libglobus_openssl_error$A \
+	  build/lib64/libglobus_callout$A \
+	  build/lib64/libglobus_proxy_ssl$A \
+	  build/lib64/libglobus_common$A \
 	  build/lib/libssl$A build/lib/libcrypto$A \
 	  $(LDFLAGS)
 
-kit-gui$(EXE): build/tcl build/tk build/tclvfs build/vqtcl build/zlib \
-	build/globus build/gss_socket build/tls build/tdom build/starfish \
-	build/tcllib build/tclx build/dict build/xotcl build/sqlite $(GUIOBJ)
-	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(GUIOBJ) \
-	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
-	  build/lib/vfs1*/*vfs1*$A build/lib/vqtcl4*/*vqtcl4*$A \
-	  -DKIT_INCLUDES_TK build/lib/libtk8*$A \
-	  build/lib/libz$A build/lib/*tcl8*$A \
-	  build/lib/tdom0*/libtdom0*$A \
-	  build/lib/starfish0*/libstarfish0*$A \
-	  build/lib/tclx8*/libtclx8*$A \
-	  build/lib/dict8*/libdict8*$A \
-	  build/lib/sqlite3*/libsqlite3*$A \
-	  build/lib/xotcl1*/libxotcl1*$A \
-	  build/lib/tls1*/libtls1*$A \
-	  build/lib/gss_socket0*/libgss_socket0*$A \
-	  build/lib/libglobus_gss_assist_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gssapi_gsi_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_proxy_core_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_credential_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_callback_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_oldgaa_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_sysconfig_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_cert_utils_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_openssl_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_openssl_error_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_callout_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_proxy_ssl_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_common_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libltdl_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libssl$A build/lib/libcrypto$A \
-	  $(LDFLAGS) $(GUI_OPTS)
-
-getuser$(EXE): build/globus build/globus_include ../../getuser.c
+getuser$(EXE): build/globus ../../getuser.c
 	$(CC) -o $@ $(CFLAGS) ../../getuser.c \
-	  -Ibuild/include \
-	  build/lib/libglobus_gss_assist_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gssapi_gsi_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_proxy_core_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_credential_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_callback_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_oldgaa_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_sysconfig_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_gsi_cert_utils_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_openssl_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_openssl_error_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_callout_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_proxy_ssl_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libglobus_common_$(GLOBUS_FLAVOR)$A \
-	  build/lib/libltdl_$(GLOBUS_FLAVOR)$A \
+	  -Ibuild/include -Ibuild/include/globus \
+	  -Ibuild/include/globus/$(GLOBUS_FLAVOR) \
+	  build/lib64/libglobus_gss_assist$A \
+	  build/lib64/libglobus_gssapi_gsi$A \
+	  build/lib64/libglobus_gsi_proxy_core$A \
+	  build/lib64/libglobus_gsi_credential$A \
+	  build/lib64/libglobus_gsi_callback$A \
+	  build/lib64/libglobus_oldgaa$A \
+	  build/lib64/libglobus_gsi_sysconfig$A \
+	  build/lib64/libglobus_gsi_cert_utils$A \
+	  build/lib64/libglobus_openssl$A \
+	  build/lib64/libglobus_openssl_error$A \
+	  build/lib64/libglobus_callout$A \
+	  build/lib64/libglobus_proxy_ssl$A \
+	  build/lib64/libglobus_common$A \
 	  build/lib/libssl$A build/lib/libcrypto$A \
 	  $(LDFLAGS) && $(STRIP) $@
 
@@ -156,20 +115,10 @@ build/tcl:
 	    --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) && \
 	  $(MAKE) install-binaries install-libraries $(PRIV)
 
-build/tk: build/tcl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh ../../../tk/$(PLAT)/configure $(STATIC) $(TCLDIR) $(TK_OPTS) && \
-	  $(MAKE) install-binaries install-libraries $(PRIV)
-
 build/tclvfs: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/tclvfs/configure $(STATIC) $(TCLDIR) $(VFS_OPTS) && \
 	  $(MAKE) install
-
-build/vqtcl: build/tcl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/vqtcl/configure $(STATIC) $(TCLDIR) $(VLERQ_OPTS) && \
-	  $(MAKE) install-binaries install-libraries
 
 build/zlib: build/tcl
 	cp -R ../../8.x/zlib/. $@
@@ -186,12 +135,7 @@ build/openssl:
 build/globus: build/tcl build/openssl
 	mkdir -p $@ && cd ../../8.x/globus && \
 	  sh ./configure $(GLOBUS_OPTS) && \
-          $(MAKE) globus_gridftp_server globus_gass_copy install
-
-build/globus_include:
-	touch $@ && cd build/include && \
-	ls -d $(GLOBUS_FLAVOR)/* | \
-          grep -v $(GLOBUS_FLAVOR)/$(GLOBUS_FLAVOR) | xargs -l ln -sf
+	  $(MAKE) globus_gridftp_server globus_gass_copy install
 
 build/gss_socket: build/tcl build/globus
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
@@ -218,11 +162,6 @@ build/tclx: build/tcl
 	  sh $(EXTDIR)/tclx/configure $(STATIC) $(TCLDIR) $(TCLX_OPTS) && \
 	  $(MAKE) install
 
-build/dict: build/tcl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh ../../../tclDict/configure $(STATIC) $(TCLDIR) $(DICT_OPTS) && \
-	  $(MAKE) install
-
 build/xotcl: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/xotcl/configure $(STATIC) $(TCLDIR) $(XOTCL_OPTS) && \
@@ -230,15 +169,16 @@ build/xotcl: build/tcl
 
 build/sqlite: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/sqlite/configure $(STATIC) $(TCLDIR) $(SQLITE_OPTS) && \
+	  sh $(EXTDIR)/sqlite/tea/configure $(STATIC) $(TCLDIR) $(SQLITE_OPTS) && \
 	  $(MAKE) install-binaries
 
 build/starfish: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/starfish/configure $(STATIC) $(TCLDIR) $(STARFISH_OPTS) && \
-	  $(MAKE) install && cd $(OUTDIR)/lib && mkdir -p starfish0.9 && \
-	  mv libstarfish0*$A starfish0.9/ && \
-	  cp -r $(EXTDIR)/starfish/tcl/*.tcl starfish0.9/
+	  $(MAKE) && cp libstarfish1*$A $(OUTDIR)/lib && \
+	  cd $(OUTDIR)/lib && mkdir -p starfish1.0 && \
+	  mv libstarfish1*$A starfish1.0/ && \
+	  cp -r $(EXTDIR)/starfish/tcl/*.tcl starfish1.0/
 
 base: build/tcl build/tk
 	ls -l build/bin
@@ -247,22 +187,19 @@ tidy: cleanext
 	rm -rf build/tcl build/tk build/tkdyn
 
 cleanext:
-	rm -rf build/tclvfs build/thread build/vqtcl build/zlib build/*.o
-	rm -rf build/lib/vfs* build/lib/thread* build/lib/vqtcl*
+	rm -rf build/tclvfs build/thread build/zlib build/*.o
+	rm -rf build/lib/vfs* build/lib/thread*
 
 clean:
-	rm -rf build kit-cli$(EXE) kit-gui$(EXE) kit-dyn$(EXE)
+	rm -rf build kit-cli$(EXE)
 
 distclean: clean
-	rm -f tclkit-cli$(EXE) tclkit-dyn$(EXE) tclkit-gui$(EXE)
+	rm -f tclkit-cli$(EXE)
 
 .PHONY: all base clean distclean threaded tidy
 
-$(OUTDIR)/pwb$O:  ../../pwb.c
-	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
-
-$(OUTDIR)/rechan$O: ../../rechan.c
-	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
+$(OUTDIR)/zvfs$O: ../../zvfs.c
+	$(CC) -o $@ $(CFLAGS) -DHAVE_UNISTD_H=1 -DSTATIC_BUILD -Ibuild/include -c $<
 
 $(OUTDIR)/zlib$O: ../../zlib.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
