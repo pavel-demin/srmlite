@@ -6,7 +6,7 @@ SQLITE_URL = http://www.sqlite.org/2013/sqlite-autoconf-3080200.tar.gz
 TDOM_URL   = https://github.com/downloads/tDOM/tdom/tDOM-0.8.3.tgz
 STARFISH_URL = http://www.starfishsystems.ca/Share/Source/starfish-1.0.tar.gz
 
-OPENSSL_URL   = http://www.openssl.org/source/openssl-1.0.1f.tar.gz
+OPENSSL_URL   = http://www.openssl.org/source/openssl-1.0.0l.tar.gz
 GLOBUS_SRC    = gt5.2.5-all-source-installer
 GLOBUS_URL    = http://www-unix.globus.org/ftppub/gt5/5.2/5.2.5/installers/src/$(GLOBUS_SRC).tar.gz
 
@@ -47,7 +47,7 @@ untar:
 	  tar xfz tcllib-1.15.tar.gz && \
 	  tar xfz sqlite-autoconf-3080200.tar.gz && \
 	  tar xfz starfish-1.0.tar.gz && \
-	  tar xfz openssl-1.0.1f.tar.gz && \
+	  tar xfz openssl-1.0.0l.tar.gz && \
 	  tar xfz $(GLOBUS_SRC).tar.gz \
 	    $(GLOBUS_SRC)/config.guess \
 	    $(GLOBUS_SRC)/config.site.in \
@@ -72,7 +72,7 @@ untar:
 	  mv sqlite-autoconf-3080200 sqlite && \
 	  mv starfish-1.0/src/starfish ./ && \
 	  mv starfish-1.0/tcl starfish/ && \
-          mv openssl-1.0.1f openssl && \
+          mv openssl-1.0.0l openssl && \
           mv $(GLOBUS_SRC) globus && \
 	  patch -p 0 < ../globus-export_sec_context.patch && \
 	  patch -p 0 < ../starfish-noyp.patch && rm -rf starfish-1.0

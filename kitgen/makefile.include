@@ -29,10 +29,9 @@ OPENSSL_OPTS = --prefix=$(OUTDIR) --openssldir=$(OUTDIR) no-threads no-shared no
 export OPENSSL_INCLUDES := -I$(OUTDIR)/include
 export OPENSSL_CFLAGS := -I$(OUTDIR)/include
 export OPENSSL_LDFLAGS := -L$(OUTDIR)/lib
-export OPENSSL_LIBS := -lssl -lcrypto -ldl
 
 GLOBUS_FLAVOR = gcc64
-GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts="--enable-static"
+GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts="--disable-shared --enable-static"
 
 GSS_OPTS = --disable-threads --enable-64bit --with-globus=$(OUTDIR)
 #GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
@@ -44,9 +43,6 @@ TCLX_OPTS = --disable-threads
 XOTCL_OPTS = --disable-threads
 SQLITE_OPTS = --disable-threads
 ZLIB_OPTS = --prefix=$(OUTDIR)
-
-globus-gridftp-server: build/globus
-	cp build/sbin/$@ . && $(STRIP) $@
 
 tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 	cp kit-cli$(EXE) $@ && $(STRIP) $@ && $(UPX) $@
@@ -135,7 +131,7 @@ build/openssl:
 build/globus: build/tcl build/openssl
 	mkdir -p $@ && cd ../../8.x/globus && \
 	  sh ./configure $(GLOBUS_OPTS) && \
-	  $(MAKE) globus_gridftp_server globus_gass_copy install
+	  $(MAKE) globus_gass_copy install
 
 build/gss_socket: build/tcl build/globus
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
