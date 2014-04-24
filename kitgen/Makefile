@@ -2,7 +2,7 @@ TRF_URL    = http://heanet.dl.sourceforge.net/project/tcltrf/tcltrf/2.1.4/trf2.1
 ZLIB_URL   = http://heanet.dl.sourceforge.net/project/libpng/zlib/1.2.8/zlib-1.2.8.tar.gz
 XOTCL_URL  = http://heanet.dl.sourceforge.net/project/xotcl/xotcl/1.6.7/xotcl-1.6.7.tar.gz
 TCLLIB_URL = http://heanet.dl.sourceforge.net/project/tcllib/tcllib/1.15/tcllib-1.15.tar.gz
-SQLITE_URL = http://www.sqlite.org/2013/sqlite-autoconf-3080200.tar.gz
+SQLITE_URL = http://www.sqlite.org/2014/sqlite-autoconf-3080403.tar.gz
 TDOM_URL   = https://github.com/downloads/tDOM/tdom/tDOM-0.8.3.tgz
 STARFISH_URL = http://www.starfishsystems.ca/Share/Source/starfish-1.0.tar.gz
 
@@ -45,7 +45,7 @@ untar:
 	  tar xfz xotcl-1.6.7.tar.gz && \
 	  tar xfz tDOM-0.8.3.tgz && \
 	  tar xfz tcllib-1.15.tar.gz && \
-	  tar xfz sqlite-autoconf-3080200.tar.gz && \
+	  tar xfz sqlite-autoconf-3080403.tar.gz && \
 	  tar xfz starfish-1.0.tar.gz && \
 	  tar xfz openssl-1.0.0l.tar.gz && \
 	  tar xfz $(GLOBUS_SRC).tar.gz \
@@ -69,7 +69,7 @@ untar:
 	  mv xotcl-1.6.7 xotcl && \
 	  mv tDOM-0.8.3 tdom && \
 	  mv tcllib-1.15 tcllib && \
-	  mv sqlite-autoconf-3080200 sqlite && \
+	  mv sqlite-autoconf-3080403 sqlite && \
 	  mv starfish-1.0/src/starfish ./ && \
 	  mv starfish-1.0/tcl starfish/ && \
           mv openssl-1.0.0l openssl && \
