@@ -35,7 +35,6 @@ GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts
 
 GSS_OPTS = --disable-threads --enable-64bit --with-globus=$(OUTDIR)
 #GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
-TLS_OPTS = --disable-threads --with-ssl-dir=$(OUTDIR)
 TCLZLIB_OPTS = --disable-threads
 VFS_OPTS = --disable-threads
 TDOM_OPTS = --disable-threads
@@ -50,8 +49,8 @@ tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 
 kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
 	build/globus build/gss_socket \
-	build/tls build/tdom build/starfish \
-	build/tdom build/tclx build/tcllib build/xotcl build/sqlite $(CLIOBJ)
+	build/tdom build/starfish \
+	build/tclx build/tcllib build/xotcl build/sqlite $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
 	  build/lib/vfs1*/*vfs1*$A \
@@ -61,7 +60,6 @@ kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
 	  build/lib/tclx8*/libtclx8*$A \
 	  build/lib/sqlite3*/*sqlite3*$A \
 	  build/lib/xotcl1*/*xotcl1*$A \
-	  build/lib/tls1*/libtls1*$A \
 	  build/lib/gss_socket0*/libgss_socket0*$A \
 	  build/lib64/libglobus_gss_assist$A \
 	  build/lib64/libglobus_gssapi_gsi$A \
@@ -136,11 +134,6 @@ build/globus: build/tcl build/openssl
 build/gss_socket: build/tcl build/globus
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/gss_socket/configure $(STATIC) $(TCLDIR) $(GSS_OPTS) && \
-	  $(MAKE) install
-
-build/tls: build/tcl build/openssl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/tls/configure $(STATIC) $(TCLDIR) $(TLS_OPTS) && \
 	  $(MAKE) install
 
 build/tdom: build/tcl

@@ -42,7 +42,6 @@ if {[llength $argv] != 2} {
 
 load {} zlib
 load {} vfs
-load {} tls
 load {} sqlite3
 load {} xotcl
 load {} tdom
@@ -55,7 +54,6 @@ load {} gss
 set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   zlib1@ zlib[package require zlib] \
                   vfs1@ vfs[package require vfs] \
-                  tls1@ tls[package require tls] \
                   starfish1@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
                   sqlite3@ sqlite[package require sqlite3] \
@@ -119,22 +117,20 @@ set clifiles {
   lib/starfish1@/meta.tcl
   lib/starfish1@/misc.tcl
   lib/starfish1@/tree.tcl
-  lib/tls1@/pkgIndex.tcl
-  lib/tls1@/tls.tcl
   lib/g2lite0@/pkgIndex.tcl
   lib/gss_socket0@/pkgIndex.tcl
   lib/zlib1@/pkgIndex.tcl
-  lib/tcllib1.15/pkgIndex.tcl
-  lib/tcllib1.15/asn
-  lib/tcllib1.15/base64
-  lib/tcllib1.15/comm
-  lib/tcllib1.15/cmdline
-  lib/tcllib1.15/fileutil
-  lib/tcllib1.15/ldap
-  lib/tcllib1.15/log
-  lib/tcllib1.15/math
-  lib/tcllib1.15/snit
-  lib/tcllib1.15/uri
+  lib/tcllib1.16/pkgIndex.tcl
+  lib/tcllib1.16/asn
+  lib/tcllib1.16/base64
+  lib/tcllib1.16/comm
+  lib/tcllib1.16/cmdline
+  lib/tcllib1.16/fileutil
+  lib/tcllib1.16/ldap
+  lib/tcllib1.16/log
+  lib/tcllib1.16/math
+  lib/tcllib1.16/snit
+  lib/tcllib1.16/uri
   lib/tclx8.4/pkgIndex.tcl
   lib/tclx8.4/arrayprocs.tcl
   lib/tclx8.4/autoload.tcl

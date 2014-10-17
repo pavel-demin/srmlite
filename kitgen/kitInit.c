@@ -45,7 +45,7 @@ Tcl_AppInitProc	Dde_Init, Registry_Init;
 Tcl_AppInitProc	Blt_Init, Blt_SafeInit;
 #endif
 
-Tcl_AppInitProc Tls_Init, Tls_SafeInit, Tdom_Init, Tdom_SafeInit;
+Tcl_AppInitProc Tdom_Init, Tdom_SafeInit;
 Tcl_AppInitProc G2lite_Init, Gss_Init, Gss_SafeInit;
 Tcl_AppInitProc Gssctx_Init, Gssctx_SafeInit;
 Tcl_AppInitProc Xotcl_Init;
@@ -119,7 +119,6 @@ TclKit_AppInit(Tcl_Interp *interp)
     Tcl_StaticPackage(0, "g2lite", G2lite_Init, NULL);
     Tcl_StaticPackage(0, "gss", Gss_Init, Gss_SafeInit);
     Tcl_StaticPackage(0, "gssctx", Gssctx_Init, Gssctx_SafeInit);
-    Tcl_StaticPackage(0, "tls", Tls_Init, Tls_SafeInit);
     Tcl_StaticPackage(0, "tdom", Tdom_Init, Tdom_SafeInit);
     Tcl_StaticPackage(0, "starfishLib", Starfish_Init, Starfish_SafeInit);
     Tcl_StaticPackage(0, "sqlite3", Sqlite3_Init, NULL);

@@ -1,53 +1,51 @@
-TRF_URL    = http://heanet.dl.sourceforge.net/project/tcltrf/tcltrf/2.1.4/trf2.1.4.tar.gz
-ZLIB_URL   = http://heanet.dl.sourceforge.net/project/libpng/zlib/1.2.8/zlib-1.2.8.tar.gz
-XOTCL_URL  = http://heanet.dl.sourceforge.net/project/xotcl/xotcl/1.6.7/xotcl-1.6.7.tar.gz
-TCLLIB_URL = http://heanet.dl.sourceforge.net/project/tcllib/tcllib/1.15/tcllib-1.15.tar.gz
-SQLITE_URL = http://www.sqlite.org/2014/sqlite-autoconf-3080403.tar.gz
-TDOM_URL   = https://github.com/downloads/tDOM/tdom/tDOM-0.8.3.tgz
+TDOM_URL     = https://github.com/downloads/tDOM/tdom/tDOM-0.8.3.tgz
+TCLLIB_URL   = http://github.com/tcltk/tcllib/archive/tcllib_1_16.tar.gz
+TRF_URL      = http://heanet.dl.sourceforge.net/project/tcltrf/tcltrf/2.1.4/trf2.1.4.tar.gz
+ZLIB_URL     = http://heanet.dl.sourceforge.net/project/libpng/zlib/1.2.3/zlib-1.2.3.tar.gz
+XOTCL_URL    = http://heanet.dl.sourceforge.net/project/xotcl/xotcl/1.6.7/xotcl-1.6.7.tar.gz
+SQLITE_URL   = http://www.sqlite.org/2014/sqlite-autoconf-3080600.tar.gz
 STARFISH_URL = http://www.starfishsystems.ca/Share/Source/starfish-1.0.tar.gz
 
-OPENSSL_URL   = http://www.openssl.org/source/openssl-1.0.0l.tar.gz
-GLOBUS_SRC    = gt5.2.5-all-source-installer
-GLOBUS_URL    = http://www-unix.globus.org/ftppub/gt5/5.2/5.2.5/installers/src/$(GLOBUS_SRC).tar.gz
+OPENSSL_URL  = http://www.openssl.org/source/openssl-1.0.0o.tar.gz
+GLOBUS_SRC   = gt5.2.5-all-source-installer
+GLOBUS_URL   = http://toolkit.globus.org/ftppub/gt5/5.2/5.2.5/installers/src/$(GLOBUS_SRC).tar.gz
 
-TCL_CVS    = :pserver:anonymous@tcl.cvs.sourceforge.net:/cvsroot/tcl
-TK_CVS     = :pserver:anonymous@tktoolkit.cvs.sourceforge.net:/cvsroot/tktoolkit
+TCL_CVS      = :pserver:anonymous@tcl.cvs.sourceforge.net:/cvsroot/tcl
+TK_CVS       = :pserver:anonymous@tktoolkit.cvs.sourceforge.net:/cvsroot/tktoolkit
 
-TCLX_CVS   = :pserver:anonymous@tclx.cvs.sourceforge.net:/cvsroot/tclx
-VFS_CVS    = :pserver:anonymous@tclvfs.cvs.sourceforge.net:/cvsroot/tclvfs
-TLS_CVS    = :pserver:anonymous@tls.cvs.sourceforge.net:/cvsroot/tls
+TCLX_CVS     = :pserver:anonymous@tclx.cvs.sourceforge.net:/cvsroot/tclx
+VFS_CVS      = :pserver:anonymous@tclvfs.cvs.sourceforge.net:/cvsroot/tclvfs
 
 unspecified-target:
 
 cvs:
 	mkdir -p 8.x && cd 8.x && \
 	  cvs -d $(VFS_CVS) co tclvfs && \
-	  cvs -d $(TCLX_CVS) co tclx && \
-	  cvs -d $(TLS_CVS) co tls
+	  cvs -d $(TCLX_CVS) co tclx
 	mkdir -p 8.5 && cd 8.5 && \
 	  cvs -d $(TCL_CVS) co -r core-8-5-branch tcl && \
 	  cvs -d $(TK_CVS) co -r core-8-5-branch tk
 
 tars:
 	mkdir -p 8.x && cd 8.x && \
-	  wget -q $(ZLIB_URL) && \
-	  wget -q $(STARFISH_URL) && \
-	  wget -q $(XOTCL_URL) && \
-	  wget -q $(TCLLIB_URL) && \
-	  wget -q $(SQLITE_URL) && \
-	  wget -q $(TDOM_URL) && \
-	  wget -q $(OPENSSL_URL) && \
-	  wget -q $(GLOBUS_URL)
+	  curl -LO $(ZLIB_URL) && \
+	  curl -LO $(STARFISH_URL) && \
+	  curl -LO $(XOTCL_URL) && \
+	  curl -LO $(TCLLIB_URL) && \
+	  curl -LO $(SQLITE_URL) && \
+	  curl -LO $(TDOM_URL) && \
+	  curl -LO $(OPENSSL_URL) && \
+	  curl -LO $(GLOBUS_URL)
 
 untar:
 	mkdir -p 8.x && cd 8.x && \
-	  tar xfz zlib-1.2.8.tar.gz && \
-	  tar xfz xotcl-1.6.7.tar.gz && \
 	  tar xfz tDOM-0.8.3.tgz && \
-	  tar xfz tcllib-1.15.tar.gz && \
-	  tar xfz sqlite-autoconf-3080403.tar.gz && \
+	  tar xfz tcllib_1_16.tar.gz && \
+	  tar xfz zlib-1.2.3.tar.gz && \
+	  tar xfz xotcl-1.6.7.tar.gz && \
+	  tar xfz sqlite-autoconf-3080600.tar.gz && \
 	  tar xfz starfish-1.0.tar.gz && \
-	  tar xfz openssl-1.0.0l.tar.gz && \
+	  tar xfz openssl-1.0.0o.tar.gz && \
 	  tar xfz $(GLOBUS_SRC).tar.gz \
 	    $(GLOBUS_SRC)/config.guess \
 	    $(GLOBUS_SRC)/config.site.in \
@@ -65,14 +63,14 @@ untar:
 	    $(GLOBUS_SRC)/source-trees/io \
 	    $(GLOBUS_SRC)/source-trees/usage \
 	    $(GLOBUS_SRC)/source-trees/xio && \
-	  mv zlib-1.2.8 zlib && \
-	  mv xotcl-1.6.7 xotcl && \
 	  mv tDOM-0.8.3 tdom && \
-	  mv tcllib-1.15 tcllib && \
-	  mv sqlite-autoconf-3080403 sqlite && \
+	  mv tcllib-tcllib_1_16 tcllib && \
+	  mv zlib-1.2.3 zlib && \
+	  mv xotcl-1.6.7 xotcl && \
+	  mv sqlite-autoconf-3080600 sqlite && \
 	  mv starfish-1.0/src/starfish ./ && \
 	  mv starfish-1.0/tcl starfish/ && \
-          mv openssl-1.0.0l openssl && \
+          mv openssl-1.0.0o openssl && \
           mv $(GLOBUS_SRC) globus && \
 	  patch -p 0 < ../globus-export_sec_context.patch && \
 	  patch -p 0 < ../starfish-noyp.patch && rm -rf starfish-1.0
