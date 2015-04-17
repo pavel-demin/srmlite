@@ -1,112 +1,19 @@
 Kitgen
 ======
 
-[Kitgen][1] consists of a makefile, scripts, and C source code to generate
-variations of [Tclkit Lite][2], a version of [Tclkit][3] based on [Vlerq][4].
-
-  [1]: http://www.equi4.com/kitgen.html
-  [2]: http://www.equi4.com/tclkitlite.html
-  [3]: http://www.equi4.com/tclkit.html
-  [4]: http://www.vlerq.org/
+Kitgen consists of a makefile, scripts, and C source code to generate
+variations of Tclkit Lite.
 
 Kitgen is pronounced "kit-chen".
-
-
-News
-----
-
-  * 2007-05-03 : changes in cvs & build structure
-  * 2007-04-04 : added kbs.tcl, the Kitgen Build System - see README.kbs
-  * 2007-01-11 : fixed a vfs thread issue in boot.tcl, by Jeff Hobbs
-  * 2006-12-20 : fixed typo, mention the FFF feedback forum below
-  * 2006-12-15 : added *BSD support (use gmake i.s.o. make)
-  * 2006-12-12 : doc tweaks, added "cvs" target, support vlerq safe interps
-  * 2006-12-06 : updated to vlerq 4.1 and vfs::m2m 1.8
-  * 2006-12-05 : added "base" & "tidy" targets for Tcl/Tk-only builds
-  * 2006-12-04 : added "gcov" and "gprof" options, keep symbols with "sym" opt
-  * 2006-12-01 : added "b64" option to enable 64-bit compiles
-  * 2006-11-21 : simpler makefile, tweaked to work with Mingw on Win32
-  * 2006-11-19 : first release, tested on Mac OS X and Linux x86 only so far
-  
-----
-
-**UPDATE, MAY 2007:** _The build notes below are no longer working.  The CVS repository at equi4.com has been closed and will be replaced by an SVN mirror, hopefully by the end of May 2007.  For now, you can get copies of all the important pieces at [www.equi4.com](http://www.equi4.com/pub/tk/tars/) - the latest source for the "Vlerq" extension is in "vqtcl.tgz" and the latest kitgen source is in "kitgen.tgz". See also the new [mailing list](http://groups.google.com/group/starkit) for more details._
-
-----
-
-Overview
---------
-
-To build Tclkit Lite, you need to bring several pieces together:
-
-  * sources for Tcl and Tk
-  * sources for the Thread, TclVFS, and Vlerq extensions
-  * sources for Zlib
-  * the files in this Kitgen package
-  
-There are several ways to go about this, depending on whether you want to use
-the latest sources in cvs, or tarfile releases, or your own custom versions.
 
 
 Quick start
 -----------
 
-These instructions are for a Unix-type system and do a build using CVS sources:
-
-    cvs -d :pserver:anonymous@equi4.com:/home/cvs co kitgen
-    cd kitgen
+    make cvs
     make tars
     make small
     
-That's it.  This produces two executables in `8.4/kit-small/`:
-
-  * `tclkit-cli` - a tclsh-like console app
-  * `tclkit-dyn` - wish-like, after a `package require Tk`
-
-Or, to build a threaded Tcl/Tk 8.5 build with all encodings and more included:
-
-    cvs -d :pserver:anonymous@equi4.com:/home/cvs co kitgen
-    cd kitgen
-    make tars
-    make large
-    
-In this case a third executable is also produced:
-
-  * `tclkit-gui` - same as "tclkit-dyn", but with Tk linked-in statically
-
-On **Mac OS X**, "make large" builds a universal binary for PowerPC and Intel.
-
-On **Windows** you can use this approach if you download `msys_mingw 0.8` from
-<http://tcl.sourceforge.net/> (make sure you extract to a path without spaces).
-Then launch `msys.bat` to get a bash shell and proceed further as above.
-The binaries will end up as "tclkit-{cli,dyn,gui}.exe" in this case.
-
-You can use `make cvs` to update all cvs areas under `8.4/` and `8.5/`.
-
-
-Tcl/Tk builds
--------------
-
-Kitgen can also be used to build Tcl/Tk binaries in various configurations.
-There is a make target called "base" which builds just `tclsh` and `wish` and
-installs them in the `build/{bin,include,lib}` directories. The Tcl/Tk headers
-are included so that these areas can be used as basis for building extensions.
-
-In the top-level makefile, `make base` rebuilds all areas matching `8.*/base-*`.
-This can be used to rebuild all build variants you have set up in one step,
-after a source change to Tcl and/or Tk.
-
-If you've set up the `8.4/` and `8.5/` directories as described above, then a
-`base-std` configuration will already have been set up, with symbols enabled.
-So after the quick-start, you can do the following to build 8.4 and 8.5 versions
-of `tclsh` and `wish` and clean up all intermediate files with one command:
-
-    make base tidy
-
-The `make tidy` command removes all intermediate build files, but is careful to
-keep the `8.*/base-*/build/{bin,include,lib}` directories.
-
-
 In detail
 ---------
 
@@ -137,21 +44,14 @@ The key trick is to get the directory structure right so that `sh config.sh` and
 `make` will do the right thing. Both assume the following structure exists:
 
     kitgen/
-        8.4/
-            base-*/
-            kit-*/
-            tcl/
-            tk/
         8.5/
             base-*/
             kit-*/
             tcl/
-            tk/
         8.x/
             tclvfs/
-            thread/
-            vqtcl/
             zlib/
+            ...
         config.sh
         files/
         ...
@@ -168,46 +68,18 @@ config.sh
 
 The config.sh script creates a Makefile with settings that specify exactly what
 type of executable(s) are to be generated. All these makefiles end up in sub-
-directories of 8.4/, 8.5/, or whatever other 8-prefixed name you work with.
+directories of 8.5/, or whatever other 8-prefixed name you work with.
 
 The `make small` example given in the quick start uses default settings:
 
-    sh config.sh 8.4/kit-small cli dyn
+    sh config.sh 8.5/kit-small cli
 
-The result is a makefile called "8.4/kit-small/Makefile". To build that setup,
-just do `cd 8.4/kit-small && make` . Since cli & dyn were specified, only those
-two executables will be built, but you can do an explicit `make tclkit-gui` .
-
-The `make large` example in the quick start uses these more elaborate settings:
-
-    sh config.sh 8.5/kit-large aqua univ thread allenc allmsgs tzdata
-    
-Again, `cd 8.5/kit-large && make` is all it takes to build that configuation.
+The result is a makefile called "8.5/kit-small/Makefile". To build that setup,
+just do `cd 8.5/kit-small && make`.
 
 The first argument of config.sh is the build name. It must be a two-part name,
 and the first part must be one of your existing "8*/" directory areas. The
 second part could be any name, but the suggested name is "kit-something".
-
-The remaining arguments of config.sh specify one or more build options:
-
-  * `allenc` - include all encodings, not just the usual set of 7
-  * `allmsgs` - include all localized message catalogs _(8.5 only)_
-  * `aqua` - build Tk for Aqua i.s.o. X11 _(Mac OS X only)_
-  * `b64` - generate 64-bit binaries
-  * `cli` - build the "tclkit-cli" command-line version
-  * `dyn` - build the "tclkit-dyn" version which loads Tk dynamically
-  * `gcov` - enable code coverage _(implies `sym`)_
-  * `gprof` - enable profiling _(implies `sym`)_
-  * `gui` - build the "tclkit-gui" version which has Tk linked-in statically
-  * `ppc` - build for PowerPC _(Mac OS X only)_
-  * `sym` - enable & keep debugger symbols in the executable
-  * `thread` - build with threading and include the Thread extension
-  * `tzdata` - include the complete set of timezone data files _(8.5 only)_
-  * `univ` - build for both PowerPC and Intel _(Mac OS X only)_
-  * `x86` - build for Intel _(Mac OS X only)_
-  
-When not specified, the default is to build all `cli`, `dyn`, `gui` variants.
-
 
 Makefile
 --------
@@ -218,8 +90,8 @@ be used, since all builds are done relative to their parent dirs.
 
 To generate a Makefile with config and then do a build, proceed as follows:
 
-    sh config.sh 8.4/kit-mybuild <config options ...>
-    cd 8.4/kit-mybuild
+    sh config.sh 8.5/kit-mybuild <config options ...>
+    cd 8.5/kit-mybuild
     make
 
 Often, that's all you'll need.  However, to debug or tweak things, read on...
@@ -242,31 +114,26 @@ way, give it some other name than "Makefile".
 
 The individual make's are configured mostly by setting make variables:
 
-  * `GUI_OPTS` - options needed to build with Tk
   * `KIT_OPTS` - flags used by the setupvfs.tcl script
   * `PLAT` - either "unix" or "win" to select the proper source directory
   * `PRIV` - normally "install-private-headers", but omitted on Windows
   * `TCL_OPTS` - flags for configuring the build of Tcl
-  * `TK_OPTS` - flags for configuring the build of Tk
-  * `TKDYN_OPTS` - flags for configuring the build of Tk as shared lib
-  * `THREADDYN_OPTS` - flags for configuring the build of Thread as shared lib
   * `VFS_OPTS` - flags for configuring the build of the TclVFS extension
-  * `VLERQ_OPTS` - flags for configuring the build of the Vlerq extension
 
 Other variables such as CFLAGS and LDFLAGS also affect the build settings.
 
 Doing `make` will build the executables.  This only does a full build when there
 are no build/* directories present.  One way to force this is `make clean` 
 which does a `rm -rf build` .  Otherwise, for directories which already exist,
-the rebuild is skipped.  To force a rebuild of only the vlerq extension, do:
+the rebuild is skipped.  To force a rebuild of only the zlib extension, do:
 
-    rm -rf build/vqtcl && make
+    rm -rf build/zlib && make
     
 The sub-directories of build/ are the areas where each call to the respective
 "configure" script places its results.  When debugging either a build or the
 extension itself, it may be more convenient to work in that specific subdir:
 
-    cd builds/vqtcl && make
+    cd builds/zlib && make
     
 After that, you can do `cd ../.. && make` to complete the tclkit builds.
 
@@ -308,13 +175,7 @@ the author(s) harmless and any lawful use is permitted.
 This does *not* apply to any of the sources of the other major Open Source
 Software used in Tclkit, which each have very liberal BSD/MIT-like licenses:
 
-  * Tcl/Tk, TclVFS, Thread, Vlerq, Zlib
-
-If kitgen does not work right on your platform, please post to the [Starkit][5] mailing list. Or you can use the feedback forum at [FFF][6] to report bugs.
-
-  [5]: http://www.equi4.com/mailman/listinfo/starkit
-  [6]: http://www.equi4.com/fff/Home
-
+  * Tcl/Tk, TclVFS, Zlib
 
 Acknowledgements
 ----------------
