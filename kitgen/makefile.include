@@ -133,7 +133,7 @@ build/globus: build/tcl build/openssl
 
 build/gss_socket: build/tcl build/globus
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/gss_socket/configure $(STATIC) $(TCLDIR) $(GSS_OPTS) && \
+	  sh ../../../../../gss_socket/configure $(STATIC) $(TCLDIR) $(GSS_OPTS) && \
 	  $(MAKE) install
 
 build/tdom: build/tcl
