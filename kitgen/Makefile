@@ -70,8 +70,8 @@ untar:
 	  mv starfish-1.0/tcl starfish/ && \
           mv openssl-1.0.0r openssl && \
           mv $(GLOBUS_SRC) globus && \
-	  patch -p 0 < ../globus-export_sec_context.patch && \
-	  patch -p 0 < ../starfish-noyp.patch && rm -rf starfish-1.0
+	  patch -p 0 < ../patches/globus-export_sec_context.patch && \
+	  patch -p 0 < ../patches/starfish-noyp.patch && rm -rf starfish-1.0
 
 configs:
 	sh config.sh 8.5/base-std
