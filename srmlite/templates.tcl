@@ -19,7 +19,7 @@ proc nillableValue {tag var} {
 
 proc InitTemplateHeaders {} {
 
-  set fid [open template_srm_headers.g2]
+  set fid [open templates/srm_headers.g2]
   set content [read $fid]
   close $fid
 
@@ -30,7 +30,7 @@ proc InitTemplateHeaders {} {
 
 proc InitTemplateError {} {
 
-  set fid [open template_srm_error.g2]
+  set fid [open templates/srm_error.g2]
   set content [read $fid]
   close $fid
 
@@ -41,7 +41,7 @@ proc InitTemplateError {} {
 
 proc InitTemplateFault {} {
 
-  set fid [open template_srm_fault.g2]
+  set fid [open templates/srm_fault.g2]
   set content [read $fid]
   close $fid
 
@@ -52,7 +52,7 @@ proc InitTemplateFault {} {
 
 proc InitTemplateSrmStatusRes {} {
 
-  set fid [open template_srmStatus_res.g2]
+  set fid [open templates/srmStatus_res.g2]
   set content [read $fid]
   close $fid
 
@@ -63,7 +63,7 @@ proc InitTemplateSrmStatusRes {} {
 
 proc InitTemplateSrmPingReq {} {
 
-  set fid [open template_srmPing_req.g2]
+  set fid [open templates/srmPing_req.g2]
   set content [read $fid]
   close $fid
 
@@ -74,7 +74,7 @@ proc InitTemplateSrmPingReq {} {
 
 proc InitTemplateSrmPingRes {} {
 
-  set fid [open template_srmPing_res.g2]
+  set fid [open templates/srmPing_res.g2]
   set content [read $fid]
   close $fid
 
@@ -85,7 +85,7 @@ proc InitTemplateSrmPingRes {} {
 
 proc InitTemplateSrmLsReq {} {
 
-  set fid [open template_srmLs_req.g2]
+  set fid [open templates/srmLs_req.g2]
   set content [read $fid]
   close $fid
 
@@ -96,7 +96,7 @@ proc InitTemplateSrmLsReq {} {
 
 proc InitTemplateSrmLsRes {} {
 
-  set fid [open template_srmLs_res.g2]
+  set fid [open templates/srmLs_res.g2]
   set content [read $fid]
   close $fid
 
@@ -108,7 +108,7 @@ proc InitTemplateSrmLsRes {} {
 
 proc InitTemplateSrmRmReq {} {
 
-  set fid [open template_srmRm_req.g2]
+  set fid [open templates/srmRm_req.g2]
   set content [read $fid]
   close $fid
 
@@ -119,7 +119,7 @@ proc InitTemplateSrmRmReq {} {
 
 proc InitTemplateSrmRmRes {} {
 
-  set fid [open template_srmRm_res.g2]
+  set fid [open templates/srmRm_res.g2]
   set content [read $fid]
   close $fid
 
@@ -130,7 +130,7 @@ proc InitTemplateSrmRmRes {} {
 
 proc InitTemplateSrmMkdirReq {} {
 
-  set fid [open template_srmMkdir_req.g2]
+  set fid [open templates/srmMkdir_req.g2]
   set content [read $fid]
   close $fid
 
@@ -141,7 +141,7 @@ proc InitTemplateSrmMkdirReq {} {
 
 proc InitTemplateSrmMkdirRes {} {
 
-  set fid [open template_srmRequestStatus_res.g2]
+  set fid [open templates/srmRequestStatus_res.g2]
   set content [read $fid]
   close $fid
 
@@ -152,7 +152,7 @@ proc InitTemplateSrmMkdirRes {} {
 
 proc InitTemplateSrmCopyReq {} {
 
-  set fid [open template_srmCopy_req.g2]
+  set fid [open templates/srmCopy_req.g2]
   set content [read $fid]
   close $fid
 
@@ -163,7 +163,7 @@ proc InitTemplateSrmCopyReq {} {
 
 proc InitTemplateSrmCopyRes {} {
 
-  set fid [open template_srmCopy_res.g2]
+  set fid [open templates/srmCopy_res.g2]
   set content [read $fid]
   close $fid
 
@@ -174,7 +174,7 @@ proc InitTemplateSrmCopyRes {} {
 
 proc InitTemplateSrmPrepareToGetReq {} {
 
-  set fid [open template_srmPrepareToGet_req.g2]
+  set fid [open templates/srmPrepareToGet_req.g2]
   set content [read $fid]
   close $fid
 
@@ -185,7 +185,7 @@ proc InitTemplateSrmPrepareToGetReq {} {
 
 proc InitTemplateSrmPrepareToGetRes {} {
 
-  set fid [open template_srmPrepareToGet_res.g2]
+  set fid [open templates/srmPrepareToGet_res.g2]
   set content [read $fid]
   close $fid
 
@@ -196,7 +196,7 @@ proc InitTemplateSrmPrepareToGetRes {} {
 
 proc InitTemplateSrmPrepareToPutReq {} {
 
-  set fid [open template_srmPrepareToPut_req.g2]
+  set fid [open templates/srmPrepareToPut_req.g2]
   set content [read $fid]
   close $fid
 
@@ -207,7 +207,7 @@ proc InitTemplateSrmPrepareToPutReq {} {
 
 proc InitTemplateSrmPrepareToPutRes {} {
 
-  set fid [open template_srmPrepareToPut_res.g2]
+  set fid [open templates/srmPrepareToPut_res.g2]
   set content [read $fid]
   close $fid
 
@@ -218,7 +218,7 @@ proc InitTemplateSrmPrepareToPutRes {} {
 
 proc InitTemplateSrmStatusOfCopyRequestReq {} {
 
-  set fid [open template_srmStatusOfCopyRequest_req.g2]
+  set fid [open templates/srmStatusOfCopyRequest_req.g2]
   set content [read $fid]
   close $fid
 
@@ -229,7 +229,7 @@ proc InitTemplateSrmStatusOfCopyRequestReq {} {
 
 proc InitTemplateSrmStatusOfCopyRequestRes {} {
 
-  set fid [open template_srmStatusOfCopyRequest_res.g2]
+  set fid [open templates/srmStatusOfCopyRequest_res.g2]
   set content [read $fid]
   close $fid
 
@@ -240,7 +240,7 @@ proc InitTemplateSrmStatusOfCopyRequestRes {} {
 
 proc InitTemplateSrmStatusOfGetRequestReq {} {
 
-  set fid [open template_srmStatusOfGetRequest_req.g2]
+  set fid [open templates/srmStatusOfGetRequest_req.g2]
   set content [read $fid]
   close $fid
 
@@ -251,7 +251,7 @@ proc InitTemplateSrmStatusOfGetRequestReq {} {
 
 proc InitTemplateSrmStatusOfGetRequestRes {} {
 
-  set fid [open template_srmStatusOfGetRequest_res.g2]
+  set fid [open templates/srmStatusOfGetRequest_res.g2]
   set content [read $fid]
   close $fid
 
@@ -262,7 +262,7 @@ proc InitTemplateSrmStatusOfGetRequestRes {} {
 
 proc InitTemplateSrmStatusOfPutRequestReq {} {
 
-  set fid [open template_srmStatusOfPutRequest_req.g2]
+  set fid [open templates/srmStatusOfPutRequest_req.g2]
   set content [read $fid]
   close $fid
 
@@ -273,7 +273,7 @@ proc InitTemplateSrmStatusOfPutRequestReq {} {
 
 proc InitTemplateSrmStatusOfPutRequestRes {} {
 
-  set fid [open template_srmStatusOfPutRequest_res.g2]
+  set fid [open templates/srmStatusOfPutRequest_res.g2]
   set content [read $fid]
   close $fid
 
@@ -284,7 +284,7 @@ proc InitTemplateSrmStatusOfPutRequestRes {} {
 
 proc InitTemplateSrmReleaseFilesReq {} {
 
-  set fid [open template_srmReleaseFiles_req.g2]
+  set fid [open templates/srmReleaseFiles_req.g2]
   set content [read $fid]
   close $fid
 
@@ -295,7 +295,7 @@ proc InitTemplateSrmReleaseFilesReq {} {
 
 proc InitTemplateSrmReleaseFilesRes {} {
 
-  set fid [open template_srmReleaseFiles_res.g2]
+  set fid [open templates/srmReleaseFiles_res.g2]
   set content [read $fid]
   close $fid
 
@@ -306,7 +306,7 @@ proc InitTemplateSrmReleaseFilesRes {} {
 
 proc InitTemplateSrmPutDoneReq {} {
 
-  set fid [open template_srmPutDone_req.g2]
+  set fid [open templates/srmPutDone_req.g2]
   set content [read $fid]
   close $fid
 
@@ -317,7 +317,7 @@ proc InitTemplateSrmPutDoneReq {} {
 
 proc InitTemplateSrmPutDoneRes {} {
 
-  set fid [open template_srmPutDone_res.g2]
+  set fid [open templates/srmPutDone_res.g2]
   set content [read $fid]
   close $fid
 
@@ -327,7 +327,7 @@ proc InitTemplateSrmPutDoneRes {} {
 
 proc InitTemplateSrmAbortFilesReq {} {
 
-  set fid [open template_srmAbortFiles_req.g2]
+  set fid [open templates/srmAbortFiles_req.g2]
   set content [read $fid]
   close $fid
 
@@ -338,7 +338,7 @@ proc InitTemplateSrmAbortFilesReq {} {
 
 proc InitTemplateSrmAbortFilesRes {} {
 
-  set fid [open template_srmAbortFiles_res.g2]
+  set fid [open templates/srmAbortFiles_res.g2]
   set content [read $fid]
   close $fid
 
