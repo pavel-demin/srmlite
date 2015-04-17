@@ -169,11 +169,8 @@ build/starfish: build/tcl
 	  mv libstarfish1*$A starfish1.0/ && \
 	  cp -r $(EXTDIR)/starfish/tcl/*.tcl starfish1.0/
 
-base: build/tcl build/tk
-	ls -l build/bin
-
 tidy: cleanext
-	rm -rf build/tcl build/tk build/tkdyn
+	rm -rf build/tcl
 
 cleanext:
 	rm -rf build/tclvfs build/thread build/zlib build/*.o
@@ -185,7 +182,7 @@ clean:
 distclean: clean
 	rm -f tclkit-cli$(EXE)
 
-.PHONY: all base clean distclean threaded tidy
+.PHONY: all clean distclean tidy
 
 $(OUTDIR)/zvfs$O: ../../zvfs.c
 	$(CC) -o $@ $(CFLAGS) -DHAVE_UNISTD_H=1 -DSTATIC_BUILD -Ibuild/include -c $<
@@ -199,18 +196,3 @@ $(OUTDIR)/g2lite$O: ../../g2lite.c
 $(OUTDIR)/tclAppInit$O: ../tcl/$(PLAT)/tclAppInit.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
 	  -DTCL_LOCAL_APPINIT=TclKit_AppInit -c $<
-
-$(OUTDIR)/winMain$O: ../tk/$(PLAT)/winMain.c
-	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
-	  -DTK_LOCAL_APPINIT=TclKit_AppInit -c $<
-
-$(OUTDIR)/tclkit.res.o: ../../tclkit.rc
-	cp $< build/tk/tclkit.rc
-	windres -o $@ --define STATIC_BUILD --define TCLKIT_WITH_TK \
-	  --define BASE_NO_TK_ICON --include build/include \
-	  --include build/tk --include ../../files --include ../tk/win/rc \
-	  build/tk/tclkit.rc
-
-$(OUTDIR)/tclkitsh.res.o: ../../tclkit.rc
-	windres -o $@ --define STATIC_BUILD --include build/include \
-	  --include ../../files $<
