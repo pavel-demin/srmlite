@@ -1,4 +1,4 @@
-# setupvfs.tcl -- new tclkit-{cli,gui} generation bootstrap
+# setupvfs.tcl -- new tclkit-cli generation bootstrap
 #
 # jcw, 2006-11-16
 
@@ -31,7 +31,7 @@ while {1} {
 
 if {[llength $argv] != 2} {
   puts stderr "Usage: [file tail [info nameofexe]] -init- [info script]\
-    ?-d? ?-e? ?-m? ?-t? ?-z? destfile (cli|gui)
+    ?-d? ?-e? ?-m? ?-t? ?-z? destfile
     -d    output some debugging info from this setup script
     -e    include all encodings i.s.o. 7 basic ones (encodings/)
     -m    include all localized message files (tcl 8.5, msgs/)
@@ -152,49 +152,6 @@ set clifiles {
   lib/tclx8.4/tclx.tcl
 }
 
-set guifiles {
-  tclkit.ico
-  lib/tk8@/bgerror.tcl
-  lib/tk8@/button.tcl
-  lib/tk8@/choosedir.tcl
-  lib/tk8@/clrpick.tcl
-  lib/tk8@/comdlg.tcl
-  lib/tk8@/console.tcl
-  lib/tk8@/dialog.tcl
-  lib/tk8@/entry.tcl
-  lib/tk8@/focus.tcl
-  lib/tk8@/listbox.tcl
-  lib/tk8@/menu.tcl
-  lib/tk8@/mkpsenc.tcl
-  lib/tk8@/msgbox.tcl
-  lib/tk8@/msgs
-  lib/tk8@/obsolete.tcl
-  lib/tk8@/optMenu.tcl
-  lib/tk8@/palette.tcl
-  lib/tk8@/panedwindow.tcl
-  lib/tk8@/pkgIndex.tcl
-  lib/tk8@/safetk.tcl
-  lib/tk8@/scale.tcl
-  lib/tk8@/scrlbar.tcl
-  lib/tk8@/spinbox.tcl
-  lib/tk8@/tclIndex
-  lib/tk8@/tearoff.tcl
-  lib/tk8@/text.tcl
-  lib/tk8@/tk.tcl
-  lib/tk8@/tkfbox.tcl
-  lib/tk8@/unsupported.tcl
-  lib/tk8@/xmfbox.tcl
-  lib/BLT2.4/pkgIndex.tcl
-  lib/BLT2.4/graph.tcl
-  lib/BLT2.4/tabnotebook.tcl
-  lib/BLT2.4/treeview.cur
-  lib/BLT2.4/treeview.xbm
-  lib/BLT2.4/treeview.tcl
-  lib/BLT2.4/treeview_m.xbm
-  lib/BLT2.4/bltCanvEps.pro
-  lib/BLT2.4/bltGraph.pro
-}
-
 if {$encOpt} {
   lappend clifiles lib/tcl8@/encoding
 } else {
@@ -220,8 +177,6 @@ if {$tcl_version eq "8.4"} {
   lappend clifiles lib/tcl8 \
                    lib/tcl8@/clock.tcl \
                    lib/tcl8@/tm.tcl
-
-  lappend guifiles lib/tk8@/ttk
 
   if {$msgsOpt} {
     lappend clifiles lib/tcl8@/msgs
@@ -365,19 +320,7 @@ fconfigure $zf -translation binary -encoding binary
 set count 0
 set cd ""
 
-switch [lindex $argv 1] {
-  cli {
-    vfscopy $zf $clifiles
-  }
-  gui {
-    vfscopy $zf $clifiles
-    vfscopy $zf $guifiles
-  }
-  default {
-    puts stderr "Unknown type, must be cli or gui"
-    exit 1
-  }
-}
+vfscopy $zf $clifiles
 
 set cdoffset [tell $zf]
 set endrec [binary format a4ssssiis PK\05\06 0 0 \
