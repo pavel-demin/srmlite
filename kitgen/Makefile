@@ -2,16 +2,15 @@ TDOM_URL     = https://github.com/downloads/tDOM/tdom/tDOM-0.8.3.tgz
 TCLLIB_URL   = http://github.com/tcltk/tcllib/archive/tcllib_1_16.tar.gz
 TRF_URL      = http://heanet.dl.sourceforge.net/project/tcltrf/tcltrf/2.1.4/trf2.1.4.tar.gz
 ZLIB_URL     = http://heanet.dl.sourceforge.net/project/libpng/zlib/1.2.3/zlib-1.2.3.tar.gz
-XOTCL_URL    = http://heanet.dl.sourceforge.net/project/xotcl/xotcl/1.6.7/xotcl-1.6.7.tar.gz
-SQLITE_URL   = http://www.sqlite.org/2014/sqlite-autoconf-3080600.tar.gz
+XOTCL_URL    = http://heanet.dl.sourceforge.net/project/xotcl/xotcl/1.6.8/xotcl-1.6.8.tar.gz
+SQLITE_URL   = http://www.sqlite.org/2015/sqlite-autoconf-3080900.tar.gz
 STARFISH_URL = http://www.starfishsystems.ca/Share/Source/starfish-1.0.tar.gz
 
-OPENSSL_URL  = http://www.openssl.org/source/openssl-1.0.0o.tar.gz
+OPENSSL_URL  = http://www.openssl.org/source/openssl-1.0.0r.tar.gz
 GLOBUS_SRC   = gt5.2.5-all-source-installer
 GLOBUS_URL   = http://toolkit.globus.org/ftppub/gt5/5.2/5.2.5/installers/src/$(GLOBUS_SRC).tar.gz
 
 TCL_CVS      = :pserver:anonymous@tcl.cvs.sourceforge.net:/cvsroot/tcl
-TK_CVS       = :pserver:anonymous@tktoolkit.cvs.sourceforge.net:/cvsroot/tktoolkit
 
 TCLX_CVS     = :pserver:anonymous@tclx.cvs.sourceforge.net:/cvsroot/tclx
 VFS_CVS      = :pserver:anonymous@tclvfs.cvs.sourceforge.net:/cvsroot/tclvfs
@@ -23,8 +22,7 @@ cvs:
 	  cvs -d $(VFS_CVS) co tclvfs && \
 	  cvs -d $(TCLX_CVS) co tclx
 	mkdir -p 8.5 && cd 8.5 && \
-	  cvs -d $(TCL_CVS) co -r core-8-5-branch tcl && \
-	  cvs -d $(TK_CVS) co -r core-8-5-branch tk
+	  cvs -d $(TCL_CVS) co -r core-8-5-branch tcl
 
 tars:
 	mkdir -p 8.x && cd 8.x && \
@@ -42,10 +40,10 @@ untar:
 	  tar xfz tDOM-0.8.3.tgz && \
 	  tar xfz tcllib_1_16.tar.gz && \
 	  tar xfz zlib-1.2.3.tar.gz && \
-	  tar xfz xotcl-1.6.7.tar.gz && \
-	  tar xfz sqlite-autoconf-3080600.tar.gz && \
+	  tar xfz xotcl-1.6.8.tar.gz && \
+	  tar xfz sqlite-autoconf-3080900.tar.gz && \
 	  tar xfz starfish-1.0.tar.gz && \
-	  tar xfz openssl-1.0.0o.tar.gz && \
+	  tar xfz openssl-1.0.0r.tar.gz && \
 	  tar xfz $(GLOBUS_SRC).tar.gz \
 	    $(GLOBUS_SRC)/config.guess \
 	    $(GLOBUS_SRC)/config.site.in \
@@ -66,11 +64,11 @@ untar:
 	  mv tDOM-0.8.3 tdom && \
 	  mv tcllib-tcllib_1_16 tcllib && \
 	  mv zlib-1.2.3 zlib && \
-	  mv xotcl-1.6.7 xotcl && \
-	  mv sqlite-autoconf-3080600 sqlite && \
+	  mv xotcl-1.6.8 xotcl && \
+	  mv sqlite-autoconf-3080900 sqlite && \
 	  mv starfish-1.0/src/starfish ./ && \
 	  mv starfish-1.0/tcl starfish/ && \
-          mv openssl-1.0.0o openssl && \
+          mv openssl-1.0.0r openssl && \
           mv $(GLOBUS_SRC) globus && \
 	  patch -p 0 < ../globus-export_sec_context.patch && \
 	  patch -p 0 < ../starfish-noyp.patch && rm -rf starfish-1.0
