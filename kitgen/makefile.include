@@ -15,7 +15,7 @@
 EXTDIR = ../../../../8.x
 STATIC = --disable-shared --enable-static
 OUTDIR = $(shell pwd)/build
-OBJ    = $(OUTDIR)/zvfs$O $(OUTDIR)/zlib$O $(OUTDIR)/g2lite$O
+OBJ    = $(OUTDIR)/zvfs$O $(OUTDIR)/g2lite$O
 CLIOBJ ?= $(OBJ) $(OUTDIR)/tclAppInit$O
 TCLDIR = --with-tcl=$(OUTDIR)/lib --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR)
 STRIP ?= strip
@@ -35,32 +35,28 @@ GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts
 
 GSS_OPTS = --disable-threads --enable-64bit --with-globus=$(OUTDIR)
 #GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
-TCLZLIB_OPTS = --disable-threads
+TCL_OPTS = --disable-threads
 VFS_OPTS = --disable-threads
 TDOM_OPTS = --disable-threads
 TCLX_OPTS = --disable-threads
-XOTCL_OPTS = --disable-threads
-SQLITE_OPTS = --disable-threads
 ZLIB_OPTS = --prefix=$(OUTDIR)
 
 tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 	cp kit-cli$(EXE) $@ && $(STRIP) $@ && $(UPX) $@
 	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ cli
 
-kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
+kit-cli$(EXE): build/tcl build/tclvfs \
 	build/globus build/gss_socket \
 	build/tdom build/starfish \
-	build/tclx build/tcllib build/xotcl build/sqlite $(CLIOBJ)
+	build/tclx build/tcllib $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
 	  build/lib/vfs1*/*vfs1*$A \
-	  build/lib/libz$A build/lib/*tcl8*$A \
 	  build/lib/tdom0*/*tdom0*$A \
 	  build/lib/starfish1*/libstarfish1*$A \
 	  build/lib/tclx8*/libtclx8*$A \
-	  build/lib/sqlite3*/*sqlite3*$A \
-	  build/lib/xotcl1*/*xotcl1*$A \
 	  build/lib/gss_socket0*/libgss_socket0*$A \
+	  build/lib/*tclstub8*$A build/lib/*tcl8*$A \
 	  build/lib64/libglobus_gss_assist$A \
 	  build/lib64/libglobus_gssapi_gsi$A \
 	  build/lib64/libglobus_gsi_proxy_core$A \
@@ -75,6 +71,7 @@ kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
 	  build/lib64/libglobus_proxy_ssl$A \
 	  build/lib64/libglobus_common$A \
 	  build/lib/libssl$A build/lib/libcrypto$A \
+	  build/lib/libz$A \
 	  $(LDFLAGS)
 
 getuser$(EXE): build/globus ../../getuser.c
@@ -114,12 +111,6 @@ build/tclvfs: build/tcl
 	  sh $(EXTDIR)/tclvfs/configure $(STATIC) $(TCLDIR) $(VFS_OPTS) && \
 	  $(MAKE) install
 
-build/zlib: build/tcl
-	cp -R ../../8.x/zlib/. $@
-	cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/zlib/configure $(ZLIB_OPTS) && \
-	  $(MAKE) install
-
 build/openssl:
 	cp -R ../../8.x/openssl/. $@
 	cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
@@ -151,16 +142,6 @@ build/tclx: build/tcl
 	  sh $(EXTDIR)/tclx/configure $(STATIC) $(TCLDIR) $(TCLX_OPTS) && \
 	  $(MAKE) install
 
-build/xotcl: build/tcl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/xotcl/configure $(STATIC) $(TCLDIR) $(XOTCL_OPTS) && \
-	  $(MAKE) install-binaries
-
-build/sqlite: build/tcl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/sqlite/tea/configure $(STATIC) $(TCLDIR) $(SQLITE_OPTS) && \
-	  $(MAKE) install-binaries
-
 build/starfish: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/starfish/configure $(STATIC) $(TCLDIR) $(STARFISH_OPTS) && \
@@ -173,7 +154,7 @@ tidy: cleanext
 	rm -rf build/tcl
 
 cleanext:
-	rm -rf build/tclvfs build/thread build/zlib build/*.o
+	rm -rf build/tclvfs build/thread build/*.o
 	rm -rf build/lib/vfs* build/lib/thread*
 
 clean:
@@ -185,10 +166,7 @@ distclean: clean
 .PHONY: all clean distclean tidy
 
 $(OUTDIR)/zvfs$O: ../../zvfs.c
-	$(CC) -o $@ $(CFLAGS) -DHAVE_UNISTD_H=1 -DSTATIC_BUILD -Ibuild/include -c $<
-
-$(OUTDIR)/zlib$O: ../../zlib.c
-	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
+	$(CC) -o $@ $(CFLAGS) -DSTDC_HEADERS=1 -DHAVE_UNISTD_H=1 -DSTATIC_BUILD -Ibuild/include -c $<
 
 $(OUTDIR)/g2lite$O: ../../g2lite.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<

@@ -30,10 +30,6 @@
 #undef WIN32_LEAN_AND_MEAN
 #endif
 
-/* defined in tclInt.h */
-extern Tcl_Obj* TclGetStartupScriptPath();
-extern void TclSetStartupScriptPath(Tcl_Obj*);
-
 Tcl_AppInitProc	Vfs_Init, Zlib_Init;
 #ifdef TCL_THREADS
 Tcl_AppInitProc	Thread_Init;
@@ -48,8 +44,6 @@ Tcl_AppInitProc	Blt_Init, Blt_SafeInit;
 Tcl_AppInitProc Tdom_Init, Tdom_SafeInit;
 Tcl_AppInitProc G2lite_Init, Gss_Init, Gss_SafeInit;
 Tcl_AppInitProc Gssctx_Init, Gssctx_SafeInit;
-Tcl_AppInitProc Xotcl_Init;
-Tcl_AppInitProc Sqlite3_Init;
 Tcl_AppInitProc Tclx_Init, Tclx_SafeInit;
 Tcl_AppInitProc Starfish_Init, Starfish_SafeInit;
 
@@ -102,7 +96,6 @@ TclKit_AppInit(Tcl_Interp *interp)
     TclKit_InitStdChannels();
 
     Tcl_StaticPackage(0, "vfs", Vfs_Init, NULL);
-    Tcl_StaticPackage(0, "zlib", Zlib_Init, NULL);
 #ifdef TCL_THREADS
     Tcl_StaticPackage(0, "Thread", Thread_Init, NULL);
 #endif
@@ -115,13 +108,11 @@ TclKit_AppInit(Tcl_Interp *interp)
     Tcl_StaticPackage(0, "Blt", Blt_Init, Blt_SafeInit);
 #endif
 
-    Tcl_StaticPackage(0, "XOTcl", Xotcl_Init, NULL);
     Tcl_StaticPackage(0, "g2lite", G2lite_Init, NULL);
     Tcl_StaticPackage(0, "gss", Gss_Init, Gss_SafeInit);
     Tcl_StaticPackage(0, "gssctx", Gssctx_Init, Gssctx_SafeInit);
     Tcl_StaticPackage(0, "tdom", Tdom_Init, Tdom_SafeInit);
     Tcl_StaticPackage(0, "starfishLib", Starfish_Init, Starfish_SafeInit);
-    Tcl_StaticPackage(0, "sqlite3", Sqlite3_Init, NULL);
     Tcl_StaticPackage(0, "Tclx", Tclx_Init, Tclx_SafeInit);
 
     /* the tcl_rcFileName variable only exists in the initial interpreter */
@@ -137,8 +128,7 @@ TclKit_AppInit(Tcl_Interp *interp)
     Tcl_SetVar2(interp, "env", "TCL_LIBRARY", "/zvfs/lib/tcl", TCL_GLOBAL_ONLY);
     Tcl_SetVar2(interp, "env", "TK_LIBRARY", "/zvfs/lib/tk", TCL_GLOBAL_ONLY);
 
-    if ((Tcl_EvalEx(interp, appInitCmd, -1, TCL_EVAL_GLOBAL) == TCL_ERROR)
-	    || (Tcl_Init(interp) == TCL_ERROR))
+    if ((Tcl_EvalEx(interp, appInitCmd, -1, TCL_EVAL_GLOBAL) == TCL_ERROR) || (Tcl_Init(interp) == TCL_ERROR))
         goto error;
 
 #ifdef KIT_INCLUDES_TK
@@ -152,8 +142,8 @@ TclKit_AppInit(Tcl_Interp *interp)
 
     /* messy because TclSetStartupScriptPath is called slightly too late */
     if (Tcl_Eval(interp, initScript) == TCL_OK) {
-        Tcl_Obj* path = TclGetStartupScriptPath();
-      	TclSetStartupScriptPath(Tcl_GetObjResult(interp));
+        Tcl_Obj* path = Tcl_GetStartupScript(NULL);
+      	Tcl_SetStartupScript(Tcl_GetObjResult(interp), NULL);
       	if (path == NULL)
         	  Tcl_Eval(interp, "incr argc -1; set argv [lrange $argv 1 end]");
     }
