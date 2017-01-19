@@ -45,7 +45,7 @@ tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 	cp kit-cli$(EXE) $@ && $(STRIP) $@ && $(UPX) $@
 	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ cli
 
-kit-cli$(EXE): build/tcl build/tclvfs \
+kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
 	build/globus build/gss_socket \
 	build/tdom build/starfish \
 	build/tclx build/tcllib $(CLIOBJ)
@@ -111,6 +111,12 @@ build/tclvfs: build/tcl
 	  sh $(EXTDIR)/tclvfs/configure $(STATIC) $(TCLDIR) $(VFS_OPTS) && \
 	  $(MAKE) install
 
+build/zlib: build/tcl
+	cp -R ../../8.x/zlib/. $@
+	cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
+	  sh $(EXTDIR)/zlib/configure $(ZLIB_OPTS) && \
+	  $(MAKE) install
+
 build/openssl:
 	cp -R ../../8.x/openssl/. $@
 	cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
@@ -154,7 +160,7 @@ tidy: cleanext
 	rm -rf build/tcl
 
 cleanext:
-	rm -rf build/tclvfs build/thread build/*.o
+	rm -rf build/tclvfs build/thread build/zlib build/*.o
 	rm -rf build/lib/vfs* build/lib/thread*
 
 clean:
