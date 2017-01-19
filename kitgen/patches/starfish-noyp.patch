@@ -416,3 +416,36 @@
      }
  
  #ifdef TCL_THREADS
+diff -pruN starfish/starfishInit.c starfish-patched/starfishInit.c
+--- starfish/starfishInit.c	2003-03-11 01:48:05.000000000 +0100
++++ starfish-patched/starfishInit.c	2007-10-19 01:55:36.880301248 +0200
+@@ -86,14 +86,10 @@ Starfish_Init(Tcl_Interp *interp)
+     }
+ #endif
+ 
+-#ifdef STARFISH_FORCE_PACKAGE
+-    /* Ordinarily we are loaded as part of an enclosing package definition.
+-    */
+     result = Tcl_PkgProvide(interp, STARFISH_PACKAGE, STARFISH_VERSION);
+     if (result != TCL_OK) {
+         return result;
+     }
+-#endif
+ 
+     Starfish_Limit();
+     Starfish_InitSafeCmds(interp);
+@@ -115,14 +111,10 @@ Starfish_SafeInit(Tcl_Interp *interp)
+   {
+     int result;
+ 
+-#ifdef STARFISH_FORCE_PACKAGE
+-    /* Ordinarily we are loaded as part of an enclosing package definition.
+-    */
+     result = Tcl_PkgProvide(interp, STARFISH_PACKAGE, STARFISH_VERSION);
+     if (result != TCL_OK) {
+         return result;
+     }
+-#endif
+ 
+     Starfish_Limit();
+     Starfish_InitSafeCmds(interp);
