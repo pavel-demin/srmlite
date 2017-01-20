@@ -3,19 +3,14 @@ package require tdom
 package require srmlite::utilities
 package require srmlite::templates
 package require srmlite::notifier
-package require srmlite::gridftp
 package require srmlite::soap
-
-package require srmlite::srmv2::client
 
 package require XOTcl
 
 namespace eval ::srmlite::srmv2::server {
     namespace import ::xotcl::*
-    namespace import ::srmlite::gridftp::*
     namespace import ::srmlite::notifier::*
     namespace import ::srmlite::utilities::*
-    namespace import ::srmlite::srmv2::client::*
 
 # -------------------------------------------------------------------------
 
@@ -23,12 +18,10 @@ namespace eval ::srmlite::srmv2::server {
     array set methods {
         srmPing srmPing
         srmLs srmLs
-        srmCopy srmCopy
         srmRm srmRm
         srmMkdir srmMkdir
         srmPrepareToGet srmPrepareToGet
         srmPrepareToPut srmPrepareToPut
-        srmStatusOfCopyRequest srmStatusOfCopyRequest
         srmStatusOfGetRequest srmStatusOfGetRequest
         srmStatusOfPutRequest srmStatusOfPutRequest
         srmReleaseFiles srmReleaseFiles
@@ -219,19 +212,6 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmStatusOfCopyRequest {connection argValues} {
-        set requestToken [dict get $argValues requestToken]
-
-        if {[dict exists $argValues arrayOfSourceSURLs]} {
-            my sendStatus $connection $requestToken srmStatusOfCopyRequest \
-               [dict get $argValues arrayOfSourceSURLs]
-        } else {
-            my sendStatus $connection $requestToken srmStatusOfCopyRequest {}
-        }
-    }
-
-# -------------------------------------------------------------------------
-
     Srmv2Manager instproc srmStatusOfGetRequest {connection argValues} {
         set requestToken [dict get $argValues requestToken]
 
@@ -279,36 +259,6 @@ namespace eval ::srmlite::srmv2::server {
         set requestToken [dict get $argValues requestToken]
         my releaseFiles $connection $requestToken srmAbortFiles \
 	    Canceled [dict get $argValues arrayOfSURLs]
-    }
-
-# -------------------------------------------------------------------------
-
-    Srmv2Manager instproc srmCopy {connection argValues} {
-        global errorInfo
-
-        set chan [$connection set chan]
-
-        set srcSURLS [list]
-        set dstSURLS [list]
-        set certProxies [list]
-
-        foreach request [dict get $argValues arrayOfFileRequests] {
-            lappend srcSURLS [dict get $request sourceSURL]
-            lappend dstSURLS [dict get $request targetSURL]
-            if {[catch {fconfigure $chan -gssexport} result]} {
-                $connection log error $result
-                foreach proxy $certProxies {
-                    $proxy destroy
-                }
-                $connection respond [srmFaultBody $result $errorInfo]
-                return
-            } else {
-                $connection log debug "new certProxy $result"
-                lappend certProxies $result
-            }
-        }
-
-        my createRequest $connection srmCopy 0 $srcSURLS $dstSURLS {} $certProxies
     }
 
 # -------------------------------------------------------------------------
@@ -509,12 +459,6 @@ namespace eval ::srmlite::srmv2::server {
         mkdir     {Ready success Failed failure}
         get       {Ready success Failed failure}
         put       {Ready success Failed failure}
-        copyPull  {Ready remoteGet Failed failure}
-        copyPush  {Ready remotePut Failed failure}
-        remoteGet {Ready pull Failed failure}
-        remotePut {Ready push Failed failure}
-        pull      {Ready getDone Failed abort}
-        push      {Ready putDone Failed abort}
         getDone   {Ready success}
         putDone   {Ready success}
         abort     {Ready success}
@@ -604,86 +548,6 @@ namespace eval ::srmlite::srmv2::server {
     SrmFile instproc success {} {
         my done
         my notify successCallback {}
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmFile instproc remoteGet {} {
-        my instvar client certProxy SURL
-
-        my set fileState SRM_REQUEST_INPROGRESS
-        my set state remoteGet
-
-	regexp {[^?]*} $SURL serviceURL
-        if {[catch {SrmClient new \
-            -childof [self] \
-            -certProxy $certProxy \
-            -serviceURL $serviceURL \
-            -SURL $SURL \
-            -callbackRecipient [self]} client]} {
-            my set fileState SRM_FAILURE
-            my set fileStateComment $client
-            my updateState Failed
-        }
-
-        $client get
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmFile instproc remotePut {} {
-        my instvar client certProxy dstSURL
-
-        my set fileState SRM_REQUEST_INPROGRESS
-        my set state remotePut
-
-        regexp {[^?]*} $dstSURL serviceURL
-        if {[catch {SrmClient new \
-            -childof [self] \
-            -certProxy $certProxy \
-            -serviceURL $serviceURL \
-            -SURL $dstSURL \
-            -callbackRecipient [self]} client]} {
-            my set fileState SRM_FAILURE
-            my set fileStateComment $client
-            my updateState Failed
-        }
-
-        $client put
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmFile instproc pull {} {
-        my instvar transfer certProxy TURL result
-
-        my set state pull
-
-        set transfer [GridFtpTransfer new \
-            -childof [self] \
-            -certProxy $certProxy \
-            -srcTURL $result \
-            -dstTURL $TURL \
-            -callbackRecipient [self]]
-
-       $transfer start
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmFile instproc push {} {
-        my instvar transfer certProxy TURL result
-
-        my set state push
-
-        set transfer [GridFtpTransfer new \
-            -childof [self] \
-            -certProxy $certProxy \
-            -srcTURL $TURL \
-            -dstTURL $result \
-            -callbackRecipient [self]]
-
-       $transfer start
     }
 
 # -------------------------------------------------------------------------
@@ -805,27 +669,6 @@ namespace eval ::srmlite::srmv2::server {
         my set state put
         [my info parent] setFile $dstSURL [self]
         [my frontendService] process [list put [self] $userName $dstSURL]
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmFile instproc srmCopy {} {
-        my instvar userName SURL dstSURL
-
-        if {[IsLocalHost $SURL] && ![IsLocalHost $dstSURL]} {
-            my set state copyPush
-            [my info parent] setFile $SURL [self]
-            [my frontendService] process [list get [self] $userName $SURL]
-        } elseif {![IsLocalHost $SURL] && [IsLocalHost $dstSURL]} {
-            my set state copyPull
-            [my info parent] setFile $SURL [self]
-            [my frontendService] process [list put [self] $userName $dstSURL]
-        } else {
-            my set state failure
-            my set fileState SRM_NOT_SUPPORTED
-            my set fileStateComment {copying between two local or two remote SURLs is not allowed}
-            my updateState Failed
-        }
     }
 
 # -------------------------------------------------------------------------
