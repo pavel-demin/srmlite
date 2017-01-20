@@ -150,28 +150,6 @@ proc InitTemplateSrmMkdirRes {} {
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateSrmCopyReq {} {
-
-  set fid [open templates/srmCopy_req.g2]
-  set content [read $fid]
-  close $fid
-
-  proc srmCopyReqBody {srcSURLS dstSURLS} [g2lite $content]
-}
-
-# -------------------------------------------------------------------------
-
-proc InitTemplateSrmCopyRes {} {
-
-  set fid [open templates/srmCopy_res.g2]
-  set content [read $fid]
-  close $fid
-
-  proc srmCopyResBody {request} [g2lite $content]
-}
-
-# -------------------------------------------------------------------------
-
 proc InitTemplateSrmPrepareToGetReq {} {
 
   set fid [open templates/srmPrepareToGet_req.g2]
@@ -212,28 +190,6 @@ proc InitTemplateSrmPrepareToPutRes {} {
   close $fid
 
   proc srmPrepareToPutResBody {request} [g2lite $content]
-}
-
-# -------------------------------------------------------------------------
-
-proc InitTemplateSrmStatusOfCopyRequestReq {} {
-
-  set fid [open templates/srmStatusOfCopyRequest_req.g2]
-  set content [read $fid]
-  close $fid
-
-  proc srmStatusOfCopyRequestReqBody {requestToken srcSURLS dstSURLS} [g2lite $content]
-}
-
-# -------------------------------------------------------------------------
-
-proc InitTemplateSrmStatusOfCopyRequestRes {} {
-
-  set fid [open templates/srmStatusOfCopyRequest_res.g2]
-  set content [read $fid]
-  close $fid
-
-  proc srmStatusOfCopyRequestResBody {request files} [g2lite $content]
 }
 
 # -------------------------------------------------------------------------
@@ -363,15 +319,11 @@ InitTemplateSrmRmRes
 InitTemplateSrmMkdirReq
 InitTemplateSrmMkdirRes
 
-InitTemplateSrmCopyReq
-InitTemplateSrmCopyRes
 InitTemplateSrmPrepareToGetReq
 InitTemplateSrmPrepareToGetRes
 InitTemplateSrmPrepareToPutReq
 InitTemplateSrmPrepareToPutRes
 
-InitTemplateSrmStatusOfCopyRequestReq
-InitTemplateSrmStatusOfCopyRequestRes
 InitTemplateSrmStatusOfGetRequestReq
 InitTemplateSrmStatusOfGetRequestRes
 InitTemplateSrmStatusOfPutRequestReq
