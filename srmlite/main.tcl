@@ -1,8 +1,7 @@
-
 lappend auto_path .
 
-package require Tclx
 package require log
+package require Tclx
 
 package require srmlite::cfg
 
@@ -62,8 +61,8 @@ proc frontend {pipein pipeout} {
 
     global Cfg
 
-    package require srmlite::httpd
-    namespace import ::srmlite::httpd::*
+    package require srmlite::http::server
+    namespace import ::srmlite::http::server::*
 
     package require srmlite::cleanup
     namespace import ::srmlite::cleanup::*
@@ -71,8 +70,8 @@ proc frontend {pipein pipeout} {
     package require srmlite::frontend
     namespace import ::srmlite::frontend::*
 
-    package require srmlite::srmv2::server
-    namespace import ::srmlite::srmv2::server::*
+    package require srmlite::srm::server
+    namespace import ::srmlite::srm::server::*
 
     package require srmlite::utilities
 
@@ -89,28 +88,28 @@ proc frontend {pipein pipeout} {
     log::log notice "frontend started with pid [pid]"
 #    close $fid
 
-    CleanupService timeout \
-        -logFile $Cfg(frontendLog)
+    set timeout [CleanupService new \
+        -logFile $Cfg(frontendLog)]
 
-    FrontendService frontend \
+    set frontend [FrontendService new \
         -in [lindex $pipeout 0] \
-        -out [lindex $pipein 1]
+        -out [lindex $pipein 1]]
 
-    Srmv2Manager srmv2 \
-	-cleanupService timeout \
-	-frontendService frontend
+    set manager [SrmManager new \
+        -cleanupService $timeout \
+        -frontendService $frontend]
 
-    HttpServerGss server \
+    set server [HttpServerGss new \
         -port $Cfg(frontendPort) \
-	-frontendService frontend
+        -frontendService $frontend]
 
-    server exportObject -prefix /srm/managerv2 -object srmv2
+    $server exportObject $Cfg(srmPrefix) $manager
 
-    server start
+    $server start
 
-    log::log notice "starting httpd server on port $Cfg(frontendPort)"
+    log::log notice "starting http server on port $Cfg(frontendPort)"
 
-    SetupTimer 600 [list timeout timeout 600]
+    SetupTimer 600 [list $timeout timeout 600]
 
     # start the Tcl event loop
     vwait forever

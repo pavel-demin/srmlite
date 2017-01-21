@@ -1,34 +1,43 @@
 package require log
 package require Tclx
-package require XOTcl
+package require TclOO
 
 package require srmlite::utilities
 
 namespace eval ::srmlite::cleanup {
-    namespace import ::xotcl::*
     namespace import ::srmlite::utilities::LogRotate
 
-    Class CleanupService -parameter {
-        {logFile}
+# -------------------------------------------------------------------------
+
+    oo::class create CleanupService
+
+# -------------------------------------------------------------------------
+
+    oo::define CleanupService constructor args {
+        my variable logFile objectDict
+
+        foreach {param value} $args {
+            if {$param eq "-logFile"} {
+                set logFile $value
+            } else {
+                error "unsupported parameter $param"
+            }
+        }
+
+        set objectDict [dict create]
     }
 
 # -------------------------------------------------------------------------
 
-    CleanupService instproc init {} {
-        my set objectDict [dict create]
-    }
-
-# -------------------------------------------------------------------------
-
-    CleanupService instproc addObject {obj} {
-        my instvar objectDict
+    oo::define CleanupService method addObject {obj} {
+        my variable objectDict
         dict set objectDict $obj 0
     }
 
 # -------------------------------------------------------------------------
 
-    CleanupService instproc removeObject {obj} {
-        my instvar objectDict
+    oo::define CleanupService method removeObject {obj} {
+        my variable objectDict
         if {[dict exists $objectDict $obj]} {
             dict unset objectDict $obj
         }
@@ -36,12 +45,12 @@ namespace eval ::srmlite::cleanup {
 
 # -------------------------------------------------------------------------
 
-    CleanupService instproc timeout {seconds} {
-        my instvar objectDict
+    oo::define CleanupService method timeout {seconds} {
+        my variable logFile objectDict
 
         log::log debug "cleanup $seconds"
 
-        LogRotate [my logFile]
+        LogRotate $logFile
 
         dict for {obj counter} $objectDict {
             dict incr objectDict $obj
@@ -61,4 +70,4 @@ namespace eval ::srmlite::cleanup {
     namespace export CleanupService
 }
 
-package provide srmlite::cleanup 0.1
+package provide srmlite::cleanup 0.2
