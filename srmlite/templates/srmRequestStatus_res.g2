@@ -1,5 +1,4 @@
-$request eval {
-    upvar g2result g2result
+$request variable requestType requestState requestStateComment
 @@
 <?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -15,4 +14,3 @@ $request eval {
   </soapenv:Body>
 </soapenv:Envelope>
 @@
-}

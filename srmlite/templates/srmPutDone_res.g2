@@ -1,5 +1,4 @@
-$request eval {
-    upvar g2result g2result
+$request variable requestState requestStateComment
 @@
 <?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -12,10 +11,8 @@ $request eval {
         </returnStatus>
         <arrayOfFileStatuses xsi:type="ns1:ArrayOfTSURLReturnStatus">
 @@
-}
 foreach file $files {
-    $file eval {
-        upvar g2result g2result
+    $file variable SURL fileState fileStateComment
 @@
           <statusArray xsi:type="ns1:TSURLReturnStatus">
             <surl xsi:type="xsd:anyURI">$${SURL}</surl>
@@ -25,7 +22,6 @@ foreach file $files {
             </status>
           </statusArray>
 @@
-    }
 }
 @@
         </arrayOfFileStatuses>
