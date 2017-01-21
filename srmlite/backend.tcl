@@ -34,8 +34,8 @@ proc ExtractHostFile {url} {
 
 proc SrmLs {requestType uniqueId userName depth SURL} {
 
-    set command "./setuid $userName ./url_ls.sh $depth [ExtractHostFile $SURL]"
-#    set command "./url_ls.sh [ExtractHostFile $SURL]"
+    set command "./setuid $userName ./scripts/url_ls.sh $depth [ExtractHostFile $SURL]"
+#    set command "./scripts/url_ls.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -43,8 +43,8 @@ proc SrmLs {requestType uniqueId userName depth SURL} {
 
 proc SrmGet {requestType uniqueId userName SURL} {
 
-    set command "./setuid $userName ./url_get.sh [ExtractHostFile $SURL]"
-#    set command "./url_get.sh [ExtractHostFile $SURL]"
+    set command "./setuid $userName ./scripts/url_get.sh [ExtractHostFile $SURL]"
+#    set command "./scripts/url_get.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -52,8 +52,8 @@ proc SrmGet {requestType uniqueId userName SURL} {
 
 proc SrmPut {requestType uniqueId userName SURL} {
 
-    set command "./setuid $userName ./url_put.sh [ExtractHostFile $SURL]"
-#    set command "./url_put.sh [ExtractHostFile $SURL]"
+    set command "./setuid $userName ./scripts/url_put.sh [ExtractHostFile $SURL]"
+#    set command "./scripts/url_put.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -61,8 +61,8 @@ proc SrmPut {requestType uniqueId userName SURL} {
 
 proc SrmRm {requestType uniqueId userName SURL} {
 
-    set command "./setuid $userName ./url_del.sh [ExtractHostFile $SURL]"
-#    set command "./url_del.sh [ExtractHostFile $SURL]"
+    set command "./setuid $userName ./scripts/url_del.sh [ExtractHostFile $SURL]"
+#    set command "./scripts/url_del.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -70,8 +70,8 @@ proc SrmRm {requestType uniqueId userName SURL} {
 
 proc SrmMkdir {requestType uniqueId userName SURL} {
 
-    set command "./setuid $userName ./url_mkdir.sh [ExtractHostFile $SURL]"
-#    set command "./url_mkdir.sh [ExtractHostFile $SURL]"
+    set command "./setuid $userName ./scripts/url_mkdir.sh [ExtractHostFile $SURL]"
+#    set command "./scripts/url_mkdir.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -79,8 +79,8 @@ proc SrmMkdir {requestType uniqueId userName SURL} {
 
 proc SrmRmdir {requestType uniqueId userName SURL} {
 
-    set command "./setuid $userName ./url_rmdir.sh [ExtractHostFile $SURL]"
-#    set command "./url_rmdir.sh [ExtractHostFile $SURL]"
+    set command "./setuid $userName ./scripts/url_rmdir.sh [ExtractHostFile $SURL]"
+#    set command "./scripts/url_rmdir.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -88,7 +88,7 @@ proc SrmRmdir {requestType uniqueId userName SURL} {
 
 proc SrmAuth {requestType uniqueId gssContext} {
 
-    set command "./getuser.sh $gssContext"
+    set command "./scripts/getuser.sh $gssContext"
     SubmitCommand $requestType $uniqueId $command
 }
 
