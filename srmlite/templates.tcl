@@ -105,6 +105,17 @@ proc InitTemplateSrmMkdirRes {} {
 
 # -------------------------------------------------------------------------
 
+proc InitTemplateSrmRmdirRes {} {
+
+  set fid [open templates/srmRequestStatus_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmRmdirResBody {request} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
 proc InitTemplateSrmPrepareToGetRes {} {
 
   set fid [open templates/srmPrepareToGet_res.g2]
@@ -182,6 +193,17 @@ proc InitTemplateSrmAbortFilesRes {} {
 
 # -------------------------------------------------------------------------
 
+proc InitTemplateSrmAbortRequestRes {} {
+
+  set fid [open templates/srmRequestStatus_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmAbortRequestResBody {request files} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
 InitTemplateHeaders
 InitTemplateError
 InitTemplateFault
@@ -193,6 +215,7 @@ InitTemplateSrmPingRes
 InitTemplateSrmLsRes
 InitTemplateSrmRmRes
 InitTemplateSrmMkdirRes
+InitTemplateSrmRmdirRes
 
 InitTemplateSrmPrepareToGetRes
 InitTemplateSrmPrepareToPutRes
@@ -203,6 +226,7 @@ InitTemplateSrmStatusOfPutRequestRes
 InitTemplateSrmReleaseFilesRes
 InitTemplateSrmPutDoneRes
 InitTemplateSrmAbortFilesRes
+InitTemplateSrmAbortRequestRes
 
 # -------------------------------------------------------------------------
 

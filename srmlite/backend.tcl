@@ -77,6 +77,15 @@ proc SrmMkdir {requestType uniqueId userName SURL} {
 
 # -------------------------------------------------------------------------
 
+proc SrmRmdir {requestType uniqueId userName SURL} {
+
+    set command "./setuid $userName ./url_rmdir.sh [ExtractHostFile $SURL]"
+#    set command "./url_rmdir.sh [ExtractHostFile $SURL]"
+    SubmitCommand $requestType $uniqueId $command
+}
+
+# -------------------------------------------------------------------------
+
 proc SrmAuth {requestType uniqueId gssContext} {
 
     set command "./getuser.sh $gssContext"
@@ -248,6 +257,9 @@ proc Start {line} {
         }
         mkdir {
             eval SrmMkdir $line
+        }
+        rmdir {
+            eval SrmRmdir $line
         }
         authorization {
             eval SrmAuth $line

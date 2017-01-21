@@ -17,6 +17,7 @@ namespace eval ::srmlite::srm::server {
         srmLs srmLs
         srmRm srmRm
         srmMkdir srmMkdir
+        srmRmdir srmRmdir
         srmPrepareToGet srmPrepareToGet
         srmPrepareToPut srmPrepareToPut
         srmStatusOfGetRequest srmStatusOfGetRequest
@@ -24,6 +25,7 @@ namespace eval ::srmlite::srm::server {
         srmReleaseFiles srmReleaseFiles
         srmPutDone srmPutDone
         srmAbortFiles srmAbortFiles
+        srmAbortRequest srmAbortRequest
     }
 
 # -------------------------------------------------------------------------
@@ -193,6 +195,12 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
+    oo::define SrmManager method srmRmdir {connection argValues} {
+        my createRequest $connection srmRmdir 1 [dict get $argValues SURL]
+    }
+
+# -------------------------------------------------------------------------
+
     oo::define SrmManager method srmPrepareToGet {connection argValues} {
         set SURLS [list]
         foreach request [dict get $argValues arrayOfFileRequests] {
@@ -260,6 +268,13 @@ namespace eval ::srmlite::srm::server {
         set requestToken [dict get $argValues requestToken]
         my releaseFiles $connection $requestToken srmAbortFiles \
             Canceled [dict get $argValues arrayOfSURLs]
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define SrmManager method srmAbortRequest {connection argValues} {
+        set requestToken [dict get $argValues requestToken]
+        my releaseFiles $connection $requestToken srmAbortRequest Canceled {}
     }
 
 # -------------------------------------------------------------------------
@@ -482,6 +497,7 @@ namespace eval ::srmlite::srm::server {
         ls        {Ready success Failed failure}
         rm        {Ready success Failed failure}
         mkdir     {Ready success Failed failure}
+        rmdir     {Ready success Failed failure}
         get       {Ready success Failed failure}
         put       {Ready success Failed failure}
         getDone   {Ready success}
@@ -670,6 +686,15 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
+    oo::define SrmFile method srmRmdir {} {
+        my variable SURL userName frontendService state
+
+        set state rmdir
+        $frontendService process [list rmdir [self] $userName $SURL]
+    }
+
+# -------------------------------------------------------------------------
+
     oo::define SrmFile method srmPrepareToGet {} {
         my variable parent SURL userName frontendService state
 
@@ -739,6 +764,25 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method mkdirFailure {reason} {
+        my variable fileState fileStateComment
+
+        set fileState SRM_FAILURE
+        set fileStateComment [join $reason { }]
+        my updateState Failed
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define SrmFile method rmdirSuccess {result} {
+        my variable fileState
+
+        set fileState SRM_SUCCESS
+        my updateState Ready
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define SrmFile method rmdirFailure {reason} {
         my variable fileState fileStateComment
 
         set fileState SRM_FAILURE
