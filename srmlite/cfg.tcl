@@ -179,4 +179,4 @@ proc CfgValidate {} {
 
 # -------------------------------------------------------------------------
 
-package provide srmlite::cfg 0.1
+package provide srmlite::cfg 0.2
