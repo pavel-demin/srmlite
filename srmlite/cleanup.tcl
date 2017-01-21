@@ -13,7 +13,7 @@ namespace eval ::srmlite::cleanup {
 
 # -------------------------------------------------------------------------
 
-    oo::define CleanupService constructor args {
+    oo::define CleanupService constructor {args} {
         my variable logFile objectDict
 
         foreach {param value} $args {
@@ -55,7 +55,7 @@ namespace eval ::srmlite::cleanup {
         dict for {obj counter} $objectDict {
             dict incr objectDict $obj
             if {$counter > 15} {
-                if {[Object isobject $obj]} {
+                if {[info object isa object $obj]} {
                     after 0 [list $obj destroy]
                 }
                 dict unset objectDict $obj

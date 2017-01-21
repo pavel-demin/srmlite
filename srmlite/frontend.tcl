@@ -13,7 +13,7 @@ namespace eval ::srmlite::frontend {
 
 # -------------------------------------------------------------------------
 
-    oo::define FrontendService constructor args {
+    oo::define FrontendService constructor {args} {
         my variable in out
 
         set in stdin
@@ -80,7 +80,7 @@ namespace eval ::srmlite::frontend {
         set obj [lindex $line 2]
         set output [lindex $line 3]
 
-        if {[Object isobject $obj]} {
+        if {[info object isa object $obj]} {
             after 0 [list $obj $prefix$state $output]
         }
     }
