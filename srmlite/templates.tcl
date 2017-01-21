@@ -17,17 +17,6 @@ proc nillableValue {tag var} {
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateHeaders {} {
-
-  set fid [open templates/srm_headers.g2]
-  set content [read $fid]
-  close $fid
-
-  proc srmHeaders {requestType} [g2lite $content]
-}
-
-# -------------------------------------------------------------------------
-
 proc InitTemplateError {} {
 
   set fid [open templates/srm_error.g2]
@@ -204,7 +193,6 @@ proc InitTemplateSrmAbortRequestRes {} {
 
 # -------------------------------------------------------------------------
 
-InitTemplateHeaders
 InitTemplateError
 InitTemplateFault
 
