@@ -1,3 +1,4 @@
+package require log
 package require Tclx
 
 package require srmlite::utilities
@@ -168,7 +169,7 @@ proc Finish {requestType uniqueId processId pipe} {
         set output [dict get $process output]
         unset process
     }
-    
+
     incr QueueSize -1
 
     if {$QueueSize < 10 && [llength $QueueData] > 0} {
@@ -176,7 +177,7 @@ proc Finish {requestType uniqueId processId pipe} {
         set QueueData [lreplace $QueueData [set QueueData 0] 0]
         Start $line
     }
-    
+
     puts $State(out) [list $state $requestType $uniqueId $output]
 }
 
@@ -216,7 +217,7 @@ proc GetInput {chan} {
     }
 
     log::log debug $line
-    
+
     if {$QueueSize < 10} {
         Start $line
     } else {
@@ -255,7 +256,7 @@ proc Start {line} {
             log::log error "Unknown request type $requestType"
         }
     }
-    
+
     incr QueueSize
 }
 
