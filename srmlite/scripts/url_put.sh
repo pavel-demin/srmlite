@@ -6,7 +6,7 @@ fileDst="$2"
 
 dirDst=`dirname $fileDst`
 
-. ./url_common.sh
+. ./scripts/url_common.sh
 
 checkFileDst $fileDst $dirDst
 

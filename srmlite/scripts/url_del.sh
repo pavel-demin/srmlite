@@ -6,7 +6,7 @@ fileSrc="$2"
 
 fileDst=`readlink $fileSrc`
 
-. ./url_common.sh
+. ./scripts/url_common.sh
 
 checkFileDel $fileSrc $fileDst
 

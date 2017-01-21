@@ -7,7 +7,7 @@ fileSrc="$3"
 
 dirSrc=`dirname $fileSrc`
 
-. ./url_common.sh
+. ./scripts/url_common.sh
 
 checkFileLs $fileSrc $dirSrc
 
