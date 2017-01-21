@@ -37,19 +37,15 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
-    variable urlCache
-    array set urlCache {}
-
-# -------------------------------------------------------------------------
-
 
     oo::class create HttpServer
 
 
 # -------------------------------------------------------------------------
 
-    oo::define HttpServer constructor args {
+    oo::define HttpServer constructor {args} {
         my variable port addr objectMap urlCache
+        namespace path [list {*}[namespace path] ::srmlite::http::server]
 
         set port 80
 
@@ -134,8 +130,9 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
-    oo::define HttpConnection constructor args {
+    oo::define HttpConnection constructor {args} {
         my variable parent chan addr port timeout bufsize reqleft
+        namespace path [list {*}[namespace path] ::srmlite::http::server]
 
         set timeout 60000
         set bufsize 32768
@@ -287,7 +284,7 @@ namespace eval ::srmlite::http::server {
 
     oo::define HttpConnection method headerDone {} {
         my variable chan method version mime postdata count
-        variable requiresBody
+        namespace upvar ::srmlite::http::server requiresBody requiresBody
 
         if {[info exists mime(content-length)] &&
             $mime(content-length) > 0} {
@@ -327,7 +324,7 @@ namespace eval ::srmlite::http::server {
             my done 1
             return
         } else {
-            my append postdata $block
+            append postdata $block
             set count [expr {$count - [string length $block]}]
             if {$count == 0} {
                 my dataDone
@@ -345,7 +342,7 @@ namespace eval ::srmlite::http::server {
 
     oo::define HttpConnection method dispatch {} {
         my variable parent chan method url postdata query
-        variable requiresBody
+        namespace upvar ::srmlite::http::server requiresBody requiresBody
 
         fileevent $chan readable {}
 
@@ -409,8 +406,7 @@ namespace eval ::srmlite::http::server {
 
     oo::define HttpConnection method error {code args} {
         my variable chan url version
-        variable errorFormat
-        variable errorCodes
+        namespace upvar ::srmlite::http::server errorCodes errorCodes
 
         set message [srmErrorBody $code $errorCodes($code) $url]
         append head "HTTP/1.$version $code $errorCodes($code)"  \n
@@ -478,8 +474,9 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
-    oo::define HttpServerGss constructor args {
+    oo::define HttpServerGss constructor {args} {
         my variable frontendService
+        namespace path [list {*}[namespace path] ::srmlite::http::server]
 
         set argsNext [list]
 
@@ -514,7 +511,7 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
-    oo::define HttpConnectionGss constructor args {
+    oo::define HttpConnectionGss constructor {args} {
         my variable frontendService
 
         set argsNext [list]

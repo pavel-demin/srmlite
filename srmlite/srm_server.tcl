@@ -34,8 +34,9 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
-    oo::define SrmManager method constructor {} {
+    oo::define SrmManager constructor {args} {
         my variable frontendService cleanupService
+        namespace path [list {*}[namespace path] ::srmlite::srm::server]
 
         foreach {param value} $args {
             if {$param eq "-frontendService"} {
@@ -52,7 +53,7 @@ namespace eval ::srmlite::srm::server {
 
     oo::define SrmManager method process {connection input} {
         global errorInfo
-        variable methods
+        namespace upvar ::srmlite::srm::server methods methods
 
         set soapaction [info object namespace $connection]::mime(soapaction)
         if {[info exists $soapaction]} {
@@ -304,7 +305,7 @@ namespace eval ::srmlite::srm::server {
         set requestState [set [info object namespace $requestObj]::requestState]
         set requestTmp [self]::${requestId}
 
-        SrmRequest $requestTmp \
+        SrmRequest create $requestTmp \
             -requestState $requestState \
             -requestType $requestType \
             -requestToken $requestId
@@ -313,14 +314,12 @@ namespace eval ::srmlite::srm::server {
         foreach SURL $SURLS {
             if {[$requestObj existsFile $SURL]} {
                 set fileObj [$requestObj getFile $SURL]
-
                 $fileObj updateTime $currentTime
-
                 lappend files $fileObj
             } else {
                 set fileId [NewUniqueId]
                 set fileTmp ${requestTmp}::${fileId}
-                SrmFile $fileTmp \
+                SrmFile create $fileTmp \
                     -fileState SRM_INVALID_PATH \
                     -SURL $SURL
                 lappend files $fileTmp
@@ -351,11 +350,11 @@ namespace eval ::srmlite::srm::server {
         }
 
         set requestId [NewUniqueId]
-        set requestState [set [$requestObj varname requestState]]
+        set requestState [set [info object namespace $requestObj]::requestState]
         set requestTmp [self]::${requestId}
 
-        SrmRequest $requestTmp \
-            -requestState requestState \
+        SrmRequest create $requestTmp \
+            -requestState $requestState \
             -requestType $requestType \
             -requestToken $requestId
 
@@ -368,7 +367,7 @@ namespace eval ::srmlite::srm::server {
             } else {
                 set fileId [NewUniqueId]
                 set fileTmp ${requestTmp}::${fileId}
-                SrmFile $fileTmp \
+                SrmFile create $fileTmp \
                     -fileState SRM_INVALID_PATH \
                     -SURL $SURL
                 lappend files $fileTmp
@@ -382,10 +381,11 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::class create SrmRequest
+    oo::define SrmRequest export variable
 
 # -------------------------------------------------------------------------
 
-    oo::define SrmRequest constructor {} {
+    oo::define SrmRequest constructor {args} {
         my variable requestState isSyncRequest queueSize
         my variable requestType requestToken connection
         my variable successFlag failureFlag fileDict
@@ -475,7 +475,7 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
-    oo::define SrmRequest method successCallback {result} {
+    oo::define SrmRequest method successCallback {} {
         my variable successFlag queueSize
         set successFlag 1
         incr queueSize -1
@@ -484,7 +484,7 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
-    oo::define SrmRequest method failureCallback {reason} {
+    oo::define SrmRequest method failureCallback {} {
         my variable failureFlag queueSize
         set failureFlag 1
         incr queueSize -1
@@ -509,13 +509,21 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::class create SrmFile
+    oo::define SrmFile export variable
 
 # -------------------------------------------------------------------------
 
-    oo::define SrmFile constructor {} {
+    oo::define SrmFile constructor {args} {
         my variable parent fileState submitTime lifeTime waitTime counter
         my variable depth fileSize SURL dstSURL TURL userName frontendService
         my variable finishTime
+        namespace path [list {*}[namespace path] ::srmlite::srm::server]
+
+        set lifeTime 7200
+        set waitTime 1
+        set counter 1
+        set depth 1
+        set fileSize 0
 
         foreach {param value} $args {
             if {$param eq "-parent"} {
@@ -567,7 +575,7 @@ namespace eval ::srmlite::srm::server {
 
     oo::define SrmFile method updateState {code} {
         my variable state faultString
-        variable resp
+        namespace upvar ::srmlite::srm::server resp resp
 
         foreach {retCode newState} $resp($state) {
             if {[string equal $retCode $code]} {
@@ -660,18 +668,20 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method srmLs {} {
-        my variable depth SURL userName frontendService state
+        my variable parent depth SURL userName frontendService state
 
         set state ls
+        $parent setFile $SURL [self]
         $frontendService process [list ls [self] $userName $depth $SURL]
     }
 
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method srmRm {} {
-        my variable SURL userName frontendService state
+        my variable parent SURL userName frontendService state
 
         set state rm
+        $parent setFile $SURL [self]
         $frontendService process [list rm [self] $userName $SURL]
     }
 
