@@ -424,7 +424,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   Tcl_CmdInfo cmdInfo;
   int cmdCounter;
 
-  Tcl_Channel chan;
+  Tcl_Channel channel;
   GssContext *context;
 
   OM_uint32 majorStatus, minorStatus;
@@ -435,8 +435,8 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
     return TCL_ERROR;
   }
 
-  chan = Tcl_GetChannel(interp, Tcl_GetStringFromObj(objv[1], NULL), NULL);
-  if(chan == (Tcl_Channel) NULL)
+  channel = Tcl_GetChannel(interp, Tcl_GetStringFromObj(objv[1], NULL), NULL);
+  if(channel == (Tcl_Channel) NULL)
   {
     Tcl_AppendResult(interp, "Failed to get channel", NULL);
     return TCL_ERROR;
@@ -445,7 +445,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   context = (GssContext *) ckalloc((unsigned int) sizeof(GssContext));
   memset(context, 0, sizeof(GssContext));
 
-  context->channel = Tcl_GetTopChannel(chan);
+  context->channel = channel;
   context->state = 0;
 
   context->gssName = GSS_C_NO_NAME;
