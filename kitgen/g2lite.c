@@ -78,7 +78,7 @@ static int G2liteObjCmdProc(ClientData clientData, Tcl_Interp *interp,
   if(objc != 2)
   {
     Tcl_WrongNumArgs(interp, 1, objv, "string");
-		return TCL_ERROR;
+    return TCL_ERROR;
   }
 
   inbuffer = Tcl_GetUnicodeFromObj(objv[1], &size);
