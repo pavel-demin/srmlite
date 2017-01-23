@@ -170,9 +170,9 @@ if {$threadOpt} {
 
 if {$tcl_version eq "8.4"} {
   lappend clifiles lib/tcl8@/http2.5 \
-            	   lib/tcl8@/ldAout.tcl \
-            	   lib/tcl8@/msgcat1.3 \
-            	   lib/tcl8@/tcltest2.2
+                   lib/tcl8@/ldAout.tcl \
+                   lib/tcl8@/msgcat1.3 \
+                   lib/tcl8@/tcltest2.2
 } else {
   lappend clifiles lib/tcl8 \
                    lib/tcl8@/clock.tcl \
@@ -300,7 +300,7 @@ proc mkzipfile {zipchan dst {comment {}}} {
 # copy file to vfs
 proc vfscopy {zf argv} {
   global versmap count cd
-  
+
   foreach f $argv {
     set dst [string map $versmap $f]
 

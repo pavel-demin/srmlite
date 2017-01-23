@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
   OM_uint32 majorStatus, minorStatus;
 
   gss_buffer_desc gssContextBuffer;
-  
+
   gss_ctx_id_t gssContext;
 
   globus_result_t result;
