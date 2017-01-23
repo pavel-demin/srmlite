@@ -44,7 +44,7 @@ load {} vfs
 load {} tdom
 load {} starfishLib
 load {} g2lite
-load {} gss
+load {} gssctx
 
 # map of proper version numbers to replace @ markers in paths given to vfscopy
 # this relies on having all necessary extensions already loaded at this point
@@ -53,7 +53,7 @@ set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   starfish1@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
                   g2lite0@ g2lite[package require g2lite] \
-                  gss_socket0@ gss_socket[package require gss::socket]]
+                  gssctx0@ gssctx[package require gssctx]]
 
 if {$debugOpt} {
   puts "Starting [info script]"
@@ -69,7 +69,7 @@ set tcl_library ../tcl/library
 source ../tcl/library/init.tcl ;# for tcl::CopyDirectory
 
 # Create package index files for the static extensions.
-set exts [list g2lite Tclx]
+set exts [list gssctx g2lite Tclx]
 foreach ext $exts {
   load {} $ext
   set dst [file join lib "[string tolower $ext][package provide $ext]" pkgIndex.tcl]
@@ -109,7 +109,7 @@ set clifiles {
   lib/starfish1@/misc.tcl
   lib/starfish1@/tree.tcl
   lib/g2lite0@/pkgIndex.tcl
-  lib/gss_socket0@/pkgIndex.tcl
+  lib/gssctx0@/pkgIndex.tcl
   lib/tcllib1.18/pkgIndex.tcl
   lib/tcllib1.18/asn
   lib/tcllib1.18/base64

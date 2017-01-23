@@ -15,7 +15,7 @@
 EXTDIR = ../../../../8.x
 STATIC = --disable-shared --enable-static
 OUTDIR = $(shell pwd)/build
-OBJ    = $(OUTDIR)/zvfs$O $(OUTDIR)/g2lite$O
+OBJ    = $(OUTDIR)/zvfs$O $(OUTDIR)/g2lite$O $(OUTDIR)/gssctx$O
 CLIOBJ ?= $(OBJ) $(OUTDIR)/tclAppInit$O
 TCLDIR = --with-tcl=$(OUTDIR)/lib --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR)
 STRIP ?= strip
@@ -33,8 +33,6 @@ export OPENSSL_LDFLAGS := -L$(OUTDIR)/lib
 GLOBUS_FLAVOR = gcc64
 GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts="--disable-shared --enable-static"
 
-GSS_OPTS = --disable-threads --enable-64bit --with-globus=$(OUTDIR)
-#GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
 TCL_OPTS = --disable-threads
 VFS_OPTS = --disable-threads
 TDOM_OPTS = --disable-threads
@@ -46,8 +44,7 @@ tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ cli
 
 kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
-	build/globus build/gss_socket \
-	build/tdom build/starfish \
+	build/globus build/tdom build/starfish \
 	build/tclx build/tcllib $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
@@ -55,7 +52,6 @@ kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
 	  build/lib/tdom0*/*tdom0*$A \
 	  build/lib/starfish1*/libstarfish1*$A \
 	  build/lib/tclx8*/libtclx8*$A \
-	  build/lib/gss_socket0*/libgss_socket0*$A \
 	  build/lib/*tclstub8*$A build/lib/*tcl8*$A \
 	  build/lib64/libglobus_gss_assist$A \
 	  build/lib64/libglobus_gssapi_gsi$A \
@@ -128,11 +124,6 @@ build/globus: build/tcl build/openssl
 	  sh ./configure $(GLOBUS_OPTS) && \
 	  $(MAKE) globus_gass_copy install
 
-build/gss_socket: build/tcl build/globus
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh ../../../../../gss_socket/configure $(STATIC) $(TCLDIR) $(GSS_OPTS) && \
-	  $(MAKE) install
-
 build/tdom: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/tdom/configure $(STATIC) $(TCLDIR) $(TDOM_OPTS) && \
@@ -176,6 +167,10 @@ $(OUTDIR)/zvfs$O: ../../zvfs.c
 
 $(OUTDIR)/g2lite$O: ../../g2lite.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
+
+$(OUTDIR)/gssctx$O: ../../gssctx.c
+	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
+	  -Ibuild/include/globus -Ibuild/include/globus/gcc64 -c $<
 
 $(OUTDIR)/tclAppInit$O: ../tcl/$(PLAT)/tclAppInit.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
