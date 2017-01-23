@@ -1,7 +1,7 @@
 package require log
 package require TclOO
 
-package require gss::socket
+package require gssctx
 
 package require srmlite::templates
 
@@ -121,7 +121,7 @@ namespace eval ::srmlite::http::server {
     oo::define HttpServer method destroy {} {
         my variable chan
 
-        catch {::close $chan}
+        catch {chan close $chan}
     }
 
 # -------------------------------------------------------------------------
@@ -135,7 +135,7 @@ namespace eval ::srmlite::http::server {
         namespace path [list {*}[namespace path] ::srmlite::http::server]
 
         set timeout 60000
-        set bufsize 32768
+        set bufsize 16384
         set reqleft 25
 
         foreach {param value} $args {
@@ -186,8 +186,8 @@ namespace eval ::srmlite::http::server {
     oo::define HttpConnection method setup {} {
         my variable chan bufsize
 
-        fconfigure $chan -blocking 0 -buffersize $bufsize -translation {auto crlf}
-        fileevent $chan readable [mymethod firstLine]
+        chan configure $chan -blocking 0 -buffersize $bufsize -translation {auto crlf}
+        chan event $chan readable [mymethod firstLine]
     }
 
 # -------------------------------------------------------------------------
@@ -197,7 +197,7 @@ namespace eval ::srmlite::http::server {
 
         upvar $var line
 
-        if {[catch {gets $chan line} readCount]} {
+        if {[catch {chan gets $chan line} readCount]} {
             my log error $readCount
             my log error {Broken connection fetching request}
             my done 1
@@ -205,7 +205,7 @@ namespace eval ::srmlite::http::server {
         }
 
         if {$readCount == -1} {
-            if {[eof $chan]} {
+            if {[chan eof $chan]} {
                 my log error {Broken connection fetching request}
                 my done 1
                 return -2
@@ -247,7 +247,7 @@ namespace eval ::srmlite::http::server {
     oo::define HttpConnection method firstLineDone {} {
         my variable chan
 
-        fileevent $chan readable [mymethod header]
+        chan event $chan readable [mymethod header]
     }
 
 # -------------------------------------------------------------------------
@@ -291,16 +291,16 @@ namespace eval ::srmlite::http::server {
             set count $mime(content-length)
             if {$version && [info exists mime(expect)]} {
                 if {[string equal $mime(expect) 100-continue]} {
-                    puts $chan {100 Continue HTTP/1.1\n}
-                    flush $chan
+                    chan puts $chan {100 Continue HTTP/1.1\n}
+                    chan flush $chan
                 } else {
                     my error 419 $mime(expect)
                     return
                 }
             }
             set postdata {}
-            fconfigure $chan -translation {binary crlf}
-            fileevent $chan readable [mymethod data]
+            chan configure $chan -translation {binary crlf}
+            chan event $chan readable [mymethod data]
         } elseif {$requiresBody($method)} {
             my error 411 {Confusing mime headers}
             return
@@ -314,21 +314,23 @@ namespace eval ::srmlite::http::server {
     oo::define HttpConnection method data {} {
         my variable chan mime postdata count
 
-        if {[eof $chan]} {
-            my log error {Broken connection reading POST data}
-            my done 1
-            return
-        } elseif {[catch {read $chan $count} block]} {
+        if {[catch {chan read $chan $count} block]} {
             my log error $block
             my log error {Error during read POST data}
             my done 1
             return
-        } else {
-            append postdata $block
-            set count [expr {$count - [string length $block]}]
-            if {$count == 0} {
-                my dataDone
-            }
+        }
+
+        if {[chan eof $chan]} {
+            my log error {Broken connection reading POST data}
+            my done 1
+            return
+        }
+
+        append postdata $block
+        set count [expr {$count - [string length $block]}]
+        if {$count == 0} {
+            my dataDone
         }
     }
 
@@ -344,7 +346,7 @@ namespace eval ::srmlite::http::server {
         my variable parent chan method url postdata query
         namespace upvar ::srmlite::http::server requiresBody requiresBody
 
-        fileevent $chan readable {}
+        chan event $chan readable {}
 
         set object [$parent findObject $url]
 
@@ -366,33 +368,34 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
-    oo::define HttpConnection method respond {result} {
+    oo::define HttpConnection method respond {message} {
         my variable chan reqleft version mime
 
-        fileevent $chan readable [mymethod firstLine]
-
-        puts $chan "HTTP/1.$version 200 Data follows"
-        puts $chan "Date: [my date [clock seconds]]"
-        puts $chan "Content-Type: text/xml; charset=utf-8"
-        puts $chan "Content-Length: [string length $result]"
+        append head "HTTP/1.$version 200 Data follows" \n
+        append head "Date: [my date [clock seconds]]" \n
+        append head "Content-Type: text/xml; charset=utf-8" \n
+        append head "Content-Length: [string length $message]" \n
 
         ## Should also close socket if recvd connection close header
         set close [expr {$reqleft == 0}]
 
         if {$close} {
-            puts $chan "Connection: close"
+            append head "Connection: close" \n
         } elseif {$version > 0 && [info exists mime(connection)]} {
             if {[string equal $mime(connection) Keep-Alive]} {
                 set close 0
-                puts $chan "Connection: Keep-Alive"
+                append head "Connection: Keep-Alive" \n
             }
         } else {
             set close 1
         }
 
-        puts $chan {}
-        puts $chan $result
-        flush $chan
+        catch {
+            chan configure $chan -translation {auto crlf}
+            chan event $chan readable [mymethod firstLine]
+            chan puts -nonewline $chan $head\n$message
+            chan flush $chan
+        }
 
         my done $close
         return
@@ -409,17 +412,17 @@ namespace eval ::srmlite::http::server {
         namespace upvar ::srmlite::http::server errorCodes errorCodes
 
         set message [srmErrorBody $code $errorCodes($code) $url]
-        append head "HTTP/1.$version $code $errorCodes($code)"  \n
-        append head "Date: [my date [clock seconds]]"  \n
-        append head "Connection: close"  \n
-        append head "Content-Length: [string length $message]"  \n
+        append head "HTTP/1.$version $code $errorCodes($code)" \n
+        append head "Date: [my date [clock seconds]]" \n
+        append head "Connection: close" \n
+        append head "Content-Length: [string length $message]" \n
 
         # Because there is an error condition, the socket may be "dead"
 
         catch {
-            fconfigure $chan -translation crlf
-            puts -nonewline $chan $head\n$message
-            flush $chan
+            chan configure $chan -translation {auto crlf}
+            chan puts -nonewline $chan $head\n$message
+            chan flush $chan
         } result
 
         my log error $code $errorCodes($code) $args $result
@@ -449,8 +452,8 @@ namespace eval ::srmlite::http::server {
         my variable chan
 
         catch {
-            fileevent $chan readable {}
-            ::close $chan
+            chan event $chan readable {}
+            chan close $chan
         }
     }
 
@@ -506,6 +509,92 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
+    oo::class create ChannelGss
+    oo::define ChannelGss variable chan context buffer
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss constructor {id} {
+        set chan $id
+        set context [gssctx $id]
+        chan configure $chan -blocking 0 -buffersize 16384 -translation {binary binary}
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss destructor {
+        $context destroy
+        chan close $chan
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss method callback {id} {
+        set code [catch {$context read} result]
+        switch -- $code {
+            0 {
+                set buffer $result
+                chan event $chan readable {}
+                chan postevent $id {read}
+            }
+            1 {
+                set buffer {}
+                chan event $chan readable {}
+                chan postevent $id {read}
+                return
+            }
+        }
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss method initialize {id mode} {
+        return {initialize finalize watch read write}
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss method finalize {id} {
+        my destroy
+    }
+
+# ---------------------------------------------------------------------
+
+    oo::define ChannelGss method watch {id events} {
+        if {"read" in $events} {
+            chan event $chan readable [mymethod callback $id]
+        } else {
+            chan event $chan readable {}
+        }
+    }
+
+# ---------------------------------------------------------------------
+
+    oo::define ChannelGss method read {id count} {
+        chan event $chan readable [mymethod callback $id]
+        return $buffer
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss method write {id bytes} {
+        $context write $bytes
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss method name {} {
+        $context name
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss method export {} {
+        $context export
+    }
+
+# -------------------------------------------------------------------------
+
     oo::class create HttpConnectionGss
     oo::define HttpConnectionGss superclass HttpConnection
 
@@ -513,6 +602,7 @@ namespace eval ::srmlite::http::server {
 
     oo::define HttpConnectionGss constructor {args} {
         my variable frontendService
+        namespace path [list {*}[namespace path] ::srmlite::http::server]
 
         set argsNext [list]
 
@@ -530,12 +620,15 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     oo::define HttpConnectionGss method setup {} {
-        my variable chan bufsize
-        if {[catch {gss::import $chan -server true} result]} {
-            my log error {Error during gssimport:} $result
+        my variable chan bufsize transform
+        chan configure $chan -blocking 0 -buffersize $bufsize -translation {binary binary} 
+        set transform [ChannelGss new $chan]
+        if {[catch {chan create {read write} $transform} result]} {
+            my log error {Error during connection setup:} $result
             my done 1
             return
         }
+        set chan $result
         next
     }
 
@@ -548,13 +641,13 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     oo::define HttpConnectionGss method authorization {} {
-        my variable frontendService chan
+        my variable frontendService chan transform
 
-        fileevent $chan readable {}
+        chan event $chan readable {}
 
-        my log notice {Distinguished name} [fconfigure $chan -gssname]
-        if {[catch {fconfigure $chan -gsscontext} result]} {
-            my log error {Error during gsscontext:} $result
+        my log notice {Distinguished name} [$transform name]
+        if {[catch {$transform export} result]} {
+            my log error {Error during context export:} $result
             my done 1
             return
         }
