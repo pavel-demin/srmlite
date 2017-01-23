@@ -13,7 +13,7 @@ $request variable requestState requestStateComment
         <details xsi:type="ns1:ArrayOfTMetaDataPathDetail">
 @@
 foreach file [$request getFiles] {
-    $file variable metadata fileState fileStateComment
+    $file variable metadata SURL fileState fileStateComment
     if {[info exists metadata]} {
         set stat [lindex $metadata 0]
         set permMode [lindex $stat 0]
