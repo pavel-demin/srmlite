@@ -1,46 +1,75 @@
-
 package require log
+package require TclOO
 
-package require XOTcl
+proc ::oo::Helpers::mymethod {method args} {
+  list [uplevel 1 {namespace which my}] $method {*}$args
+}
 
 namespace eval ::srmlite::frontend {
-    namespace import ::xotcl::*
 
-    Class FrontendService -parameter {
-        {in stdin}
-        {out stdout}
+# -------------------------------------------------------------------------
+
+    oo::class create FrontendService
+
+# -------------------------------------------------------------------------
+
+    oo::define FrontendService constructor {args} {
+        my variable in out
+
+        set in stdin
+        set out stdout
+
+        foreach {param value} $args {
+            if {$param eq "-in"} {
+                set in $value
+            } elseif {$param eq "-out"} {
+                set out $value
+            } else {
+                error "unsupported parameter $param"
+            }
+        }
+
+        chan configure $in -blocking false -buffering line
+        chan configure $out -blocking false -buffering line
+        chan event $in readable [mymethod GetInput]
     }
 
 # -------------------------------------------------------------------------
 
-    FrontendService instproc log {level args} {
+    oo::define FrontendService method log {level args} {
         log::log $level [join $args { }]
     }
 
-
 # -------------------------------------------------------------------------
 
-    FrontendService instproc init {} {
-        my instvar in out
-        fconfigure $in -blocking false -buffering line
-        fconfigure $out -blocking false -buffering line
-        fileevent $in readable [myproc GetInput]
-        next
+    oo::define FrontendService method process {arg} {
+        my variable out
+        chan puts $out $arg
     }
 
 # -------------------------------------------------------------------------
 
-    FrontendService instproc process {arg} {
-        puts [my out] $arg
-    }
+    oo::define FrontendService method GetInput {} {
+        my variable in
 
-# -------------------------------------------------------------------------
+        if {[catch {chan gets $in line} readCount]} {
+            my log error "Error during chan gets: $readCount"
+            my close
+            return -2
+        }
 
-    FrontendService instproc GetInput {} {
+        if {$readCount == -1} {
+            if {[chan eof $in]} {
+                my log error {Broken connection}
+                my close
+                return -2
+            } else {
+                my log warning {No full line available, retrying...}
+                return -1
+            }
+        }
 
-        variable permDict
-
-        if {[my getLine line] < 0} {
+        if {$readCount < 0} {
             return
         }
 
@@ -51,53 +80,28 @@ namespace eval ::srmlite::frontend {
         set obj [lindex $line 2]
         set output [lindex $line 3]
 
-        if {[Object isobject $obj]} {
+        if {[info object isa object $obj]} {
             after 0 [list $obj $prefix$state $output]
         }
     }
 
 # -------------------------------------------------------------------------
 
-    FrontendService instproc getLine {var} {
-        my upvar $var line
-        my instvar in
-
-        if {[catch {gets $in line} readCount]} {
-            my log error "Error during gets: $readCount"
-            my close
-            return -2
-        }
-
-        if {$readCount == -1} {
-            if {[eof $in]} {
-                my log error {Broken connection}
-                my close
-                return -2
-            } else {
-                my log warning {No full line available, retrying...}
-                return -1
-            }
-        }
-
-        return $readCount
-    }
-
-# -------------------------------------------------------------------------
-
-    FrontendService instproc close {} {
-        my instvar in
-        if {[my exists in]} {
+    oo::define FrontendService method close {} {
+        my variable in
+        if {[info exists in]} {
             catch {
-                fileevent $in readable {}
-                fileevent $in writable {}
-                ::close $in
+                chan event $in readable {}
+                chan event $in writable {}
+                chan close $in
                 unset in
             }
-    	}
+        }
     }
+
 # -------------------------------------------------------------------------
 
     namespace export FrontendService
 }
 
-package provide srmlite::frontend 0.1
+package provide srmlite::frontend 0.2

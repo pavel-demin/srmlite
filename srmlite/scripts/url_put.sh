@@ -6,8 +6,12 @@ fileDst="$2"
 
 dirDst=`dirname $fileDst`
 
-. ./url_common.sh
+. ./scripts/url_common.sh
 
 checkFileDst $fileDst $dirDst
 
-# touch $fileDst
+result=`./makeFile squirrel.config $fileDst`
+
+touch $result
+
+echo $result

@@ -15,7 +15,7 @@ namespace eval ::srmlite::utilities {
 
     variable logFileId
     set logFileId {}
-    
+
 # -------------------------------------------------------------------------
 
     variable uniqueId
@@ -98,7 +98,7 @@ namespace eval ::srmlite::utilities {
 
     proc ExtractOwnerMode {mode} {
         variable permDict
-	variable permArray
+        variable permArray
         set permMode [string map $permDict $mode]
         return $permArray([string index $permMode 0])
     }
@@ -107,7 +107,7 @@ namespace eval ::srmlite::utilities {
 
     proc ExtractGroupMode {mode} {
         variable permDict
-	variable permArray
+        variable permArray
         set permMode [string map $permDict $mode]
         return $permArray([string index $permMode 1])
     }
@@ -116,7 +116,7 @@ namespace eval ::srmlite::utilities {
 
     proc ExtractOtherMode {mode} {
         variable permDict
-	variable permArray
+        variable permArray
         set permMode [string map $permDict $mode]
         return $permArray([string index $permMode 2])
     }
@@ -178,7 +178,7 @@ namespace eval ::srmlite::utilities {
             log::log error $result
             return
         }
-    
+
         if {$result < 200000000} {
             return
         }
@@ -187,11 +187,11 @@ namespace eval ::srmlite::utilities {
         set channels [file channels $fid]
         if {![string equal $channels {}]} {
             close $fid
-    
+
             file rename -force $file $file.old
-    
+
             set fid [open $file w]
-            fconfigure $fid -blocking 0 -buffering line
+            chan configure $fid -blocking 0 -buffering line
             log::lvChannelForall $fid
             set logFileId $fid
         }
@@ -201,7 +201,7 @@ namespace eval ::srmlite::utilities {
 
     namespace export NewUniqueId IsLocalHost ExtractFileType ExtractOwnerMode \
         ExtractGroupMode ExtractOtherMode ExtractHostPortFile TransferHost \
-	ConvertSURL2TURL LogRotate
+        ConvertSURL2TURL LogRotate
 }
 
 package provide srmlite::utilities 0.1

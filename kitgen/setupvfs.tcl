@@ -40,26 +40,20 @@ if {[llength $argv] != 2} {
   exit 1
 }
 
-load {} zlib
 load {} vfs
-load {} sqlite3
-load {} xotcl
 load {} tdom
 load {} starfishLib
 load {} g2lite
-load {} gss
+load {} gssctx
 
 # map of proper version numbers to replace @ markers in paths given to vfscopy
 # this relies on having all necessary extensions already loaded at this point
 set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
-                  zlib1@ zlib[package require zlib] \
                   vfs1@ vfs[package require vfs] \
                   starfish1@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
-                  sqlite3@ sqlite[package require sqlite3] \
-                  xotcl1@ xotcl[package require XOTcl] \
                   g2lite0@ g2lite[package require g2lite] \
-                  gss_socket0@ gss_socket[package require gss::socket]]
+                  gssctx0@ gssctx[package require gssctx]]
 
 if {$debugOpt} {
   puts "Starting [info script]"
@@ -75,14 +69,13 @@ set tcl_library ../tcl/library
 source ../tcl/library/init.tcl ;# for tcl::CopyDirectory
 
 # Create package index files for the static extensions.
-set exts {g2lite XOTcl zlib Tclx}
+set exts [list gssctx g2lite Tclx]
 foreach ext $exts {
   load {} $ext
   set dst [file join lib "[string tolower $ext][package provide $ext]" pkgIndex.tcl]
   puts $dst
   set index($dst) "package ifneeded $ext [package provide $ext] {load {} [string tolower $ext]}"
 }
-set index(lib/sqlite[package provide sqlite3]/pkgIndex.tcl) "package ifneeded sqlite3 [package provide sqlite3] {load {} sqlite3}"
 
 set clifiles {
   boot.tcl
@@ -102,8 +95,6 @@ set clifiles {
   lib/vfs1@/vfslib.tcl
   lib/vfs1@/vfsUtils.tcl
   lib/vfs1@/zipvfs.tcl
-  lib/sqlite3@/pkgIndex.tcl
-  lib/xotcl1@/pkgIndex.tcl
   lib/tdom0@/pkgIndex.tcl
   lib/tdom0@/tdom.tcl
   lib/starfish1@/pkgIndex.tcl
@@ -118,19 +109,21 @@ set clifiles {
   lib/starfish1@/misc.tcl
   lib/starfish1@/tree.tcl
   lib/g2lite0@/pkgIndex.tcl
-  lib/gss_socket0@/pkgIndex.tcl
-  lib/zlib1@/pkgIndex.tcl
-  lib/tcllib1.16/pkgIndex.tcl
-  lib/tcllib1.16/asn
-  lib/tcllib1.16/base64
-  lib/tcllib1.16/comm
-  lib/tcllib1.16/cmdline
-  lib/tcllib1.16/fileutil
-  lib/tcllib1.16/ldap
-  lib/tcllib1.16/log
-  lib/tcllib1.16/math
-  lib/tcllib1.16/snit
-  lib/tcllib1.16/uri
+  lib/gssctx0@/pkgIndex.tcl
+  lib/tcllib1.18/pkgIndex.tcl
+  lib/tcllib1.18/asn
+  lib/tcllib1.18/base64
+  lib/tcllib1.18/comm
+  lib/tcllib1.18/cmdline
+  lib/tcllib1.18/csv
+  lib/tcllib1.18/fileutil
+  lib/tcllib1.18/ldap
+  lib/tcllib1.18/log
+  lib/tcllib1.18/math
+  lib/tcllib1.18/ooutil
+  lib/tcllib1.18/snit
+  lib/tcllib1.18/struct
+  lib/tcllib1.18/uri
   lib/tclx8.4/pkgIndex.tcl
   lib/tclx8.4/arrayprocs.tcl
   lib/tclx8.4/autoload.tcl

@@ -1,21 +1,13 @@
+package require log
 package require tdom
+package require TclOO
 
 package require srmlite::utilities
 package require srmlite::templates
-package require srmlite::notifier
-package require srmlite::gridftp
 package require srmlite::soap
 
-package require srmlite::srmv2::client
-
-package require XOTcl
-
-namespace eval ::srmlite::srmv2::server {
-    namespace import ::xotcl::*
-    namespace import ::srmlite::gridftp::*
-    namespace import ::srmlite::notifier::*
+namespace eval ::srmlite::srm::server {
     namespace import ::srmlite::utilities::*
-    namespace import ::srmlite::srmv2::client::*
 
 # -------------------------------------------------------------------------
 
@@ -23,39 +15,49 @@ namespace eval ::srmlite::srmv2::server {
     array set methods {
         srmPing srmPing
         srmLs srmLs
-        srmCopy srmCopy
         srmRm srmRm
         srmMkdir srmMkdir
+        srmRmdir srmRmdir
         srmPrepareToGet srmPrepareToGet
         srmPrepareToPut srmPrepareToPut
-        srmStatusOfCopyRequest srmStatusOfCopyRequest
         srmStatusOfGetRequest srmStatusOfGetRequest
         srmStatusOfPutRequest srmStatusOfPutRequest
         srmReleaseFiles srmReleaseFiles
         srmPutDone srmPutDone
         srmAbortFiles srmAbortFiles
+        srmAbortRequest srmAbortRequest
     }
 
 # -------------------------------------------------------------------------
 
-    Class Srmv2Manager -parameter {
-       {frontendService}
-       {cleanupService}
+    oo::class create SrmManager
+
+# -------------------------------------------------------------------------
+
+    oo::define SrmManager constructor {args} {
+        my variable frontendService cleanupService
+        namespace path [list {*}[namespace path] ::srmlite::srm::server]
+
+        foreach {param value} $args {
+            if {$param eq "-frontendService"} {
+                set frontendService $value
+            } elseif {$param eq "-cleanupService"} {
+                set cleanupService $value
+            } else {
+                error "unsupported parameter $param"
+            }
+        }
     }
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc init {} {
-    }
-
-# -------------------------------------------------------------------------
-
-    Srmv2Manager instproc process {connection input} {
+    oo::define SrmManager method process {connection input} {
         global errorInfo
-        variable methods
+        namespace upvar ::srmlite::srm::server methods methods
 
-        if {[$connection exists mime(soapaction)]} {
-            set action [$connection set mime(soapaction)]
+        set soapaction [info object namespace $connection]::mime(soapaction)
+        if {[info exists $soapaction]} {
+            set action [set $soapaction]
         } else {
             $connection error 411 {Confusing mime headers}
             return
@@ -108,28 +110,29 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc createRequest {connection requestType isSync SURLS {dstSURLS {}} {sizes {}} {certProxies {}} {depth 0}} {
+    oo::define SrmManager method createRequest {connection requestType isSync SURLS {dstSURLS {}} {sizes {}} {depth 0}} {
+        my variable frontendService cleanupService
 
         set requestId [NewUniqueId]
         set requestObj [self]::${requestId}
 
-        if {[my exists cleanupService]} {
-            [my cleanupService] addObject $requestObj
+        if {[info exists cleanupService]} {
+            $cleanupService addObject $requestObj
         }
 
         set submitTime [clock seconds]
 
-        SrmRequest $requestObj \
-	    -requestState SRM_REQUEST_QUEUED \
-	    -isSyncRequest $isSync \
+        SrmRequest create $requestObj \
+            -requestState SRM_REQUEST_QUEUED \
+            -isSyncRequest $isSync \
             -queueSize 0 \
             -requestType $requestType \
             -requestToken $requestId \
             -connection $connection
 
-        set userName [$connection set userName]
+        set userName [set [info object namespace $connection]::userName]
 
-        foreach SURL $SURLS dstSURL $dstSURLS size $sizes certProxy $certProxies {
+        foreach SURL $SURLS dstSURL $dstSURLS size $sizes {
 
             set fileId [NewUniqueId]
             set fileObj ${requestObj}::${fileId}
@@ -138,23 +141,18 @@ namespace eval ::srmlite::srmv2::server {
                 set size 0
             }
 
-            SrmFile $fileObj \
-                -callbackRecipient $requestObj \
-                -frontendService [my frontendService] \
+            SrmFile create $fileObj \
+                -parent $requestObj \
+                -frontendService $frontendService \
                 -fileState SRM_REQUEST_QUEUED \
                 -submitTime $submitTime \
                 -depth $depth \
                 -fileSize $size \
                 -SURL $SURL \
                 -dstSURL $dstSURL \
-                -userName $userName \
-                -certProxy $certProxy
+                -userName $userName
 
-            if {[string equal $certProxy {}]} {
-                $fileObj unset certProxy
-            }
-
-            $requestObj incr queueSize
+            incr [info object namespace $requestObj]::queueSize
 
             $fileObj $requestType
         }
@@ -166,38 +164,45 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmPing {connection argValues} {
+    oo::define SrmManager method srmPing {connection argValues} {
         $connection respond [srmPingResBody]
     }
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmLs {connection argValues} {
+    oo::define SrmManager method srmLs {connection argValues} {
         set depth 1
+
         if {[dict exists $argValues numOfLevels]} {
             set depth [dict get $argValues numOfLevels]
         }
 
         my createRequest $connection srmLs 1 \
            [dict get $argValues arrayOfSURLs] \
-           {} {} {} $depth
+           {} {} $depth
     }
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmRm {connection argValues} {
+    oo::define SrmManager method srmRm {connection argValues} {
         my createRequest $connection srmRm 1 [dict get $argValues arrayOfSURLs]
     }
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmMkdir {connection argValues} {
+    oo::define SrmManager method srmMkdir {connection argValues} {
         my createRequest $connection srmMkdir 1 [dict get $argValues SURL]
     }
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmPrepareToGet {connection argValues} {
+    oo::define SrmManager method srmRmdir {connection argValues} {
+        my createRequest $connection srmRmdir 1 [dict get $argValues SURL]
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define SrmManager method srmPrepareToGet {connection argValues} {
         set SURLS [list]
         foreach request [dict get $argValues arrayOfFileRequests] {
             lappend SURLS [dict get $request sourceSURL]
@@ -207,7 +212,7 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmPrepareToPut {connection argValues} {
+    oo::define SrmManager method srmPrepareToPut {connection argValues} {
         set SURLS [list]
         set sizes [list]
         foreach request [dict get $argValues arrayOfFileRequests] {
@@ -219,22 +224,8 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmStatusOfCopyRequest {connection argValues} {
+    oo::define SrmManager method srmStatusOfGetRequest {connection argValues} {
         set requestToken [dict get $argValues requestToken]
-
-        if {[dict exists $argValues arrayOfSourceSURLs]} {
-            my sendStatus $connection $requestToken srmStatusOfCopyRequest \
-               [dict get $argValues arrayOfSourceSURLs]
-        } else {
-            my sendStatus $connection $requestToken srmStatusOfCopyRequest {}
-        }
-    }
-
-# -------------------------------------------------------------------------
-
-    Srmv2Manager instproc srmStatusOfGetRequest {connection argValues} {
-        set requestToken [dict get $argValues requestToken]
-
         if {[dict exists $argValues arrayOfSourceSURLs]} {
             my sendStatus $connection $requestToken srmStatusOfGetRequest \
                [dict get $argValues arrayOfSourceSURLs]
@@ -245,9 +236,8 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmStatusOfPutRequest {connection argValues} {
+    oo::define SrmManager method srmStatusOfPutRequest {connection argValues} {
         set requestToken [dict get $argValues requestToken]
-
         if {[dict exists $argValues arrayOfTargetSURLs]} {
             my sendStatus $connection $requestToken srmStatusOfPutRequest \
                [dict get $argValues arrayOfTargetSURLs]
@@ -258,65 +248,42 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmReleaseFiles {connection argValues} {
+    oo::define SrmManager method srmReleaseFiles {connection argValues} {
         set requestToken [dict get $argValues requestToken]
         my releaseFiles $connection $requestToken srmReleaseFiles \
-	    Done [dict get $argValues arrayOfSURLs]
+            Done [dict get $argValues arrayOfSURLs]
     }
 
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmPutDone {connection argValues} {
+    oo::define SrmManager method srmPutDone {connection argValues} {
         set requestToken [dict get $argValues requestToken]
         my releaseFiles $connection $requestToken srmPutDone \
-	    Done [dict get $argValues arrayOfSURLs]
+            Done [dict get $argValues arrayOfSURLs]
     }
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmAbortFiles {connection argValues} {
+    oo::define SrmManager method srmAbortFiles {connection argValues} {
         set requestToken [dict get $argValues requestToken]
         my releaseFiles $connection $requestToken srmAbortFiles \
-	    Canceled [dict get $argValues arrayOfSURLs]
+            Canceled [dict get $argValues arrayOfSURLs]
     }
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc srmCopy {connection argValues} {
-        global errorInfo
-
-        set chan [$connection set chan]
-
-        set srcSURLS [list]
-        set dstSURLS [list]
-        set certProxies [list]
-
-        foreach request [dict get $argValues arrayOfFileRequests] {
-            lappend srcSURLS [dict get $request sourceSURL]
-            lappend dstSURLS [dict get $request targetSURL]
-            if {[catch {fconfigure $chan -gssexport} result]} {
-                $connection log error $result
-                foreach proxy $certProxies {
-                    $proxy destroy
-                }
-                $connection respond [srmFaultBody $result $errorInfo]
-                return
-            } else {
-                $connection log debug "new certProxy $result"
-                lappend certProxies $result
-            }
-        }
-
-        my createRequest $connection srmCopy 0 $srcSURLS $dstSURLS {} $certProxies
+    oo::define SrmManager method srmAbortRequest {connection argValues} {
+        set requestToken [dict get $argValues requestToken]
+        my releaseFiles $connection $requestToken srmAbortRequest Canceled {}
     }
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc sendStatus {connection requestToken requestType SURLS} {
-
+    oo::define SrmManager method sendStatus {connection requestToken requestType SURLS} {
         set requestObj [self]::${requestToken}
-        if {! [Object isobject $requestObj]} {
+
+        if {! [info object isa object $requestObj]} {
             $connection respond [srmStatusResBody $requestType SRM_INVALID_REQUEST {Unknown request token}]
             return
         }
@@ -324,7 +291,7 @@ namespace eval ::srmlite::srmv2::server {
         set currentTime [clock seconds]
 
         if {[llength $SURLS] == 0} {
-            set files [$requestObj info children]
+            set files [$requestObj getFiles]
 
             foreach fileObj $files {
                 $fileObj updateTime $currentTime
@@ -335,10 +302,11 @@ namespace eval ::srmlite::srmv2::server {
         }
 
         set requestId [NewUniqueId]
+        set requestState [set [info object namespace $requestObj]::requestState]
         set requestTmp [self]::${requestId}
 
-        SrmRequest $requestTmp \
-	    -requestState [$requestObj requestState] \
+        SrmRequest create $requestTmp \
+            -requestState $requestState \
             -requestType $requestType \
             -requestToken $requestId
 
@@ -346,14 +314,12 @@ namespace eval ::srmlite::srmv2::server {
         foreach SURL $SURLS {
             if {[$requestObj existsFile $SURL]} {
                 set fileObj [$requestObj getFile $SURL]
-
                 $fileObj updateTime $currentTime
-
                 lappend files $fileObj
             } else {
                 set fileId [NewUniqueId]
                 set fileTmp ${requestTmp}::${fileId}
-                SrmFile $fileTmp \
+                SrmFile create $fileTmp \
                     -fileState SRM_INVALID_PATH \
                     -SURL $SURL
                 lappend files $fileTmp
@@ -366,49 +332,42 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Srmv2Manager instproc releaseFiles {connection requestToken requestType explanation SURLS} {
+    oo::define SrmManager method releaseFiles {connection requestToken requestType explanation SURLS} {
 
         set requestObj [self]::${requestToken}
-        if {! [Object isobject $requestObj]} {
+        if {! [info object isa object $requestObj]} {
             $connection respond [srmStatusResBody $requestType SRM_INVALID_REQUEST {Unknown request token}]
             return
         }
 
         if {[llength $SURLS] == 0} {
-            set files [$requestObj info children]
-
+            set files [$requestObj getFiles]
             foreach fileObj $files {
-                $fileObj set fileState SRM_SUCCESS
-                $fileObj set fileStateComment $explanation
-                $fileObj abort
+                $fileObj abort $explanation
             }
-
             $connection respond [${requestType}ResBody $requestObj $files]
             return
         }
 
         set requestId [NewUniqueId]
+        set requestState [set [info object namespace $requestObj]::requestState]
         set requestTmp [self]::${requestId}
 
-        SrmRequest $requestTmp \
-	    -requestState [$requestObj requestState] \
+        SrmRequest create $requestTmp \
+            -requestState $requestState \
             -requestType $requestType \
             -requestToken $requestId
 
         set files [list]
         foreach SURL $SURLS {
-	    if {[$requestObj existsFile $SURL]} {
+            if {[$requestObj existsFile $SURL]} {
                 set fileObj [$requestObj getFile $SURL]
-
-                $fileObj set fileState SRM_SUCCESS
-                $fileObj set fileStateComment $explanation
-                $fileObj abort
-
+                $fileObj abort $explanation
                 lappend files $fileObj
-	    } else {
+            } else {
                 set fileId [NewUniqueId]
                 set fileTmp ${requestTmp}::${fileId}
-                SrmFile $fileTmp \
+                SrmFile create $fileTmp \
                     -fileState SRM_INVALID_PATH \
                     -SURL $SURL
                 lappend files $fileTmp
@@ -421,65 +380,94 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Class SrmRequest -superclass Notifier -parameter {
-        {requestState SRM_REQUEST_QUEUED}
-        {isSyncRequest 0}
-        {queueSize 0}
-        {requestType}
-        {requestToken}
-        {connection}
+    oo::class create SrmRequest
+    oo::define SrmRequest export variable
+
+# -------------------------------------------------------------------------
+
+    oo::define SrmRequest constructor {args} {
+        my variable requestState isSyncRequest queueSize
+        my variable requestType requestToken connection
+        my variable successFlag failureFlag fileDict
+
+        set requestState SRM_REQUEST_QUEUED
+        set isSyncRequest 0
+        set queueSize 0
+
+        set successFlag 0
+        set failureFlag 0
+        set fileDict [dict create]
+
+        foreach {param value} $args {
+            if {$param eq "-requestState"} {
+                set requestState $value
+            } elseif {$param eq "-isSyncRequest"} {
+                set isSyncRequest $value
+            } elseif {$param eq "-queueSize"} {
+                set queueSize $value
+            } elseif {$param eq "-requestType"} {
+                set requestType $value
+            } elseif {$param eq "-requestToken"} {
+                set requestToken $value
+            } elseif {$param eq "-connection"} {
+                set connection $value
+            } else {
+                error "unsupported parameter $param"
+            }
+        }
     }
 
 # -------------------------------------------------------------------------
 
-    SrmRequest instproc init {} {
-      my set successFlag 0
-      my set failureFlag 0
-      my set fileDict [dict create]
-      next
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmRequest instproc setFile {SURL obj} {
-        my instvar fileDict
+    oo::define SrmRequest method setFile {SURL obj} {
+        my variable fileDict
         dict set fileDict $SURL $obj
     }
 
 # -------------------------------------------------------------------------
 
-    SrmRequest instproc getFile {SURL} {
-        my instvar fileDict
+    oo::define SrmRequest method getFiles {} {
+        my variable fileDict
+        dict values $fileDict
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define SrmRequest method getFile {SURL} {
+        my variable fileDict
         dict get $fileDict $SURL
     }
 
 # -------------------------------------------------------------------------
 
-    SrmRequest instproc existsFile {SURL} {
-        my instvar fileDict
+    oo::define SrmRequest method existsFile {SURL} {
+        my variable fileDict
         dict exists $fileDict $SURL
     }
 
 # -------------------------------------------------------------------------
 
-    SrmRequest instproc updateState {} {
-        my instvar successFlag failureFlag connection
-        if {[my queueSize] > 0} {
-            my set requestState SRM_REQUEST_INPROGRESS
+    oo::define SrmRequest method updateState {} {
+        my variable requestState isSyncRequest queueSize
+        my variable requestType connection
+        my variable successFlag failureFlag
+
+        if {$queueSize > 0} {
+            set requestState SRM_REQUEST_INPROGRESS
             return
         }
 
         if {$successFlag && ! $failureFlag} {
-            my set requestState SRM_SUCCESS
+            set requestState SRM_SUCCESS
         } elseif {! $successFlag && $failureFlag} {
-            my set requestState SRM_FAILURE
+            set requestState SRM_FAILURE
         } else {
-            my set requestState SRM_PARTIAL_SUCCESS
+            set requestState SRM_PARTIAL_SUCCESS
         }
 
-        if {[my isSyncRequest]} {
-            if {[Object isobject $connection]} {
-                $connection respond [[my requestType]ResBody [self]]
+        if {$isSyncRequest} {
+            if {[info object isa object $connection]} {
+                $connection respond [${requestType}ResBody [self]]
             }
             my destroy
         }
@@ -487,17 +475,19 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    SrmRequest instproc successCallback {result} {
-        my set successFlag 1
-        my incr queueSize -1
+    oo::define SrmRequest method successCallback {} {
+        my variable successFlag queueSize
+        set successFlag 1
+        incr queueSize -1
         my updateState
     }
 
 # -------------------------------------------------------------------------
 
-    SrmRequest instproc failureCallback {reason} {
-        my set failureFlag 1
-        my incr queueSize -1
+    oo::define SrmRequest method failureCallback {} {
+        my variable failureFlag queueSize
+        set failureFlag 1
+        incr queueSize -1
         my updateState
     }
 # -------------------------------------------------------------------------
@@ -507,14 +497,9 @@ namespace eval ::srmlite::srmv2::server {
         ls        {Ready success Failed failure}
         rm        {Ready success Failed failure}
         mkdir     {Ready success Failed failure}
+        rmdir     {Ready success Failed failure}
         get       {Ready success Failed failure}
         put       {Ready success Failed failure}
-        copyPull  {Ready remoteGet Failed failure}
-        copyPush  {Ready remotePut Failed failure}
-        remoteGet {Ready pull Failed failure}
-        remotePut {Ready push Failed failure}
-        pull      {Ready getDone Failed abort}
-        push      {Ready putDone Failed abort}
         getDone   {Ready success}
         putDone   {Ready success}
         abort     {Ready success}
@@ -523,51 +508,79 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    Class SrmFile -superclass Notifier -parameter {
-        {fileState SRM_REQUEST_QUEUED}
-        {submitTime}
-        {lifeTime 7200}
-        {waitTime 1}
-        {counter 1}
-        {depth 1}
-        {fileSize 0}
-        {SURL}
-        {dstSURL}
-        {TURL}
-        {userName}
-        {certProxy}
-        {frontendService}
-    }
+    oo::class create SrmFile
+    oo::define SrmFile export variable
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc init {} {
-        my instvar submitTime finishTime lifeTime
-        if {[my exists submitTime]} {
+    oo::define SrmFile constructor {args} {
+        my variable parent fileState submitTime lifeTime waitTime counter
+        my variable depth fileSize SURL dstSURL TURL userName frontendService
+        my variable finishTime
+        namespace path [list {*}[namespace path] ::srmlite::srm::server]
+
+        set lifeTime 7200
+        set waitTime 1
+        set counter 1
+        set depth 1
+        set fileSize 0
+
+        foreach {param value} $args {
+            if {$param eq "-parent"} {
+                set parent $value
+            } elseif {$param eq "-fileState"} {
+                set fileState $value
+            } elseif {$param eq "-submitTime"} {
+                set submitTime $value
+            } elseif {$param eq "-lifeTime"} {
+                set lifeTime $value
+            } elseif {$param eq "-waitTime"} {
+                set waitTime $value
+            } elseif {$param eq "-counter"} {
+                set counter $value
+            } elseif {$param eq "-depth"} {
+                set depth $value
+            } elseif {$param eq "-fileSize"} {
+                set fileSize $value
+            } elseif {$param eq "-SURL"} {
+                set SURL $value
+            } elseif {$param eq "-dstSURL"} {
+                set dstSURL $value
+            } elseif {$param eq "-TURL"} {
+                set TURL $value
+            } elseif {$param eq "-userName"} {
+                set userName $value
+            } elseif {$param eq "-frontendService"} {
+                set frontendService $value
+            } else {
+                error "unsupported parameter $param"
+            }
+        }
+
+        if {[info exists submitTime]} {
             set finishTime [expr {$submitTime + $lifeTime}]
         } else {
             error {submitTime must be specified}
         }
-        next
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc log {level args} {
-        my instvar host
+    oo::define SrmFile method log {level args} {
+        my variable host
         log::log $level [join $args { }]
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc updateState {code} {
-        my instvar state faultString
-        variable resp
+    oo::define SrmFile method updateState {code} {
+        my variable state faultString
+        namespace upvar ::srmlite::srm::server resp resp
 
         foreach {retCode newState} $resp($state) {
             if {[string equal $retCode $code]} {
-	        my $newState
-    	        return
+                my $newState
+                return
             }
         }
 
@@ -577,354 +590,260 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc updateTime {currentTime} {
-        my instvar counter submitTime finishTime lifeTime waitTime
+    oo::define SrmFile method updateTime {currentTime} {
+        my variable fileState counter submitTime finishTime lifeTime waitTime
 
-	incr counter
+        incr counter
         set waitTime [expr {$counter / 4 * 5 + 1}]
 
         if {$lifeTime > 0} {
             set lifeTime [expr {$finishTime - $currentTime}]
             if {$lifeTime <= 0} {
                 set lifeTime 0
-                my set fileState SRM_FILE_LIFETIME_EXPIRED
+                set fileState SRM_FILE_LIFETIME_EXPIRED
             }
         }
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc failure {} {
+    oo::define SrmFile method notify {method} {
+        my variable parent
+
+        if {[info exists parent]} {
+            after 0 [list $parent $method]
+        }
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define SrmFile method success {} {
         my done
-        my notify failureCallback {}
+        my notify successCallback
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc success {} {
+    oo::define SrmFile method failure {} {
         my done
-        my notify successCallback {}
+        my notify failureCallback
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc remoteGet {} {
-        my instvar client certProxy SURL
+    oo::define SrmFile method getDone {} {
+        my variable fileState state
 
-        my set fileState SRM_REQUEST_INPROGRESS
-        my set state remoteGet
-
-	regexp {[^?]*} $SURL serviceURL
-        if {[catch {SrmClient new \
-            -childof [self] \
-            -certProxy $certProxy \
-            -serviceURL $serviceURL \
-            -SURL $SURL \
-            -callbackRecipient [self]} client]} {
-            my set fileState SRM_FAILURE
-            my set fileStateComment $client
-            my updateState Failed
-        }
-
-        $client get
+        set fileState SRM_SUCCESS
+        set state getDone
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc remotePut {} {
-        my instvar client certProxy dstSURL
-
-        my set fileState SRM_REQUEST_INPROGRESS
-        my set state remotePut
-
-        regexp {[^?]*} $dstSURL serviceURL
-        if {[catch {SrmClient new \
-            -childof [self] \
-            -certProxy $certProxy \
-            -serviceURL $serviceURL \
-            -SURL $dstSURL \
-            -callbackRecipient [self]} client]} {
-            my set fileState SRM_FAILURE
-            my set fileStateComment $client
-            my updateState Failed
-        }
-
-        $client put
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmFile instproc pull {} {
-        my instvar transfer certProxy TURL result
-
-        my set state pull
-
-        set transfer [GridFtpTransfer new \
-            -childof [self] \
-            -certProxy $certProxy \
-            -srcTURL $result \
-            -dstTURL $TURL \
-            -callbackRecipient [self]]
-
-       $transfer start
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmFile instproc push {} {
-        my instvar transfer certProxy TURL result
-
-        my set state push
-
-        set transfer [GridFtpTransfer new \
-            -childof [self] \
-            -certProxy $certProxy \
-            -srcTURL $TURL \
-            -dstTURL $result \
-            -callbackRecipient [self]]
-
-       $transfer start
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmFile instproc getDone {} {
-        my instvar client
-
-        my set fileState SRM_SUCCESS
-        my set state getDone
-
-        if {[my exists client]} {
-            $client getDone
-        }
-    }
-
-# -------------------------------------------------------------------------
-
-    SrmFile instproc putDone {} {
-        my instvar client
+    oo::define SrmFile method putDone {} {
+        my variable fileState state
 
         my set fileState SRM_SUCCESS
         my set state putDone
-
-        if {[my exists client]} {
-            $client putDone
-        }
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc abort {} {
-        my instvar state client transfer
+    oo::define SrmFile method abort {reason} {
+        my variable fileState fileStateComment state
 
-        if {[string equal $state abort]} {
-            return
-        }
-
-        my set state abort
-
-        if {[my exists transfer]} {
-            $transfer destroy
-            unset transfer
-        }
-
-        if {[my exists client]} {
-            $client cancel
-            $client abort
-        }
+        set fileState SRM_SUCCESS
+        set fileStateComment $reason
+        set state abort
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc done {} {
-        my instvar client transfer certProxy
+    oo::define SrmFile method done {} {
+        my variable state
 
-        my set state done
-
-        if {[my exists transfer]} {
-            $transfer destroy
-            unset transfer
-        }
-
-        if {[my exists client]} {
-            $client destroy
-            unset client
-        }
-
-        if {[my exists certProxy]} {
-            my log debug {destroy certProxy} $certProxy
-            if {[catch {$certProxy destroy} faultString]} {
-                my log error {Error during certProxy destroy:} $faultString
-            }
-            unset certProxy
-        }
+        set state done
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc srmLs {} {
-        my instvar userName depth SURL
+    oo::define SrmFile method srmLs {} {
+        my variable parent depth SURL userName frontendService state
 
-        my set state ls
-        [my frontendService] process [list ls [self] $userName $depth $SURL]
+        set state ls
+        $parent setFile $SURL [self]
+        $frontendService process [list ls [self] $userName $depth $SURL]
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc srmRm {} {
-        my instvar userName SURL
+    oo::define SrmFile method srmRm {} {
+        my variable parent SURL userName frontendService state
 
-        my set state rm
-        [my frontendService] process [list rm [self] $userName $SURL]
+        set state rm
+        $parent setFile $SURL [self]
+        $frontendService process [list rm [self] $userName $SURL]
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc srmMkdir {} {
-        my instvar userName SURL
+    oo::define SrmFile method srmMkdir {} {
+        my variable SURL userName frontendService state
 
-        my set state mkdir
-        [my frontendService] process [list mkdir [self] $userName $SURL]
+        set state mkdir
+        $frontendService process [list mkdir [self] $userName $SURL]
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc srmPrepareToGet {} {
-        my instvar userName SURL
+    oo::define SrmFile method srmRmdir {} {
+        my variable SURL userName frontendService state
 
-        my set state get
-        [my info parent] setFile $SURL [self]
-        [my frontendService] process [list get [self] $userName $SURL]
+        set state rmdir
+        $frontendService process [list rmdir [self] $userName $SURL]
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc srmPrepareToPut {} {
-        my instvar userName dstSURL
+    oo::define SrmFile method srmPrepareToGet {} {
+        my variable parent SURL userName frontendService state
 
-        my set state put
-        [my info parent] setFile $dstSURL [self]
-        [my frontendService] process [list put [self] $userName $dstSURL]
+        set state get
+        $parent setFile $SURL [self]
+        $frontendService process [list get [self] $userName $SURL]
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc srmCopy {} {
-        my instvar userName SURL dstSURL
+    oo::define SrmFile method srmPrepareToPut {} {
+        my variable parent dstSURL userName frontendService state
 
-        if {[IsLocalHost $SURL] && ![IsLocalHost $dstSURL]} {
-            my set state copyPush
-            [my info parent] setFile $SURL [self]
-            [my frontendService] process [list get [self] $userName $SURL]
-        } elseif {![IsLocalHost $SURL] && [IsLocalHost $dstSURL]} {
-            my set state copyPull
-            [my info parent] setFile $SURL [self]
-            [my frontendService] process [list put [self] $userName $dstSURL]
-        } else {
-            my set state failure
-            my set fileState SRM_NOT_SUPPORTED
-            my set fileStateComment {copying between two local or two remote SURLs is not allowed}
-            my updateState Failed
-        }
+        set state put
+        $parent setFile $dstSURL [self]
+        $frontendService process [list put [self] $userName $dstSURL]
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc lsSuccess {result} {
-        my set fileState SRM_SUCCESS
-        my set metadata $result
+    oo::define SrmFile method lsSuccess {result} {
+        my variable fileState metadata
+
+        set fileState SRM_SUCCESS
+        set metadata $result
         my updateState Ready
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc lsFailure {reason} {
-        my set fileState SRM_INVALID_PATH
-        my set fileStateComment [join $reason { }]
+    oo::define SrmFile method lsFailure {reason} {
+        my variable fileState fileStateComment
+
+        set fileState SRM_INVALID_PATH
+        set fileStateComment [join $reason { }]
         my updateState Failed
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc rmSuccess {result} {
-        my set fileState SRM_SUCCESS
+    oo::define SrmFile method rmSuccess {result} {
+        my variable fileState
+
+        set fileState SRM_SUCCESS
         my updateState Ready
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc rmFailure {reason} {
-        my set fileState SRM_FAILURE
-        my set fileStateComment [join $reason { }]
+    oo::define SrmFile method rmFailure {reason} {
+        my variable fileState fileStateComment
+
+        set fileState SRM_FAILURE
+        set fileStateComment [join $reason { }]
         my updateState Failed
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc mkdirSuccess {result} {
-        my set fileState SRM_SUCCESS
+    oo::define SrmFile method mkdirSuccess {result} {
+        my variable fileState
+
+        set fileState SRM_SUCCESS
         my updateState Ready
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc mkdirFailure {reason} {
-        my set fileState SRM_FAILURE
-        my set fileStateComment [join $reason { }]
+    oo::define SrmFile method mkdirFailure {reason} {
+        my variable fileState fileStateComment
+
+        set fileState SRM_FAILURE
+        set fileStateComment [join $reason { }]
         my updateState Failed
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc getSuccess {result} {
-        my set fileState SRM_FILE_PINNED
-        my set fileSize [lindex [lindex $result 0] 4]
-        my set TURL [ConvertSURL2TURL [my set SURL]]
+    oo::define SrmFile method rmdirSuccess {result} {
+        my variable fileState
+
+        set fileState SRM_SUCCESS
         my updateState Ready
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc getFailure {reason} {
-        my set fileState SRM_INVALID_PATH
-        my set fileStateComment [join $reason { }]
+    oo::define SrmFile method rmdirFailure {reason} {
+        my variable fileState fileStateComment
+
+        set fileState SRM_FAILURE
+        set fileStateComment [join $reason { }]
         my updateState Failed
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc putSuccess {result} {
-        my set fileState SRM_SPACE_AVAILABLE
-        my set TURL "gsiftp://[TransferHost]:2811/$result"
+    oo::define SrmFile method getSuccess {result} {
+        my variable fileSize SURL TURL fileState
+
+        set fileState SRM_FILE_PINNED
+        set fileSize [lindex [lindex $result 0] 4]
+        set TURL [ConvertSURL2TURL $SURL]
         my updateState Ready
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc putFailure {reason} {
-        my set fileState SRM_INVALID_PATH
-        my set fileStateComment [join $reason { }]
+    oo::define SrmFile method getFailure {reason} {
+        my variable fileState fileStateComment
+
+        set fileState SRM_INVALID_PATH
+        set fileStateComment [join $reason { }]
         my updateState Failed
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc successCallback {result} {
-        my set result $result
+    oo::define SrmFile method putSuccess {result} {
+        my variable TURL fileState
+
+        set fileState SRM_SPACE_AVAILABLE
+        set TURL "gsiftp://[TransferHost]:2811/$result"
         my updateState Ready
     }
 
 # -------------------------------------------------------------------------
 
-    SrmFile instproc failureCallback {reason} {
-        my set fileState SRM_FAILURE
-        my set fileStateComment $reason
+    oo::define SrmFile method putFailure {reason} {
+        my variable fileState fileStateComment
+
+        set fileState SRM_INVALID_PATH
+        set fileStateComment [join $reason { }]
         my updateState Failed
     }
 
 # -------------------------------------------------------------------------
 
-    namespace export Srmv2Manager
+    namespace export SrmManager
 }
 
-package provide srmlite::srmv2::server 0.1
+package provide srmlite::srm::server 0.2

@@ -1,8 +1,7 @@
-
 lappend auto_path .
 
-package require Tclx
 package require log
+package require Tclx
 
 package require srmlite::cfg
 
@@ -18,7 +17,7 @@ proc ::log::Puts {level text} {
         return
     }
 
-    puts $chan "$text"
+    chan puts $chan "$text"
     return
 }
 
@@ -62,8 +61,8 @@ proc frontend {pipein pipeout} {
 
     global Cfg
 
-    package require srmlite::httpd
-    namespace import ::srmlite::httpd::*
+    package require srmlite::http::server
+    namespace import ::srmlite::http::server::*
 
     package require srmlite::cleanup
     namespace import ::srmlite::cleanup::*
@@ -71,8 +70,8 @@ proc frontend {pipein pipeout} {
     package require srmlite::frontend
     namespace import ::srmlite::frontend::*
 
-    package require srmlite::srmv2::server
-    namespace import ::srmlite::srmv2::server::*
+    package require srmlite::srm::server
+    namespace import ::srmlite::srm::server::*
 
     package require srmlite::utilities
 
@@ -80,7 +79,7 @@ proc frontend {pipein pipeout} {
     id user $Cfg(frontendUser)
 
     set fid [open $Cfg(frontendLog) w]
-    fconfigure $fid -blocking 0 -buffering line
+    chan configure $fid -blocking 0 -buffering line
     log::lvChannelForall $fid
 
     set ::srmlite::utilities::logFileId $fid
@@ -89,28 +88,28 @@ proc frontend {pipein pipeout} {
     log::log notice "frontend started with pid [pid]"
 #    close $fid
 
-    CleanupService timeout \
-        -logFile $Cfg(frontendLog)
+    set timeout [CleanupService new \
+        -logFile $Cfg(frontendLog)]
 
-    FrontendService frontend \
+    set frontend [FrontendService new \
         -in [lindex $pipeout 0] \
-        -out [lindex $pipein 1]
+        -out [lindex $pipein 1]]
 
-    Srmv2Manager srmv2 \
-	-cleanupService timeout \
-	-frontendService frontend
+    set manager [SrmManager new \
+        -cleanupService $timeout \
+        -frontendService $frontend]
 
-    HttpServerGss server \
+    set server [HttpServerGss new \
         -port $Cfg(frontendPort) \
-	-frontendService frontend
+        -frontendService $frontend]
 
-    server exportObject -prefix /srm/managerv2 -object srmv2
+    $server exportObject $Cfg(srmPrefix) $manager
 
-    server start
+    $server start
 
-    log::log notice "starting httpd server on port $Cfg(frontendPort)"
+    log::log notice "starting http server on port $Cfg(frontendPort)"
 
-    SetupTimer 600 [list timeout timeout 600]
+    SetupTimer 600 [list $timeout timeout 600]
 
     # start the Tcl event loop
     vwait forever
@@ -128,7 +127,7 @@ proc backend {pipein pipeout} {
     global Cfg State
 
     set fid [open $Cfg(backendLog) w]
-    fconfigure $fid -blocking 0 -buffering line
+    chan configure $fid -blocking 0 -buffering line
     log::lvChannelForall $fid
 
     set ::srmlite::utilities::logFileId $fid
@@ -139,10 +138,10 @@ proc backend {pipein pipeout} {
     set State(in) [lindex $pipein 0]
     set State(out) [lindex $pipeout 1]
 
-    fconfigure $State(in) -blocking 0 -buffering line
-    fconfigure $State(out) -blocking 0 -buffering line
+    chan configure $State(in) -blocking 0 -buffering line
+    chan configure $State(out) -blocking 0 -buffering line
 
-    fileevent $State(in) readable [list GetInput $State(in)]
+    chan event $State(in) readable [list GetInput $State(in)]
 
     SetupTimer 600 [list Timeout 600]
 
@@ -233,8 +232,8 @@ signal unblock {INT QUIT TERM}
 signal -restart trap {INT QUIT TERM} shutdown
 
 
-set pipein [pipe]
-set pipeout [pipe]
+set pipein [chan pipe]
+set pipeout [chan pipe]
 
 switch [fork] {
     -1 {

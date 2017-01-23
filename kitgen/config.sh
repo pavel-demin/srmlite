@@ -51,7 +51,6 @@ cli=1
 
     SunOS)
       echo "LDFLAGS    = -ldl -lsocket -lnsl -lm"
-      echo "GUI_OPTS   = -lX11 -lXext"
       ;;
 
     *) echo "warning: no settings known for '$mach'" >&2 ;;
@@ -59,7 +58,7 @@ cli=1
 
   echo "PLAT       = $plat"
   case $plat in unix)
-    echo "PRIV       = install-private-headers" ;;
+    echo "PRIV       = install-headers install-private-headers" ;;
   esac
   case $b64 in 1)
     echo "TCL_OPTS   += --enable-64bit" 
