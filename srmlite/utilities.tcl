@@ -191,7 +191,7 @@ namespace eval ::srmlite::utilities {
             file rename -force $file $file.old
 
             set fid [open $file w]
-            fconfigure $fid -blocking 0 -buffering line
+            chan configure $fid -blocking 0 -buffering line
             log::lvChannelForall $fid
             set logFileId $fid
         }

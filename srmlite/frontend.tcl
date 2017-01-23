@@ -29,9 +29,9 @@ namespace eval ::srmlite::frontend {
             }
         }
 
-        fconfigure $in -blocking false -buffering line
-        fconfigure $out -blocking false -buffering line
-        fileevent $in readable [mymethod GetInput]
+        chan configure $in -blocking false -buffering line
+        chan configure $out -blocking false -buffering line
+        chan event $in readable [mymethod GetInput]
     }
 
 # -------------------------------------------------------------------------
@@ -44,7 +44,7 @@ namespace eval ::srmlite::frontend {
 
     oo::define FrontendService method process {arg} {
         my variable out
-        puts $out $arg
+        chan puts $out $arg
     }
 
 # -------------------------------------------------------------------------
@@ -52,14 +52,14 @@ namespace eval ::srmlite::frontend {
     oo::define FrontendService method GetInput {} {
         my variable in
 
-        if {[catch {gets $in line} readCount]} {
-            my log error "Error during gets: $readCount"
+        if {[catch {chan gets $in line} readCount]} {
+            my log error "Error during chan gets: $readCount"
             my close
             return -2
         }
 
         if {$readCount == -1} {
-            if {[eof $in]} {
+            if {[chan eof $in]} {
                 my log error {Broken connection}
                 my close
                 return -2
@@ -91,9 +91,9 @@ namespace eval ::srmlite::frontend {
         my variable in
         if {[info exists in]} {
             catch {
-                fileevent $in readable {}
-                fileevent $in writable {}
-                ::close $in
+                chan event $in readable {}
+                chan event $in writable {}
+                chan close $in
                 unset in
             }
         }

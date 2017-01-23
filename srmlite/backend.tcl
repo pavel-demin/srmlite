@@ -104,7 +104,7 @@ proc SubmitCommand {requestType uniqueId command} {
         set faultString "Failed to execute '$command'"
         log::log error $faultString
         log::log error $pipe
-        puts $State(out) [list Failure $requestType $uniqueId $faultString]
+        chan puts $State(out) [list Failure $requestType $uniqueId $faultString]
         return
     }
 
@@ -115,8 +115,8 @@ proc SubmitCommand {requestType uniqueId command} {
 
     set process [dict create requestType $requestType uniqueId $uniqueId output {}]
 
-    fconfigure $pipe -buffering none -blocking 0
-    fileevent $pipe readable [list GetCommandOutput $requestType $uniqueId $processId $pipe]
+    chan configure $pipe -buffering none -blocking 0
+    chan event $pipe readable [list GetCommandOutput $requestType $uniqueId $processId $pipe]
 }
 
 # -------------------------------------------------------------------------
@@ -125,14 +125,14 @@ proc GetCommandOutput {requestType uniqueId processId pipe} {
 
     upvar #0 SrmProcesses($processId) process
 
-    if {[catch {gets $pipe line} readCount]} {
+    if {[catch {chan gets $pipe line} readCount]} {
         log::log error $readCount
         Finish $requestType $uniqueId $processId $pipe
         return
     }
 
     if {$readCount == -1} {
-        if {[eof $pipe]} {
+        if {[chan eof $pipe]} {
             Finish $requestType $uniqueId $processId $pipe
         } else {
             log::log warning "\[process: $processId\] No full line available, retrying..."
@@ -156,8 +156,8 @@ proc Finish {requestType uniqueId processId pipe} {
     set hadError 0
     if {[file channels $pipe] != {}} {
 
-        fileevent $pipe readable {}
-        fconfigure $pipe -blocking 1
+        chan event $pipe readable {}
+        chan configure $pipe -blocking 1
 
         if {[catch {close $pipe} result]} {
             set hadError 1
@@ -187,7 +187,7 @@ proc Finish {requestType uniqueId processId pipe} {
         Start $line
     }
 
-    puts $State(out) [list $state $requestType $uniqueId $output]
+    chan puts $State(out) [list $state $requestType $uniqueId $output]
 }
 
 # -------------------------------------------------------------------------
@@ -209,14 +209,14 @@ proc GetInput {chan} {
 
     global State QueueSize QueueData
 
-    if {[catch {gets $chan line} readCount]} {
+    if {[catch {chan gets $chan line} readCount]} {
         log::log error $readCount
         close $chan
         return
     }
 
     if {$readCount == -1} {
-        if {[eof $chan]} {
+        if {[chan eof $chan]} {
             log::log error {Broken connection fetching request}
             close $chan
         } else {

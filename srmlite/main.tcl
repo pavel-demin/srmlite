@@ -17,7 +17,7 @@ proc ::log::Puts {level text} {
         return
     }
 
-    puts $chan "$text"
+    chan puts $chan "$text"
     return
 }
 
@@ -79,7 +79,7 @@ proc frontend {pipein pipeout} {
     id user $Cfg(frontendUser)
 
     set fid [open $Cfg(frontendLog) w]
-    fconfigure $fid -blocking 0 -buffering line
+    chan configure $fid -blocking 0 -buffering line
     log::lvChannelForall $fid
 
     set ::srmlite::utilities::logFileId $fid
@@ -127,7 +127,7 @@ proc backend {pipein pipeout} {
     global Cfg State
 
     set fid [open $Cfg(backendLog) w]
-    fconfigure $fid -blocking 0 -buffering line
+    chan configure $fid -blocking 0 -buffering line
     log::lvChannelForall $fid
 
     set ::srmlite::utilities::logFileId $fid
@@ -138,10 +138,10 @@ proc backend {pipein pipeout} {
     set State(in) [lindex $pipein 0]
     set State(out) [lindex $pipeout 1]
 
-    fconfigure $State(in) -blocking 0 -buffering line
-    fconfigure $State(out) -blocking 0 -buffering line
+    chan configure $State(in) -blocking 0 -buffering line
+    chan configure $State(out) -blocking 0 -buffering line
 
-    fileevent $State(in) readable [list GetInput $State(in)]
+    chan event $State(in) readable [list GetInput $State(in)]
 
     SetupTimer 600 [list Timeout 600]
 
@@ -232,8 +232,8 @@ signal unblock {INT QUIT TERM}
 signal -restart trap {INT QUIT TERM} shutdown
 
 
-set pipein [pipe]
-set pipeout [pipe]
+set pipein [chan pipe]
+set pipeout [chan pipe]
 
 switch [fork] {
     -1 {
