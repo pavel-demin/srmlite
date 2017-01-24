@@ -135,7 +135,7 @@ namespace eval ::srmlite::http::server {
         namespace path [list {*}[namespace path] ::srmlite::http::server]
 
         set timeout 60000
-        set bufsize 16384
+        set bufsize 16360
         set reqleft 25
 
         foreach {param value} $args {
@@ -517,7 +517,7 @@ namespace eval ::srmlite::http::server {
     oo::define ChannelGss constructor {id} {
         set chan $id
         set context [gssctx $id]
-        chan configure $chan -blocking 0 -buffersize 16384 -translation {binary binary}
+        chan configure $chan -blocking 0 -buffersize 16389 -translation {binary binary}
     }
 
 # -------------------------------------------------------------------------
@@ -541,7 +541,6 @@ namespace eval ::srmlite::http::server {
                 set buffer {}
                 chan event $chan readable {}
                 chan postevent $id {read}
-                return
             }
         }
     }
