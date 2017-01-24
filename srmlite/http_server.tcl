@@ -73,7 +73,7 @@ namespace eval ::srmlite::http::server {
             set myaddrOpts "-myaddr $addr"
         }
 
-        set chan [eval [list socket -server [mymethod accept]] $myaddrOpts $port]
+        set chan [socket -server [mymethod accept] {*}$myaddrOpts $port]
     }
 
 # -------------------------------------------------------------------------
@@ -362,43 +362,41 @@ namespace eval ::srmlite::http::server {
 
         } else {
             my error 404
-            return
         }
     }
 
 # -------------------------------------------------------------------------
 
-    oo::define HttpConnection method respond {message} {
+    oo::define HttpConnection method respond {result} {
         my variable chan reqleft version mime
 
-        append head "HTTP/1.$version 200 Data follows" \n
-        append head "Date: [my date [clock seconds]]" \n
-        append head "Content-Type: text/xml; charset=utf-8" \n
-        append head "Content-Length: [string length $message]" \n
+        chan configure $chan -translation {auto crlf}
 
-        ## Should also close socket if recvd connection close header
+        chan puts $chan "HTTP/1.$version 200 Data follows"
+        chan puts $chan "Date: [my date [clock seconds]]"
+        chan puts $chan "Content-Type: text/xml; charset=utf-8"
+        chan puts $chan "Content-Length: [string length $result]"
+
+        # Should also close socket if received connection close header
         set close [expr {$reqleft == 0}]
 
         if {$close} {
-            append head "Connection: close" \n
+            chan puts $chan "Connection: close"
         } elseif {$version > 0 && [info exists mime(connection)]} {
             if {[string equal $mime(connection) Keep-Alive]} {
                 set close 0
-                append head "Connection: Keep-Alive" \n
+                chan puts $chan "Connection: Keep-Alive"
             }
         } else {
             set close 1
         }
 
-        catch {
-            chan configure $chan -translation {auto crlf}
-            chan event $chan readable [mymethod firstLine]
-            chan puts -nonewline $chan $head\n$message
-            chan flush $chan
-        }
+        chan puts $chan {}
+        chan configure $chan -translation {auto binary}
+        chan puts $chan $result
+        chan flush $chan
 
         my done $close
-        return
     }
 
 # -------------------------------------------------------------------------
@@ -427,13 +425,12 @@ namespace eval ::srmlite::http::server {
 
         my log error $code $errorCodes($code) $args $result
         my done 1
-        return
     }
 
 # -------------------------------------------------------------------------
 
     oo::define HttpConnection method done {close} {
-        my variable reqleft afterId
+        my variable chan reqleft afterId
 
         after cancel $afterId
 
@@ -443,6 +440,8 @@ namespace eval ::srmlite::http::server {
             my destroy
         } else {
             my reset
+            chan configure $chan -translation {auto crlf}
+            chan event $chan readable [mymethod firstLine]
         }
     }
 
@@ -510,13 +509,14 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     oo::class create ChannelGss
-    oo::define ChannelGss variable chan context buffer
+    oo::define ChannelGss variable chan context ready buffer
 
 # -------------------------------------------------------------------------
 
     oo::define ChannelGss constructor {id} {
         set chan $id
         set context [gssctx $id]
+        set ready 0
         chan configure $chan -blocking 0 -buffersize 16389 -translation {binary binary}
     }
 
@@ -533,6 +533,7 @@ namespace eval ::srmlite::http::server {
         set code [catch {$context read} result]
         switch -- $code {
             0 {
+                set ready 1
                 set buffer $result
                 chan event $chan readable {}
                 chan postevent $id {read}
@@ -561,7 +562,11 @@ namespace eval ::srmlite::http::server {
 
     oo::define ChannelGss method watch {id events} {
         if {"read" in $events} {
-            chan event $chan readable [mymethod callback $id]
+            if {$ready} {
+                chan postevent $id {read}
+            } else {
+                chan event $chan readable [mymethod callback $id]
+            }
         } else {
             chan event $chan readable {}
         }
@@ -571,6 +576,7 @@ namespace eval ::srmlite::http::server {
 
     oo::define ChannelGss method read {id count} {
         chan event $chan readable [mymethod callback $id]
+        set ready 0
         return $buffer
     }
 
@@ -620,7 +626,6 @@ namespace eval ::srmlite::http::server {
 
     oo::define HttpConnectionGss method setup {} {
         my variable chan bufsize transform
-        chan configure $chan -blocking 0 -buffersize $bufsize -translation {binary binary} 
         set transform [ChannelGss new $chan]
         if {[catch {chan create {read write} $transform} result]} {
             my log error {Error during connection setup:} $result
@@ -628,22 +633,15 @@ namespace eval ::srmlite::http::server {
             return
         }
         set chan $result
-        next
-    }
-
-# -------------------------------------------------------------------------
-
-    oo::define HttpConnectionGss method dataDone {} {
-        my authorization
+        chan configure $chan -blocking 0 -buffersize $bufsize -translation {auto crlf}
+        chan event $chan readable [mymethod authorization]
     }
 
 # -------------------------------------------------------------------------
 
     oo::define HttpConnectionGss method authorization {} {
         my variable frontendService chan transform
-
         chan event $chan readable {}
-
         my log notice {Distinguished name} [$transform name]
         if {[catch {$transform export} result]} {
             my log error {Error during context export:} $result
@@ -656,10 +654,9 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     oo::define HttpConnectionGss method authorizationSuccess {name} {
-        my variable userName
-
+        my variable chan userName
         set userName $name
-        my dispatch
+        chan event $chan readable [mymethod firstLine]
     }
 
 # -------------------------------------------------------------------------
@@ -684,7 +681,7 @@ namespace eval ::srmlite::http::server {
         if {![regexp {\x81|%2\[eEfF]} $url]} {      ;# invalid /../, / or . ?
             return [decodeUrl $url]
         } else {
-            return {}
+            return
         }
     }
 
