@@ -42,7 +42,8 @@
 typedef struct GssContext {
   Tcl_Command token;
   Tcl_Channel channel;
-  int state;
+  unsigned char buffer[16389];
+  int length, state;
   gss_cred_id_t gssCredential;
   gss_cred_id_t gssCredProxy;
   gss_ctx_id_t gssContext;
@@ -55,13 +56,14 @@ typedef struct GssContext {
 /* ----------------------------------------------------------------- */
 
 static int
-GssHandshake(Tcl_Interp *interp, GssContext *context, unsigned char *bytes, int length)
+GssHandshake(Tcl_Interp *interp, GssContext *context)
 {
   OM_uint32 majorStatus, minorStatus;
   gss_buffer_desc bufferIn, bufferOut;
 
-  bufferIn.value = bytes;
-  bufferIn.length = length;
+  bufferIn.value = context->buffer;
+  bufferIn.length = context->length;
+  context->length = 0;
 
   majorStatus
     = gss_accept_sec_context(&minorStatus,              /* (out) minor status */
@@ -111,14 +113,15 @@ GssHandshake(Tcl_Interp *interp, GssContext *context, unsigned char *bytes, int 
 /* ----------------------------------------------------------------- */
 
 static int
-GssUnwrap(Tcl_Interp *interp, GssContext *context, unsigned char *bytes, int length)
+GssUnwrap(Tcl_Interp *interp, GssContext *context)
 {
   OM_uint32 majorStatus, minorStatus;
   gss_buffer_desc bufferIn, bufferOut;
   Tcl_Obj *result;
 
-  bufferIn.value = bytes;
-  bufferIn.length = length;
+  bufferIn.value = context->buffer;
+  bufferIn.length = context->length;
+  context->length = 0;
 
   majorStatus
     = gss_unwrap(&minorStatus,
@@ -146,13 +149,14 @@ GssUnwrap(Tcl_Interp *interp, GssContext *context, unsigned char *bytes, int len
 /* ----------------------------------------------------------------- */
 
 static int
-GssWrap(Tcl_Interp *interp, GssContext *context, unsigned char *bytes, int length)
+GssWrap(Tcl_Interp *interp, GssContext *context, Tcl_Obj *obj)
 {
   OM_uint32 majorStatus, minorStatus;
   gss_buffer_desc bufferIn, bufferOut;
   Tcl_Obj *result;
+  int length;
 
-  bufferIn.value = bytes;
+  bufferIn.value = Tcl_GetByteArrayFromObj(obj, &length);
   bufferIn.length = length;
 
   majorStatus
@@ -275,8 +279,6 @@ GssContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
 {
   int length;
   char *option;
-  unsigned char *bytes;
-  unsigned char buffer[16384];
   GssContext *context = (GssContext *) clientData;
   Tcl_Obj *result;
 
@@ -295,29 +297,51 @@ GssContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
       Tcl_WrongNumArgs(interp, 1, objv, "read");
       return TCL_ERROR;
     }
-    if(Tcl_ReadRaw(context->channel, buffer, 5) != 5)
+    if(context->length < 5)
     {
-      Tcl_AppendResult(interp, "End of file", NULL);
-      return TCL_ERROR;
+      context->length += Tcl_ReadRaw(context->channel, context->buffer + context->length, 5 - context->length);
+      if(context->length < 5)
+      {
+        if(Tcl_Eof(context->channel))
+        {
+          Tcl_AppendResult(interp, "Failed to read packet length", NULL);
+          return TCL_ERROR;
+        }
+        else
+        {
+          return 5;
+        }
+      }
     }
-    length = ((((int) buffer[3]) << 8) | ((int) buffer[4]));
-    if(length > 16379)
+    length = (((int) context->buffer[3]) << 8 | ((int) context->buffer[4])) + 5;
+    if(length < 5 || length > 16389)
     {
       Tcl_AppendResult(interp, "Invalid packet length", NULL);
       return TCL_ERROR;
     }
-    if(Tcl_ReadRaw(context->channel, buffer + 5, length) != length)
+    if(context->length < length)
     {
-      Tcl_AppendResult(interp, "End of file", NULL);
-      return TCL_ERROR;
+      context->length += Tcl_ReadRaw(context->channel, context->buffer + context->length, length - context->length);
+      if(context->length < length)
+      {
+        if(Tcl_Eof(context->channel))
+        {
+          Tcl_AppendResult(interp, "Failed to read packet length", NULL);
+          return TCL_ERROR;
+        }
+        else
+        {
+          return 5;
+        }
+      }
     }
     if(context->state == 0)
     {
-      return GssHandshake(interp, context, buffer, length + 5);
+      return GssHandshake(interp, context);
     }
     else
     {
-      return GssUnwrap(interp, context, buffer, length + 5);
+      return GssUnwrap(interp, context);
     }
   }
   else if(strcmp(option, "write") == 0)
@@ -327,8 +351,7 @@ GssContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
       Tcl_WrongNumArgs(interp, 1, objv, "write data");
       return TCL_ERROR;
     }
-    bytes = Tcl_GetByteArrayFromObj(objv[2], &length);
-    return GssWrap(interp, context, bytes, length);
+    return GssWrap(interp, context, objv[2]);
   }
   else if(strcmp(option, "name") == 0)
   {
@@ -446,6 +469,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
   memset(context, 0, sizeof(GssContext));
 
   context->channel = channel;
+  context->length = 0;
   context->state = 0;
 
   context->gssName = GSS_C_NO_NAME;
