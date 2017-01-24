@@ -15,6 +15,7 @@ namespace eval ::srmlite::cleanup {
 
     oo::define CleanupService constructor {args} {
         my variable logFile objectDict
+        namespace path [list {*}[namespace path] ::srmlite::cleanup]
 
         foreach {param value} $args {
             if {$param eq "-logFile"} {
