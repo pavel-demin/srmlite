@@ -419,6 +419,15 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
+    oo::define SrmRequest destructor {
+        my variable fileDict
+        foreach fileObj [dict values $fileDict] {
+            $fileObj destroy
+        }
+    }
+
+# -------------------------------------------------------------------------
+
     oo::define SrmRequest method setFile {SURL obj} {
         my variable fileDict
         dict set fileDict $SURL $obj
@@ -557,6 +566,10 @@ namespace eval ::srmlite::srm::server {
             }
         }
 
+        if {[info exists parent] && [info exists SURL]} {
+            $parent setFile $SURL [self]
+        }
+
         if {[info exists submitTime]} {
             set finishTime [expr {$submitTime + $lifeTime}]
         } else {
@@ -671,7 +684,6 @@ namespace eval ::srmlite::srm::server {
         my variable parent depth SURL userName frontendService state
 
         set state ls
-        $parent setFile $SURL [self]
         $frontendService process [list ls [self] $userName $depth $SURL]
     }
 
@@ -681,7 +693,6 @@ namespace eval ::srmlite::srm::server {
         my variable parent SURL userName frontendService state
 
         set state rm
-        $parent setFile $SURL [self]
         $frontendService process [list rm [self] $userName $SURL]
     }
 
@@ -709,7 +720,6 @@ namespace eval ::srmlite::srm::server {
         my variable parent SURL userName frontendService state
 
         set state get
-        $parent setFile $SURL [self]
         $frontendService process [list get [self] $userName $SURL]
     }
 
@@ -719,7 +729,6 @@ namespace eval ::srmlite::srm::server {
         my variable parent dstSURL userName frontendService state
 
         set state put
-        $parent setFile $dstSURL [self]
         $frontendService process [list put [self] $userName $dstSURL]
     }
 
