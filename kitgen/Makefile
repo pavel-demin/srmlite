@@ -8,8 +8,8 @@ OPENSSL_URL  = http://www.openssl.org/source/openssl-1.0.2j.tar.gz
 GLOBUS_SRC   = gt5.2.5-all-source-installer
 GLOBUS_URL   = http://toolkit.globus.org/ftppub/gt5/5.2/5.2.5/installers/src/$(GLOBUS_SRC).tar.gz
 
-TCL_CVS      = :pserver:anonymous@tcl.cvs.sourceforge.net:/cvsroot/tcl
 VFS_CVS      = :pserver:anonymous@tclvfs.cvs.sourceforge.net:/cvsroot/tclvfs
+TCLX_CVS     = :pserver:anonymous@tclx.cvs.sourceforge.net:/cvsroot/tclx
 
 unspecified-target:
 
@@ -64,7 +64,7 @@ untar:
 	  mv xotcl-1.6.8 xotcl && \
 	  mv starfish-1.0/src/starfish ./ && \
 	  mv starfish-1.0/tcl starfish/ && \
-          mv openssl-1.0.0r openssl && \
+          mv openssl-1.0.2j openssl && \
           mv $(GLOBUS_SRC) globus && \
 	  patch -p 0 < ../patches/globus-export_sec_context.patch && \
 	  patch -p 0 < ../patches/starfish-noyp.patch && rm -rf starfish-1.0
