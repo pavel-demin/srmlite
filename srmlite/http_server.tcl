@@ -1,13 +1,12 @@
-package require gss::socket
-
-package require srmlite::notifier
-package require srmlite::templates
-
+package require log
 package require XOTcl
 
-namespace eval ::srmlite::httpd {
+package require gss::socket
+
+package require srmlite::templates
+
+namespace eval ::srmlite::http::server {
     namespace import ::xotcl::*
-    namespace import ::srmlite::notifier::*
 
 # -------------------------------------------------------------------------
 
@@ -66,7 +65,7 @@ namespace eval ::srmlite::httpd {
 	    set myaddrOpts "-myaddr $addr"
         }
 
-        set chan [eval [list socket -server [myproc accept]] $myaddrOpts $port]
+        set chan [socket -server [myproc accept] {*}$myaddrOpts $port]
 
     }
 
@@ -573,4 +572,4 @@ namespace eval ::srmlite::httpd {
      namespace export HttpServer HttpServerGss
 }
 
-package provide srmlite::httpd 0.1
+package provide srmlite::http::server 0.1
