@@ -101,7 +101,7 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
-    SrmManager instproc createRequest {connection requestType isSync SURLS {dstSURLS {}} {sizes {}} {certProxies {}} {depth 0}} {
+    SrmManager instproc createRequest {connection requestType isSync SURLS {dstSURLS {}} {sizes {}} {depth 0}} {
 
         set requestId [NewUniqueId]
         set requestObj [self]::${requestId}
@@ -167,7 +167,7 @@ namespace eval ::srmlite::srm::server {
 
         my createRequest $connection srmLs 1 \
            [dict get $argValues arrayOfSURLs] \
-           {} {} {} $depth
+           {} {} $depth
     }
 
 # -------------------------------------------------------------------------
