@@ -185,7 +185,7 @@ namespace eval ::srmlite::utilities {
 
         set fid $logFileId
         set channels [file channels $fid]
-        if {![string equal $channels {}]} {
+        if {[string length $channels] > 0} {
             close $fid
 
             file rename -force $file $file.old
