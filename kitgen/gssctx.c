@@ -80,7 +80,7 @@ GssHandshake(Tcl_Interp *interp, GssContext *context)
 
   if(majorStatus & GSS_S_CONTINUE_NEEDED)
   {
-    Tcl_WriteRaw(context->channel, bufferOut.value, bufferOut.length);
+    Tcl_Write(context->channel, bufferOut.value, bufferOut.length);
     Tcl_Flush(context->channel);
     majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
     return 5;
@@ -94,7 +94,7 @@ GssHandshake(Tcl_Interp *interp, GssContext *context)
                            context->gssName,
                            &context->gssNameBuf,
                            NULL);
-      Tcl_WriteRaw(context->channel, bufferOut.value, bufferOut.length);
+      Tcl_Write(context->channel, bufferOut.value, bufferOut.length);
       Tcl_Flush(context->channel);
       majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
       context->state = 1;
@@ -169,7 +169,7 @@ GssWrap(Tcl_Interp *interp, GssContext *context, Tcl_Obj *obj)
 
   if(majorStatus == GSS_S_COMPLETE)
   {
-    Tcl_WriteRaw(context->channel, bufferOut.value, bufferOut.length);
+    Tcl_Write(context->channel, bufferOut.value, bufferOut.length);
     Tcl_Flush(context->channel);
     majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
     result = Tcl_NewIntObj(length);
@@ -299,7 +299,7 @@ GssContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
     }
     if(context->length < 5)
     {
-      context->length += Tcl_ReadRaw(context->channel, context->buffer + context->length, 5 - context->length);
+      context->length += Tcl_Read(context->channel, context->buffer + context->length, 5 - context->length);
       if(context->length < 5)
       {
         if(Tcl_Eof(context->channel))
@@ -321,7 +321,7 @@ GssContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
     }
     if(context->length < length)
     {
-      context->length += Tcl_ReadRaw(context->channel, context->buffer + context->length, length - context->length);
+      context->length += Tcl_Read(context->channel, context->buffer + context->length, length - context->length);
       if(context->length < length)
       {
         if(Tcl_Eof(context->channel))
