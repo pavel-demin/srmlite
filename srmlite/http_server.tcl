@@ -123,7 +123,7 @@ namespace eval ::srmlite::http::server {
         {chan}
         {addr}
         {port}
-        {timeout 60000}
+        {timeout 300000}
         {bufsize 32768}
         {reqleft 25}
     }
@@ -345,7 +345,8 @@ namespace eval ::srmlite::http::server {
     HttpConnection instproc respond {result} {
         my instvar chan version reqleft mime
 
-        fileevent [my set chan] readable [myproc firstLine]
+        fconfigure $chan -translation {auto crlf}
+        fileevent $chan readable [myproc firstLine]
 
         puts $chan "HTTP/1.$version 200 Data follows"
         puts $chan "Date: [my date [clock seconds]]"
@@ -394,7 +395,7 @@ namespace eval ::srmlite::http::server {
         # Because there is an error condition, the socket may be "dead"
 
         catch {
-            fconfigure $chan -translation crlf
+            fconfigure $chan -translation {auto crlf}
             puts -nonewline $chan $head\n$message
             flush $chan
         } result
