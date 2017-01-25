@@ -134,7 +134,7 @@ namespace eval ::srmlite::http::server {
         my variable parent chan addr port timeout bufsize reqleft
         namespace path [list {*}[namespace path] ::srmlite::http::server]
 
-        set timeout 600000
+        set timeout 900000
         set bufsize 16360
         set reqleft 25
 
@@ -604,6 +604,7 @@ namespace eval ::srmlite::http::server {
 
     oo::class create HttpConnectionGss
     oo::define HttpConnectionGss superclass HttpConnection
+    oo::define HttpConnectionGss export variable
 
 # -------------------------------------------------------------------------
 

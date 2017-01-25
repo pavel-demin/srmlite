@@ -55,9 +55,10 @@ namespace eval ::srmlite::srm::server {
         global errorInfo
         namespace upvar ::srmlite::srm::server methods methods
 
-        set soapaction [info object namespace $connection]::mime(soapaction)
-        if {[info exists $soapaction]} {
-            set action [set $soapaction]
+        $connection variable mime
+
+        if {[info exists mime(soapaction)]} {
+            set action $mime(soapaction)
         } else {
             $connection error 411 {Confusing mime headers}
             return
@@ -113,6 +114,8 @@ namespace eval ::srmlite::srm::server {
     oo::define SrmManager method createRequest {connection requestType isSync SURLS {dstSURLS {}} {sizes {}} {depth 0}} {
         my variable frontendService cleanupService
 
+        $connection variable userName
+
         set requestId [NewUniqueId]
         set requestObj [self]::${requestId}
 
@@ -130,7 +133,7 @@ namespace eval ::srmlite::srm::server {
             -requestToken $requestId \
             -connection $connection
 
-        set userName [set [info object namespace $connection]::userName]
+        $requestObj variable queueSize
 
         foreach SURL $SURLS dstSURL $dstSURLS size $sizes {
 
@@ -152,7 +155,7 @@ namespace eval ::srmlite::srm::server {
                 -dstSURL $dstSURL \
                 -userName $userName
 
-            incr [info object namespace $requestObj]::queueSize
+            incr queueSize
 
             $fileObj $requestType
         }
@@ -301,8 +304,9 @@ namespace eval ::srmlite::srm::server {
             return
         }
 
+        $requestObj variable requestState
+
         set requestId [NewUniqueId]
-        set requestState [set [info object namespace $requestObj]::requestState]
         set requestTmp [self]::${requestId}
 
         SrmRequest create $requestTmp \
@@ -349,8 +353,9 @@ namespace eval ::srmlite::srm::server {
             return
         }
 
+        $requestObj variable requestState
+
         set requestId [NewUniqueId]
-        set requestState [set [info object namespace $requestObj]::requestState]
         set requestTmp [self]::${requestId}
 
         SrmRequest create $requestTmp \
