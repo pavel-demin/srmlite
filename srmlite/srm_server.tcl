@@ -375,7 +375,7 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
-    Class SrmRequest -superclass Notifier -parameter {
+    Class SrmRequest -parameter {
         {requestState SRM_REQUEST_QUEUED}
         {isSyncRequest 0}
         {queueSize 0}
@@ -390,7 +390,6 @@ namespace eval ::srmlite::srm::server {
       my set successFlag 0
       my set failureFlag 0
       my set fileDict [dict create]
-      next
     }
 
 # -------------------------------------------------------------------------
@@ -441,7 +440,7 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
-    SrmRequest instproc successCallback {result} {
+    SrmRequest instproc successCallback {} {
         my set successFlag 1
         my incr queueSize -1
         my updateState
@@ -449,7 +448,7 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
-    SrmRequest instproc failureCallback {reason} {
+    SrmRequest instproc failureCallback {} {
         my set failureFlag 1
         my incr queueSize -1
         my updateState
@@ -470,7 +469,7 @@ namespace eval ::srmlite::srm::server {
 
 # -------------------------------------------------------------------------
 
-    Class SrmFile -superclass Notifier -parameter {
+    Class SrmFile -parameter {
         {fileState SRM_REQUEST_QUEUED}
         {submitTime}
         {lifeTime 7200}
@@ -494,7 +493,6 @@ namespace eval ::srmlite::srm::server {
         } else {
             error {submitTime must be specified}
         }
-        next
     }
 
 # -------------------------------------------------------------------------
@@ -728,4 +726,4 @@ namespace eval ::srmlite::srm::server {
     namespace export SrmManager
 }
 
-package provide srmlite::srm::server 0.1
+package provide srmlite::srm::server 0.2
