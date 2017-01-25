@@ -13,7 +13,7 @@ dirDst=`dirname $fileDst`
 proto="gsiftp"
 port=2811
 
-. ./url_common.sh
+. ./scripts/url_common.sh
 
 checkCertProxy $certProxy
 
