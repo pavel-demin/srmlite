@@ -26,6 +26,7 @@ namespace eval ::srmlite::srmv2::server {
         srmCopy srmCopy
         srmRm srmRm
         srmMkdir srmMkdir
+        srmRmdir srmRmdir
         srmPrepareToGet srmPrepareToGet
         srmPrepareToPut srmPrepareToPut
         srmStatusOfCopyRequest srmStatusOfCopyRequest
@@ -34,6 +35,7 @@ namespace eval ::srmlite::srmv2::server {
         srmReleaseFiles srmReleaseFiles
         srmPutDone srmPutDone
         srmAbortFiles srmAbortFiles
+        srmAbortRequest srmAbortRequest
     }
 
 # -------------------------------------------------------------------------
@@ -197,6 +199,13 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
+    Srmv2Manager instproc srmRmdir {connection argValues} {
+        my createRequest $connection srmRmdir 1 [dict get $argValues SURL]
+    }
+
+
+# -------------------------------------------------------------------------
+
     Srmv2Manager instproc srmPrepareToGet {connection argValues} {
         set SURLS [list]
         foreach request [dict get $argValues arrayOfFileRequests] {
@@ -279,6 +288,13 @@ namespace eval ::srmlite::srmv2::server {
         set requestToken [dict get $argValues requestToken]
         my releaseFiles $connection $requestToken srmAbortFiles \
 	    Canceled [dict get $argValues arrayOfSURLs]
+    }
+
+# -------------------------------------------------------------------------
+
+    Srmv2Manager instproc srmAbortRequest {connection argValues} {
+        set requestToken [dict get $argValues requestToken]
+        my releaseFiles $connection $requestToken srmAbortRequest Canceled {}
     }
 
 # -------------------------------------------------------------------------
@@ -507,6 +523,7 @@ namespace eval ::srmlite::srmv2::server {
         ls        {Ready success Failed failure}
         rm        {Ready success Failed failure}
         mkdir     {Ready success Failed failure}
+        rmdir     {Ready success Failed failure}
         get       {Ready success Failed failure}
         put       {Ready success Failed failure}
         copyPull  {Ready remoteGet Failed failure}
@@ -789,6 +806,15 @@ namespace eval ::srmlite::srmv2::server {
 
 # -------------------------------------------------------------------------
 
+    SrmFile instproc srmRmdir {} {
+        my instvar userName SURL
+
+        my set state rmdir
+        [my frontendService] process [list rmdir [self] $userName $SURL]
+    }
+
+# -------------------------------------------------------------------------
+
     SrmFile instproc srmPrepareToGet {} {
         my instvar userName SURL
 
@@ -869,6 +895,21 @@ namespace eval ::srmlite::srmv2::server {
 # -------------------------------------------------------------------------
 
     SrmFile instproc mkdirFailure {reason} {
+        my set fileState SRM_FAILURE
+        my set fileStateComment [join $reason { }]
+        my updateState Failed
+    }
+
+# -------------------------------------------------------------------------
+
+    SrmFile instproc rmdirSuccess {result} {
+        my set fileState SRM_SUCCESS
+        my updateState Ready
+    }
+
+# -------------------------------------------------------------------------
+
+    SrmFile instproc rmdirFailure {reason} {
         my set fileState SRM_FAILURE
         my set fileStateComment [join $reason { }]
         my updateState Failed

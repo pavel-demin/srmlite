@@ -10,4 +10,8 @@ dirDst=`dirname $fileDst`
 
 checkFileDst $fileDst $dirDst
 
-# touch $fileDst
+result=`./makeFile squirrel.config $fileDst`
+
+touch $result
+
+echo $result

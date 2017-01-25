@@ -150,6 +150,28 @@ proc InitTemplateSrmMkdirRes {} {
 
 # -------------------------------------------------------------------------
 
+proc InitTemplateSrmRmdirReq {} {
+
+  set fid [open templates/srmRmdir_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmRmdirReqBody {SURL} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmRmdirRes {} {
+
+  set fid [open templates/srmRequestStatus_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmRmdirResBody {request} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
 proc InitTemplateSrmCopyReq {} {
 
   set fid [open templates/srmCopy_req.g2]
@@ -347,6 +369,28 @@ proc InitTemplateSrmAbortFilesRes {} {
 
 # -------------------------------------------------------------------------
 
+proc InitTemplateSrmAbortRequestReq {} {
+
+  set fid [open templates/srmAbortRequest_req.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmAbortRequestReqBody {requestToken} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
+proc InitTemplateSrmAbortRequestRes {} {
+
+  set fid [open templates/srmRequestStatus_res.g2]
+  set content [read $fid]
+  close $fid
+
+  proc srmAbortRequestResBody {request files} [g2lite $content]
+}
+
+# -------------------------------------------------------------------------
+
 InitTemplateHeaders
 InitTemplateError
 InitTemplateFault
@@ -362,6 +406,8 @@ InitTemplateSrmRmReq
 InitTemplateSrmRmRes
 InitTemplateSrmMkdirReq
 InitTemplateSrmMkdirRes
+InitTemplateSrmRmdirReq
+InitTemplateSrmRmdirRes
 
 InitTemplateSrmCopyReq
 InitTemplateSrmCopyRes
@@ -383,6 +429,8 @@ InitTemplateSrmPutDoneReq
 InitTemplateSrmPutDoneRes
 InitTemplateSrmAbortFilesReq
 InitTemplateSrmAbortFilesRes
+InitTemplateSrmAbortRequestReq
+InitTemplateSrmAbortRequestRes
 
 # -------------------------------------------------------------------------
 

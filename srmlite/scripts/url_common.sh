@@ -101,10 +101,7 @@ checkFileDst()
   fi
 
   makeDir "$2"
-
-  ./makeFile squirrel.config "$1"
 }
-
 
 checkFileDel()
 {
@@ -124,6 +121,27 @@ checkFileDel()
   then
     echo "Permission to write denied"
     exit 16
+  fi
+}
+
+checkDirDel()
+{
+  if [ ! -e "$1" ]
+  then
+    echo "Directory does not exist"
+    exit 17
+  fi
+
+  if [ -e "$1" ] && [ ! -d "$1" ]
+  then
+    echo "Not a directory"
+    exit 18
+  fi
+
+  if [ -e "$1" ] && [ ! -w "$1" ]
+  then
+    echo "Permission to write denied"
+    exit 19
   fi
 }
 
