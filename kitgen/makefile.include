@@ -40,7 +40,6 @@ VFS_OPTS = --disable-threads
 TDOM_OPTS = --disable-threads
 TCLX_OPTS = --disable-threads
 XOTCL_OPTS = --disable-threads
-SQLITE_OPTS = --disable-threads
 ZLIB_OPTS = --prefix=$(OUTDIR)
 
 tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
@@ -50,7 +49,7 @@ tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
 	build/globus build/gss_socket \
 	build/tdom build/starfish \
-	build/tclx build/tcllib build/xotcl build/sqlite $(CLIOBJ)
+	build/tclx build/tcllib build/xotcl $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
 	  build/lib/vfs1*/*vfs1*$A \
@@ -58,7 +57,6 @@ kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
 	  build/lib/tdom0*/*tdom0*$A \
 	  build/lib/starfish1*/libstarfish1*$A \
 	  build/lib/tclx8*/libtclx8*$A \
-	  build/lib/sqlite3*/*sqlite3*$A \
 	  build/lib/xotcl1*/*xotcl1*$A \
 	  build/lib/gss_socket0*/libgss_socket0*$A \
 	  build/lib64/libglobus_gss_assist$A \
@@ -154,11 +152,6 @@ build/tclx: build/tcl
 build/xotcl: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/xotcl/configure $(STATIC) $(TCLDIR) $(XOTCL_OPTS) && \
-	  $(MAKE) install-binaries
-
-build/sqlite: build/tcl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/sqlite/tea/configure $(STATIC) $(TCLDIR) $(SQLITE_OPTS) && \
 	  $(MAKE) install-binaries
 
 build/starfish: build/tcl
