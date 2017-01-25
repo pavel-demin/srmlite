@@ -4,7 +4,7 @@ package ifneeded srmlite::soap           0.1 [list source [file join $dir soap.t
 package ifneeded srmlite::http::server   0.2 [list source [file join $dir http_server.tcl]]
 package ifneeded srmlite::srm::server    0.2 [list source [file join $dir srm_server.tcl]]
 package ifneeded srmlite::cleanup        0.1 [list source [file join $dir cleanup.tcl]]
-package ifneeded srmlite::templates      0.1 [list source [file join $dir templates.tcl]]
+package ifneeded srmlite::templates      0.2 [list source [file join $dir templates.tcl]]
 package ifneeded srmlite::utilities      0.1 [list source [file join $dir utilities.tcl]]
 package ifneeded srmlite::frontend       0.1 [list source [file join $dir frontend.tcl]]
 package ifneeded srmlite::backend        0.2 [list source [file join $dir backend.tcl]]

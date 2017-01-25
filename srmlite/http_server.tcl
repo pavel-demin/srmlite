@@ -572,4 +572,4 @@ namespace eval ::srmlite::http::server {
      namespace export HttpServer HttpServerGss
 }
 
-package provide srmlite::http::server 0.1
+package provide srmlite::http::server 0.2
