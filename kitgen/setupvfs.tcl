@@ -42,7 +42,6 @@ if {[llength $argv] != 2} {
 
 load {} zlib
 load {} vfs
-load {} sqlite3
 load {} xotcl
 load {} tdom
 load {} starfishLib
@@ -56,7 +55,6 @@ set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   vfs1@ vfs[package require vfs] \
                   starfish1@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
-                  sqlite3@ sqlite[package require sqlite3] \
                   xotcl1@ xotcl[package require XOTcl] \
                   g2lite0@ g2lite[package require g2lite] \
                   gss_socket0@ gss_socket[package require gss::socket]]
@@ -82,7 +80,6 @@ foreach ext $exts {
   puts $dst
   set index($dst) "package ifneeded $ext [package provide $ext] {load {} [string tolower $ext]}"
 }
-set index(lib/sqlite[package provide sqlite3]/pkgIndex.tcl) "package ifneeded sqlite3 [package provide sqlite3] {load {} sqlite3}"
 
 set clifiles {
   boot.tcl
@@ -102,7 +99,6 @@ set clifiles {
   lib/vfs1@/vfslib.tcl
   lib/vfs1@/vfsUtils.tcl
   lib/vfs1@/zipvfs.tcl
-  lib/sqlite3@/pkgIndex.tcl
   lib/xotcl1@/pkgIndex.tcl
   lib/tdom0@/pkgIndex.tcl
   lib/tdom0@/tdom.tcl
@@ -120,17 +116,17 @@ set clifiles {
   lib/g2lite0@/pkgIndex.tcl
   lib/gss_socket0@/pkgIndex.tcl
   lib/zlib1@/pkgIndex.tcl
-  lib/tcllib1.16/pkgIndex.tcl
-  lib/tcllib1.16/asn
-  lib/tcllib1.16/base64
-  lib/tcllib1.16/comm
-  lib/tcllib1.16/cmdline
-  lib/tcllib1.16/fileutil
-  lib/tcllib1.16/ldap
-  lib/tcllib1.16/log
-  lib/tcllib1.16/math
-  lib/tcllib1.16/snit
-  lib/tcllib1.16/uri
+  lib/tcllib1.18/pkgIndex.tcl
+  lib/tcllib1.18/asn
+  lib/tcllib1.18/base64
+  lib/tcllib1.18/comm
+  lib/tcllib1.18/cmdline
+  lib/tcllib1.18/fileutil
+  lib/tcllib1.18/ldap
+  lib/tcllib1.18/log
+  lib/tcllib1.18/math
+  lib/tcllib1.18/snit
+  lib/tcllib1.18/uri
   lib/tclx8.4/pkgIndex.tcl
   lib/tclx8.4/arrayprocs.tcl
   lib/tclx8.4/autoload.tcl
