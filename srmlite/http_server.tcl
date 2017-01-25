@@ -134,7 +134,7 @@ namespace eval ::srmlite::http::server {
         my variable parent chan addr port timeout bufsize reqleft
         namespace path [list {*}[namespace path] ::srmlite::http::server]
 
-        set timeout 60000
+        set timeout 600000
         set bufsize 16360
         set reqleft 25
 
@@ -393,7 +393,7 @@ namespace eval ::srmlite::http::server {
 
         chan puts $chan {}
         chan configure $chan -translation {auto binary}
-        chan puts $chan $result
+        chan puts -nonewline $chan $result
         chan flush $chan
 
         my done $close
@@ -419,7 +419,9 @@ namespace eval ::srmlite::http::server {
 
         catch {
             chan configure $chan -translation {auto crlf}
-            chan puts -nonewline $chan $head\n$message
+            chan puts $chan $head
+            chan configure $chan -translation {auto binary}
+            chan puts -nonewline $chan $message
             chan flush $chan
         } result
 
