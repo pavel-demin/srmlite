@@ -181,8 +181,8 @@ namespace eval ::srmlite::srm::server {
         }
 
         my createRequest $connection srmLs 1 \
-           [dict get $argValues arrayOfSURLs] \
-           {} {} $depth
+            [dict get $argValues arrayOfSURLs] \
+            {} {} $depth
     }
 
 # -------------------------------------------------------------------------
@@ -231,7 +231,7 @@ namespace eval ::srmlite::srm::server {
         set requestToken [dict get $argValues requestToken]
         if {[dict exists $argValues arrayOfSourceSURLs]} {
             my sendStatus $connection $requestToken srmStatusOfGetRequest \
-               [dict get $argValues arrayOfSourceSURLs]
+                [dict get $argValues arrayOfSourceSURLs]
         } else {
             my sendStatus $connection $requestToken srmStatusOfGetRequest {}
         }
@@ -243,7 +243,7 @@ namespace eval ::srmlite::srm::server {
         set requestToken [dict get $argValues requestToken]
         if {[dict exists $argValues arrayOfTargetSURLs]} {
             my sendStatus $connection $requestToken srmStatusOfPutRequest \
-               [dict get $argValues arrayOfTargetSURLs]
+                [dict get $argValues arrayOfTargetSURLs]
         } else {
             my sendStatus $connection $requestToken srmStatusOfPutRequest {}
         }
@@ -253,10 +253,13 @@ namespace eval ::srmlite::srm::server {
 
     oo::define SrmManager method srmReleaseFiles {connection argValues} {
         set requestToken [dict get $argValues requestToken]
-        my releaseFiles $connection $requestToken srmReleaseFiles \
-            Done [dict get $argValues arrayOfSURLs]
+        if {[dict exists $argValues arrayOfSURLs]} {
+            my releaseFiles $connection $requestToken srmReleaseFiles \
+                Done [dict get $argValues arrayOfSURLs]
+        } else {
+            my releaseFiles $connection $requestToken srmReleaseFiles Done {}
+        }
     }
-
 
 # -------------------------------------------------------------------------
 
