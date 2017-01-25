@@ -577,8 +577,6 @@ namespace eval ::srmlite::srm::server {
 
         if {[info exists submitTime]} {
             set finishTime [expr {$submitTime + $lifeTime}]
-        } else {
-            error {submitTime must be specified}
         }
     }
 
