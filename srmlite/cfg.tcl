@@ -143,7 +143,7 @@ proc CfgParser {content} {
             set line [string replace $line $commentIndex end]
         }
         set line [string trim $line]
-        if {[string equal $line {}]} continue
+        if {$line eq {}} continue
 
         append data $line { }
 

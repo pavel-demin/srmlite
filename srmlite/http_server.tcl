@@ -50,9 +50,9 @@ namespace eval ::srmlite::http::server {
         set port 80
 
         foreach {param value} $args {
-            if {$param eq "-port"} {
+            if {$param eq {-port}} {
                 set port $value
-            } elseif {$param eq "-addr"} {
+            } elseif {$param eq {-addr}} {
                 set addr $value
             } else {
                 error "unsupported parameter $param"
@@ -139,19 +139,19 @@ namespace eval ::srmlite::http::server {
         set reqleft 25
 
         foreach {param value} $args {
-            if {$param eq "-parent"} {
+            if {$param eq {-parent}} {
                 set parent $value
-            } elseif {$param eq "-chan"} {
+            } elseif {$param eq {-chan}} {
                 set chan $value
-            } elseif {$param eq "-addr"} {
+            } elseif {$param eq {-addr}} {
                 set addr $value
-            } elseif {$param eq "-port"} {
+            } elseif {$param eq {-port}} {
                 set port $value
-            } elseif {$param eq "-timeout"} {
+            } elseif {$param eq {-timeout}} {
                 set timeout $value
-            } elseif {$param eq "-bufsize"} {
+            } elseif {$param eq {-bufsize}} {
                 set bufsize $value
-            } elseif {$param eq "-reqleft"} {
+            } elseif {$param eq {-reqleft}} {
                 set reqleft $value
             } else {
                 error "unsupported parameter $param"
@@ -290,7 +290,7 @@ namespace eval ::srmlite::http::server {
             $mime(content-length) > 0} {
             set count $mime(content-length)
             if {$version && [info exists mime(expect)]} {
-                if {[string equal $mime(expect) 100-continue]} {
+                if {$mime(expect) eq {100-continue}} {
                     chan puts $chan {100 Continue HTTP/1.1\n}
                     chan flush $chan
                 } else {
@@ -383,7 +383,7 @@ namespace eval ::srmlite::http::server {
         if {$close} {
             chan puts $chan "Connection: close"
         } elseif {$version > 0 && [info exists mime(connection)]} {
-            if {[string equal $mime(connection) Keep-Alive]} {
+            if {$mime(connection) eq {Keep-Alive}} {
                 set close 0
                 chan puts $chan "Connection: Keep-Alive"
             }
@@ -485,7 +485,7 @@ namespace eval ::srmlite::http::server {
         set argsNext [list]
 
         foreach {param value} $args {
-            if {$param eq "-frontendService"} {
+            if {$param eq {-frontendService}} {
                 set frontendService $value
             } else {
                 lappend argsNext $param $value
@@ -615,7 +615,7 @@ namespace eval ::srmlite::http::server {
         set argsNext [list]
 
         foreach {param value} $args {
-            if {$param eq "-frontendService"} {
+            if {$param eq {-frontendService}} {
                 set frontendService $value
             } else {
                 lappend argsNext $param $value

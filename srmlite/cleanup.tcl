@@ -18,7 +18,7 @@ namespace eval ::srmlite::cleanup {
         namespace path [list {*}[namespace path] ::srmlite::cleanup]
 
         foreach {param value} $args {
-            if {$param eq "-logFile"} {
+            if {$param eq {-logFile}} {
                 set logFile $value
             } else {
                 error "unsupported parameter $param"

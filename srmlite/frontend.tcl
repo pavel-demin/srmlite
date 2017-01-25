@@ -20,9 +20,9 @@ namespace eval ::srmlite::frontend {
         set out stdout
 
         foreach {param value} $args {
-            if {$param eq "-in"} {
+            if {$param eq {-in}} {
                 set in $value
-            } elseif {$param eq "-out"} {
+            } elseif {$param eq {-out}} {
                 set out $value
             } else {
                 error "unsupported parameter $param"

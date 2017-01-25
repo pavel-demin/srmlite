@@ -12,7 +12,7 @@ proc ::log::Puts {level text} {
     variable fill
 
     set chan $channelMap($level)
-    if {$chan == {}} {
+    if {$chan eq {}} {
         # Ignore levels without channel.
         return
     }

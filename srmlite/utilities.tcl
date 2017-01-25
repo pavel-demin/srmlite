@@ -85,9 +85,9 @@ namespace eval ::srmlite::utilities {
 
     proc ExtractFileType {mode} {
         set fileType [string index $mode 0]
-        if {[string equal $fileType d]} {
+        if {$fileType eq {d}} {
             return DIRECTORY
-        } elseif {[string equal $fileType l]} {
+        } elseif {$fileType eq {l}} {
             return LINK
         } else {
             return FILE
@@ -185,7 +185,7 @@ namespace eval ::srmlite::utilities {
 
         set fid $logFileId
         set channels [file channels $fid]
-        if {[string length $channels] > 0} {
+        if {$channels ne {}} {
             close $fid
 
             file rename -force $file $file.old

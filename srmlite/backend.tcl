@@ -140,7 +140,7 @@ proc GetCommandOutput {requestType uniqueId processId pipe} {
         return
     }
 
-    if {$line != {}} {
+    if {$line ne {}} {
         dict lappend process output $line
         log::log debug "+> $line"
     }
@@ -154,7 +154,7 @@ proc Finish {requestType uniqueId processId pipe} {
     upvar #0 SrmProcesses($processId) process
 
     set hadError 0
-    if {[file channels $pipe] != {}} {
+    if {[file channels $pipe] ne {}} {
 
         chan event $pipe readable {}
         chan configure $pipe -blocking 1

@@ -39,9 +39,9 @@ namespace eval ::srmlite::srm::server {
         namespace path [list {*}[namespace path] ::srmlite::srm::server]
 
         foreach {param value} $args {
-            if {$param eq "-frontendService"} {
+            if {$param eq {-frontendService}} {
                 set frontendService $value
-            } elseif {$param eq "-cleanupService"} {
+            } elseif {$param eq {-cleanupService}} {
                 set cleanupService $value
             } else {
                 error "unsupported parameter $param"
@@ -140,7 +140,7 @@ namespace eval ::srmlite::srm::server {
             set fileId [NewUniqueId]
             set fileObj ${requestObj}::${fileId}
 
-            if {$size == {}} {
+            if {$size eq {}} {
                 set size 0
             }
 
@@ -296,7 +296,7 @@ namespace eval ::srmlite::srm::server {
 
         set currentTime [clock seconds]
 
-        if {[llength $SURLS] == 0} {
+        if {$SURLS eq {}} {
             set files [$requestObj getFiles]
 
             foreach fileObj $files {
@@ -347,7 +347,7 @@ namespace eval ::srmlite::srm::server {
             return
         }
 
-        if {[llength $SURLS] == 0} {
+        if {$SURLS eq {}} {
             set files [$requestObj getFiles]
             foreach fileObj $files {
                 $fileObj abort $explanation
@@ -407,17 +407,17 @@ namespace eval ::srmlite::srm::server {
         set fileDict [dict create]
 
         foreach {param value} $args {
-            if {$param eq "-requestState"} {
+            if {$param eq {-requestState}} {
                 set requestState $value
-            } elseif {$param eq "-isSyncRequest"} {
+            } elseif {$param eq {-isSyncRequest}} {
                 set isSyncRequest $value
-            } elseif {$param eq "-queueSize"} {
+            } elseif {$param eq {-queueSize}} {
                 set queueSize $value
-            } elseif {$param eq "-requestType"} {
+            } elseif {$param eq {-requestType}} {
                 set requestType $value
-            } elseif {$param eq "-requestToken"} {
+            } elseif {$param eq {-requestToken}} {
                 set requestToken $value
-            } elseif {$param eq "-connection"} {
+            } elseif {$param eq {-connection}} {
                 set connection $value
             } else {
                 error "unsupported parameter $param"
@@ -543,31 +543,31 @@ namespace eval ::srmlite::srm::server {
         set fileSize 0
 
         foreach {param value} $args {
-            if {$param eq "-parent"} {
+            if {$param eq {-parent}} {
                 set parent $value
-            } elseif {$param eq "-fileState"} {
+            } elseif {$param eq {-fileState}} {
                 set fileState $value
-            } elseif {$param eq "-submitTime"} {
+            } elseif {$param eq {-submitTime}} {
                 set submitTime $value
-            } elseif {$param eq "-lifeTime"} {
+            } elseif {$param eq {-lifeTime}} {
                 set lifeTime $value
-            } elseif {$param eq "-waitTime"} {
+            } elseif {$param eq {-waitTime}} {
                 set waitTime $value
-            } elseif {$param eq "-counter"} {
+            } elseif {$param eq {-counter}} {
                 set counter $value
-            } elseif {$param eq "-depth"} {
+            } elseif {$param eq {-depth}} {
                 set depth $value
-            } elseif {$param eq "-fileSize"} {
+            } elseif {$param eq {-fileSize}} {
                 set fileSize $value
-            } elseif {$param eq "-SURL"} {
+            } elseif {$param eq {-SURL}} {
                 set SURL $value
-            } elseif {$param eq "-dstSURL"} {
+            } elseif {$param eq {-dstSURL}} {
                 set dstSURL $value
-            } elseif {$param eq "-TURL"} {
+            } elseif {$param eq {-TURL}} {
                 set TURL $value
-            } elseif {$param eq "-userName"} {
+            } elseif {$param eq {-userName}} {
                 set userName $value
-            } elseif {$param eq "-frontendService"} {
+            } elseif {$param eq {-frontendService}} {
                 set frontendService $value
             } else {
                 error "unsupported parameter $param"
@@ -597,7 +597,7 @@ namespace eval ::srmlite::srm::server {
         namespace upvar ::srmlite::srm::server resp resp
 
         foreach {retCode newState} $resp($state) {
-            if {[string equal $retCode $code]} {
+            if {$retCode eq $code} {
                 my $newState
                 return
             }
