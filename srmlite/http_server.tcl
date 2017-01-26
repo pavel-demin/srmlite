@@ -651,7 +651,7 @@ namespace eval ::srmlite::http::server {
             my done 1
             return
         }
-        $frontendService process [list authorization [self] $result]
+        $frontendService process [list authorization [self] [binary encode base64 $result]]
     }
 
 # -------------------------------------------------------------------------

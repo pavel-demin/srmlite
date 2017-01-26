@@ -44,7 +44,6 @@ proc SrmLs {requestType uniqueId userName depth SURL} {
 proc SrmGet {requestType uniqueId userName SURL} {
 
     set command "./setuser $userName ./scripts/url_get.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_get.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -53,7 +52,6 @@ proc SrmGet {requestType uniqueId userName SURL} {
 proc SrmPut {requestType uniqueId userName SURL} {
 
     set command "./setuser $userName ./scripts/url_put.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_put.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -62,7 +60,6 @@ proc SrmPut {requestType uniqueId userName SURL} {
 proc SrmRm {requestType uniqueId userName SURL} {
 
     set command "./setuser $userName ./scripts/url_del.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_del.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -71,7 +68,6 @@ proc SrmRm {requestType uniqueId userName SURL} {
 proc SrmMkdir {requestType uniqueId userName SURL} {
 
     set command "./setuser $userName ./scripts/url_mkdir.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_mkdir.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -80,7 +76,6 @@ proc SrmMkdir {requestType uniqueId userName SURL} {
 proc SrmRmdir {requestType uniqueId userName SURL} {
 
     set command "./setuser $userName ./scripts/url_rmdir.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_rmdir.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -98,8 +93,6 @@ proc SubmitCommand {requestType uniqueId command} {
 
     global State
 
-    log::log debug $command
-
     if {[catch {open "| $command" {RDONLY NONBLOCK}} pipe]} {
         set faultString "Failed to execute '$command'"
         log::log error $faultString
@@ -109,7 +102,7 @@ proc SubmitCommand {requestType uniqueId command} {
     }
 
     set processId [pid $pipe]
-    log::log notice "\[process: $processId\] $command"
+    log::log notice "\[process: $processId\] [string range $command 0 99]"
 
     upvar #0 SrmProcesses($processId) process
 
@@ -224,8 +217,6 @@ proc GetInput {chan} {
         }
         return
     }
-
-    log::log debug $line
 
     if {$QueueSize < 10} {
         Start $line
