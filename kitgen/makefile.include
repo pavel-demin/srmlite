@@ -26,10 +26,6 @@ SO    ?=.so
 
 OPENSSL_OPTS = --prefix=$(OUTDIR) --openssldir=$(OUTDIR) no-threads no-shared no-engines no-hw
 
-export OPENSSL_INCLUDES := -I$(OUTDIR)/include
-export OPENSSL_CFLAGS := -I$(OUTDIR)/include
-export OPENSSL_LDFLAGS := -L$(OUTDIR)/lib
-
 GLOBUS_FLAVOR = gcc64
 GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts="--disable-shared --enable-static"
 
@@ -113,7 +109,7 @@ build/zlib: build/tcl
 	  sh $(EXTDIR)/zlib/configure $(ZLIB_OPTS) && \
 	  $(MAKE) install
 
-build/openssl:
+build/openssl: build/tcl
 	cp -R ../../8.x/openssl/. $@
 	cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh ./config $(OPENSSL_OPTS) && \
@@ -121,6 +117,8 @@ build/openssl:
 
 build/globus: build/tcl build/openssl
 	mkdir -p $@ && cd ../../8.x/globus && \
+	  export OPENSSL_CFLAGS="-I$(OUTDIR)/include" && \
+	  export OPENSSL_LIBS="-L$(OUTDIR)/lib -lssl -lcrypto -ldl" && \
 	  sh ./configure $(GLOBUS_OPTS) && \
 	  $(MAKE) globus_gass_copy install
 
