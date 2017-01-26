@@ -33,13 +33,12 @@ TCL_OPTS = --disable-threads
 VFS_OPTS = --disable-threads
 TDOM_OPTS = --disable-threads
 TCLX_OPTS = --disable-threads
-ZLIB_OPTS = --prefix=$(OUTDIR)
 
 tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 	cp kit-cli$(EXE) $@ && $(STRIP) $@ && $(UPX) $@
 	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ cli
 
-kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
+kit-cli$(EXE): build/tcl build/tclvfs \
 	build/globus build/tdom build/starfish \
 	build/tclx build/tcllib $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
@@ -63,7 +62,6 @@ kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
 	  build/lib64/libglobus_proxy_ssl$A \
 	  build/lib64/libglobus_common$A \
 	  build/lib/libssl$A build/lib/libcrypto$A \
-	  build/lib/libz$A \
 	  $(LDFLAGS)
 
 getuser$(EXE): build/globus ../../getuser.c
@@ -101,12 +99,6 @@ build/tcl:
 build/tclvfs: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/tclvfs/configure $(STATIC) $(TCLDIR) $(VFS_OPTS) && \
-	  $(MAKE) install
-
-build/zlib: build/tcl
-	cp -R ../../8.x/zlib/. $@
-	cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/zlib/configure $(ZLIB_OPTS) && \
 	  $(MAKE) install
 
 build/openssl: build/tcl
@@ -149,7 +141,7 @@ tidy: cleanext
 	rm -rf build/tcl
 
 cleanext:
-	rm -rf build/tclvfs build/thread build/zlib build/*.o
+	rm -rf build/tclvfs build/thread build/*.o
 	rm -rf build/lib/vfs* build/lib/thread*
 
 clean:
@@ -161,7 +153,7 @@ distclean: clean
 .PHONY: all clean distclean tidy
 
 $(OUTDIR)/zvfs$O: ../../zvfs.c
-	$(CC) -o $@ $(CFLAGS) -DSTDC_HEADERS=1 -DHAVE_UNISTD_H=1 -DSTATIC_BUILD -Ibuild/include -c $<
+	$(CC) -o $@ $(CFLAGS) -DSTDC_HEADERS=1 -DHAVE_UNISTD_H=1 -DSTATIC_BUILD -Ibuild/include -I../tcl/compat/zlib -c $<
 
 $(OUTDIR)/g2lite$O: ../../g2lite.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
