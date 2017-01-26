@@ -12,6 +12,13 @@ checkFileDst $fileDst $dirDst
 
 result=`./makeFile squirrel.config $fileDst`
 
+rc=$?
+if [ $rc != 0 ]
+then
+  echo "Failed to put $fileDst"
+  exit $rc
+fi
+
 touch $result
 
 echo $result
