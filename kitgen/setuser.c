@@ -2,8 +2,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-int main(int argc, char *argv[]) {
-
+int main(int argc, char *argv[])
+{
   if(argc < 3) return 1;
 
   struct passwd *pw = getpwnam(argv[1]);
