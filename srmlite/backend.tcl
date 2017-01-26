@@ -35,7 +35,6 @@ proc ExtractHostFile {url} {
 proc SrmLs {requestType uniqueId userName depth SURL} {
 
     set command "./setuser $userName ./scripts/url_ls.sh $depth [ExtractHostFile $SURL]"
-#    set command "./scripts/url_ls.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -83,7 +82,7 @@ proc SrmRmdir {requestType uniqueId userName SURL} {
 
 proc SrmAuth {requestType uniqueId gssContext} {
 
-    set command "./scripts/getuser.sh $gssContext"
+    set command "./getuser $gssContext"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -94,7 +93,7 @@ proc SubmitCommand {requestType uniqueId command} {
     global State
 
     if {[catch {open "| $command" {RDONLY NONBLOCK}} pipe]} {
-        set faultString "Failed to execute '$command'"
+        set faultString "Failed to execute '[string range $command 0 99]'"
         log::log error $faultString
         log::log error $pipe
         chan puts $State(out) [list Failure $requestType $uniqueId $faultString]
