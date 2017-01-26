@@ -4,60 +4,114 @@
 #include <gssapi.h>
 #include <globus_gss_assist.h>
 
+#define XX 100
+
+const char Base64Pad = '=';
+
+const char Base64CharIndex[256] = {
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,62, XX,XX,XX,63,
+  52,53,54,55, 56,57,58,59, 60,61,XX,XX, XX,XX,XX,XX,
+  XX, 0, 1, 2,  3, 4, 5, 6,  7, 8, 9,10, 11,12,13,14,
+  15,16,17,18, 19,20,21,22, 23,24,25,XX, XX,XX,XX,XX,
+  XX,26,27,28, 29,30,31,32, 33,34,35,36, 37,38,39,40,
+  41,42,43,44, 45,46,47,48, 49,50,51,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+  XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+};
+
 int main(int argc, char *argv[])
 {
   OM_uint32 majorStatus, minorStatus;
-
   gss_buffer_desc gssContextBuffer;
-
   gss_ctx_id_t gssContext;
-
   globus_result_t result;
 
-  FILE *contextFile;
+  int i, j;
+  char index;
+  char buffer[32768];
+  char *input;
+  char output[256];
 
-  char gssUser[256];
-
-  memset(gssUser, 0, 256);
+  memset(output, 0, 256);
 
   if(argc < 2) return 1;
 
-  contextFile = fopen(argv[1],"r");
+  input = argv[1];
 
-  if(contextFile == NULL)
+  index = XX;
+  j = 0;
+
+  for(i = 0; input[i] != Base64Pad && input[i] != 0 && i < 32768; ++i)
   {
-    return 1;
+    index = Base64CharIndex[input[i]];
+
+    if(index == XX) return 1;
+
+    switch(i & 3)
+    {
+      case 0:
+        buffer[j] = index << 2;
+        break;
+      case 1:
+        buffer[j++] |= index >> 4;
+        buffer[j] = (index & 15) << 4;
+        break;
+      case 2:
+        buffer[j++] |= index >> 2;
+        buffer[j] = (index & 3) << 6;
+        break;
+      case 3:
+        buffer[j++] |= index;
+    }
   }
 
-  fseek(contextFile, 0, SEEK_END);
-  gssContextBuffer.length = ftell(contextFile);
-  fseek(contextFile, 0, SEEK_SET);
-  gssContextBuffer.value = malloc(gssContextBuffer.length);
+  switch(i & 3)
+  {
+    case 1:
+      return 1;
+    case 2:
+      if(index & 15)
+      {
+        return 1;
+      }
+      if(memcmp(input + i, "==", 2))
+      {
+        return 1;
+      }
+      break;
+    case 3:
+      if(index & 3)
+      {
+        return 1;
+      }
+      if(memcmp(input + i, "=", 1))
+      {
+        return 1;
+      }
+  }
 
-  fread(gssContextBuffer.value, gssContextBuffer.length, 1, contextFile);
+  gssContextBuffer.length = j;
+  gssContextBuffer.value = buffer;
 
-  fclose(contextFile);
-
-  unlink(argv[1]);
-
-  majorStatus = gss_import_sec_context(&minorStatus,
-                                       &gssContextBuffer,
-                                       &gssContext);
+  majorStatus = gss_import_sec_context(&minorStatus, &gssContextBuffer, &gssContext);
 
   if(majorStatus != GSS_S_COMPLETE)
   {
-    globus_gss_assist_display_status(
-      stderr, "Failed to import context: ",
-      majorStatus, minorStatus, 0);
-
+    globus_gss_assist_display_status( stderr, "Failed to import context: ", majorStatus, minorStatus, 0);
     return 1;
   }
 
   fclose(stderr);
   stderr = fopen("/dev/null", "r+");
-  result = globus_gss_assist_map_and_authorize(gssContext,
-                                               "srm", NULL,
-                                               gssUser, 256);
+  result = globus_gss_assist_map_and_authorize(gssContext, "srm", NULL, output, 256);
   fclose(stderr);
 
   if(result != GLOBUS_SUCCESS)
@@ -66,9 +120,8 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  printf("%s\n", gssUser);
+  printf("%s\n", output);
 
   return 0;
 }
-
 
