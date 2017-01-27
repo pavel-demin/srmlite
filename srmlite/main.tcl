@@ -79,7 +79,7 @@ proc frontend {pipein pipeout} {
     id user $Cfg(frontendUser)
 
     set fid [open $Cfg(frontendLog) w]
-    chan configure $fid -blocking 0 -buffering line
+    chan configure $fid -blocking 0 -buffering line -buffersize 32768
     log::lvChannelForall $fid
 
     set ::srmlite::utilities::logFileId $fid
@@ -127,7 +127,7 @@ proc backend {pipein pipeout} {
     global Cfg State
 
     set fid [open $Cfg(backendLog) w]
-    chan configure $fid -blocking 0 -buffering line
+    chan configure $fid -blocking 0 -buffering line -buffersize 32768
     log::lvChannelForall $fid
 
     set ::srmlite::utilities::logFileId $fid
@@ -138,8 +138,8 @@ proc backend {pipein pipeout} {
     set State(in) [lindex $pipein 0]
     set State(out) [lindex $pipeout 1]
 
-    chan configure $State(in) -blocking 0 -buffering line
-    chan configure $State(out) -blocking 0 -buffering line
+    chan configure $State(in) -blocking 0 -buffering line -buffersize 32768
+    chan configure $State(out) -blocking 0 -buffering line -buffersize 32768
 
     chan event $State(in) readable [list GetInput $State(in)]
 

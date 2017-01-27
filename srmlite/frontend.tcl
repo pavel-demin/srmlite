@@ -29,8 +29,8 @@ namespace eval ::srmlite::frontend {
             }
         }
 
-        chan configure $in -blocking false -buffering line
-        chan configure $out -blocking false -buffering line
+        chan configure $in -blocking 0 -buffering line -buffersize 32768
+        chan configure $out -blocking 0 -buffering line -buffersize 32768
         chan event $in readable [mymethod GetInput]
     }
 
