@@ -34,107 +34,8 @@
 
 #include <tcl.h>
 
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-
 #include <gssapi.h>
 #include <globus_gss_assist.h>
-
-#include <globus_common.h>
-#include <globus_gsi_proxy.h>
-#include <globus_gsi_callback.h>
-#include <globus_gsi_credential.h>
-
-/* ----------------------------------------------------------------- */
-
-typedef struct ssl3_enc_method {
-  int (*enc) (SSL *, int);
-  int (*mac) (SSL *, unsigned char *, int);
-  int (*setup_key_block) (SSL *);
-  int (*generate_master_secret) (SSL *, unsigned char *, unsigned char *, int);
-  int (*change_cipher_state) (SSL *, int);
-  int (*final_finish_mac) (SSL *, const char *, int, unsigned char *);
-  int finish_mac_length;
-  int (*cert_verify_mac) (SSL *, int, unsigned char *);
-  const char *client_finished_label;
-  int client_finished_label_len;
-  const char *server_finished_label;
-  int server_finished_label_len;
-  int (*alert_value) (int);
-  int (*export_keying_material) (SSL *, unsigned char *, size_t, const char *, size_t, const unsigned char *, size_t, int use_context);
-  unsigned int enc_flags;
-  unsigned int hhlen;
-  void (*set_handshake_header) (SSL *s, int type, unsigned long len);
-  int (*do_write) (SSL *s);
-} SSL3_ENC_METHOD;
-
-typedef enum {
-  GSS_CON_ST_HANDSHAKE = 0,
-  GSS_CON_ST_FLAGS,
-  GSS_CON_ST_REQ,
-  GSS_CON_ST_CERT,
-  GSS_CON_ST_DONE
-} gss_con_st_t;
-
-typedef enum
-{
-  GSS_DELEGATION_START,
-  GSS_DELEGATION_DONE,
-  GSS_DELEGATION_COMPLETE_CRED,
-  GSS_DELEGATION_SIGN_CERT
-} gss_delegation_state_t;
-
-typedef struct gss_name_desc_struct {
-  gss_OID name_oid;
-  X509_NAME *x509n;
-  char *x509n_oneline;
-  GENERAL_NAMES *subjectAltNames;
-  char *user_name;
-  char *service_name;
-  char *host_name;
-  char *ip_address;
-  char *ip_name;
-} gss_name_desc;
-
-typedef struct gss_cred_id_desc_struct {
-  globus_gsi_cred_handle_t cred_handle;
-  gss_name_desc *globusid;
-  gss_cred_usage_t cred_usage;
-  SSL_CTX *ssl_context;
-} gss_cred_id_desc;
-
-typedef struct gss_ctx_id_desc_struct {
-  globus_mutex_t mutex;
-  globus_gsi_callback_data_t callback_data;
-  gss_cred_id_desc *peer_cred_handle;
-  gss_cred_id_desc *cred_handle;
-  gss_cred_id_desc *deleg_cred_handle;
-  globus_gsi_proxy_handle_t proxy_handle;
-  OM_uint32 ret_flags;
-  OM_uint32 req_flags;
-  OM_uint32 ctx_flags;
-  int cred_obtained;
-  SSL *gss_ssl;
-  BIO *gss_rbio;
-  BIO *gss_wbio;
-  BIO *gss_sslbio;
-  gss_con_st_t gss_state;
-  int locally_initiated;
-  gss_delegation_state_t delegation_state;
-  gss_OID_set extension_oids;
-} gss_ctx_id_desc;
-
-int ssl3_setup_key_block(SSL *s);
-void ssl3_cleanup_key_block(SSL *s);
-
-#define L2N(LONG_VAL, CHAR_ARRAY) \
-  { \
-    unsigned char *_char_array_ = CHAR_ARRAY; \
-    *(_char_array_++) = (unsigned char) (((LONG_VAL) >> 24) & 0xff); \
-    *(_char_array_++) = (unsigned char) (((LONG_VAL) >> 16) & 0xff); \
-    *(_char_array_++) = (unsigned char) (((LONG_VAL) >> 8)  & 0xff); \
-    *(_char_array_++) = (unsigned char) (((LONG_VAL))       & 0xff); \
-  }
 
 /* ----------------------------------------------------------------- */
 
@@ -289,60 +190,31 @@ GssWrap(Tcl_Interp *interp, GssContext *context, Tcl_Obj *obj)
 static int
 GssExport(Tcl_Interp *interp, GssContext *context)
 {
-  gss_ctx_id_desc *desc;
-  STACK_OF(X509) *chain;
-  BIO *bp;
-  SSL *ssl;
-  unsigned char buffer[4];
-  int i, length;
+  OM_uint32 majorStatus, minorStatus;
+  gss_buffer_desc bufferOut;
   Tcl_Obj *result;
 
-  desc = context->gssContext;
+  if(context->gssContext == GSS_C_NO_CONTEXT) return TCL_ERROR;
 
-  bp = BIO_new(BIO_s_mem());
+  majorStatus
+    = gss_export_sec_context(&minorStatus,
+                             &context->gssContext,
+                             &bufferOut);
 
-  L2N(1, buffer);
-  BIO_write(bp, buffer, 4);
-
-  L2N(GSS_C_ACCEPT, buffer);
-  BIO_write(bp, buffer, 4);
-
-  i2d_SSL_SESSION_bio(bp, SSL_get_session(desc->gss_ssl));
-
-  globus_gsi_callback_get_cert_depth(desc->callback_data, &length);
-
-  L2N(length, buffer);
-  BIO_write(bp, buffer, 4);
-
-  globus_gsi_callback_get_cert_chain(desc->callback_data, &chain);
-
-  for(i = 0; i < length; ++i)
+  if(majorStatus == GSS_S_COMPLETE)
   {
-    i2d_X509_bio(bp, sk_X509_value(chain, i));
+    result = Tcl_NewByteArrayObj(bufferOut.value, bufferOut.length);
+    majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+    Tcl_SetObjResult(interp, result);
+    return TCL_OK;
   }
-
-  sk_X509_pop_free(chain, X509_free);
-
-  ssl = desc->gss_ssl;
-  BIO_write(bp, ssl->s3->client_random, SSL3_RANDOM_SIZE);
-  BIO_write(bp, ssl->s3->server_random, SSL3_RANDOM_SIZE);
-  ssl->method->ssl3_enc->setup_key_block(ssl);
-  L2N(ssl->s3->tmp.key_block_length, buffer);
-  BIO_write(bp, buffer, 4);
-  BIO_write(bp, ssl->s3->tmp.key_block, ssl->s3->tmp.key_block_length);
-  BIO_write(bp, ssl->s3->write_sequence, 8);
-  BIO_write(bp, ssl->s3->read_sequence, 8);
-  BIO_write(bp, ssl->enc_write_ctx->iv, EVP_MAX_IV_LENGTH);
-  BIO_write(bp, ssl->enc_read_ctx->iv, EVP_MAX_IV_LENGTH);
-  ssl3_cleanup_key_block(ssl);
-
-  length = BIO_pending(bp);
-  result = Tcl_NewByteArrayObj(NULL, length);
-  BIO_read(bp, Tcl_GetByteArrayFromObj(result, NULL), length);
-  BIO_free(bp);
-
-  Tcl_SetObjResult(interp, result);
-  return TCL_OK;
+  else
+  {
+    globus_gss_assist_display_status(
+      stderr, "Failed to export context: ",
+      majorStatus, minorStatus, 0);
+    return TCL_ERROR;
+  }
 }
 
 /* ----------------------------------------------------------------- */

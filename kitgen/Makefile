@@ -39,8 +39,9 @@ untar:
 	  mv tcllib-1.18 tcllib && \
 	  mv starfish-1.0/src/starfish ./ && \
 	  mv starfish-1.0/tcl starfish/ && \
-          mv openssl-1.0.2k openssl && \
-          mv $(GLOBUS_SRC) globus && \
+	  mv openssl-1.0.2k openssl && \
+	  mv $(GLOBUS_SRC) globus && \
+	  patch -p 0 < ../patches/globus-export_sec_context.patch && \
 	  patch -p 0 < ../patches/starfish-noyp.patch && rm -rf starfish-1.0
 
 configs:

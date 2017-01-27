@@ -1,0 +1,19 @@
+--- globus/source-trees/gsi/gssapi/source/library/export_sec_context.c	2006-01-19 06:56:09.000000000 +0100
++++ globus-patched/source-trees/gsi/gssapi/source/library/export_sec_context.c	2009-02-24 18:10:28.000000000 +0100
+@@ -247,6 +247,7 @@ GSS_CALLCONV gss_export_sec_context(
+     globus_mutex_unlock(&context->mutex);
+     
+     /* Now delete the GSS context as per RFC */
++/*
+     major_status = gss_delete_sec_context(&local_minor_status,
+                                           context_handle_P,
+                                           GSS_C_NO_BUFFER);
+@@ -257,7 +258,7 @@ GSS_CALLCONV gss_export_sec_context(
+             GLOBUS_GSI_GSSAPI_ERROR_WITH_GSS_CONTEXT);
+         goto exit;
+     }
+-
++*/
+     goto exit;
+ 
+  unlock_mutex:
