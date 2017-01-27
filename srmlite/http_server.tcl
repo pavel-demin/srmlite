@@ -131,11 +131,10 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     oo::define HttpConnection constructor {args} {
-        my variable parent chan addr port timeout bufsize reqleft
+        my variable parent chan addr port timeout reqleft
         namespace path [list {*}[namespace path] ::srmlite::http::server]
 
         set timeout 900000
-        set bufsize 16360
         set reqleft 25
 
         foreach {param value} $args {
@@ -149,8 +148,6 @@ namespace eval ::srmlite::http::server {
                 set port $value
             } elseif {$param eq {-timeout}} {
                 set timeout $value
-            } elseif {$param eq {-bufsize}} {
-                set bufsize $value
             } elseif {$param eq {-reqleft}} {
                 set reqleft $value
             } else {
@@ -184,9 +181,10 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     oo::define HttpConnection method setup {} {
-        my variable chan bufsize
+        my variable chan
 
-        chan configure $chan -blocking 0 -buffersize $bufsize -translation {auto crlf}
+        chan configure $chan -buffersize 16384
+        chan configure $chan -blocking 0 -translation {auto crlf}
         chan event $chan readable [mymethod firstLine]
     }
 
@@ -519,7 +517,8 @@ namespace eval ::srmlite::http::server {
         set chan $id
         set context [gssctx $id]
         set ready 0
-        chan configure $chan -blocking 0 -buffersize 16389 -translation {binary binary}
+        chan configure $id -buffersize 16389
+        chan configure $id -blocking 0 -translation {binary binary}
     }
 
 # -------------------------------------------------------------------------
@@ -527,6 +526,18 @@ namespace eval ::srmlite::http::server {
     oo::define ChannelGss destructor {
         $context destroy
         chan close $chan
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss method initialize {id mode} {
+        return {initialize finalize watch read write}
+    }
+
+# -------------------------------------------------------------------------
+
+    oo::define ChannelGss method finalize {id} {
+        my destroy
     }
 
 # -------------------------------------------------------------------------
@@ -546,18 +557,6 @@ namespace eval ::srmlite::http::server {
                 chan postevent $id {read}
             }
         }
-    }
-
-# -------------------------------------------------------------------------
-
-    oo::define ChannelGss method initialize {id mode} {
-        return {initialize finalize watch read write}
-    }
-
-# -------------------------------------------------------------------------
-
-    oo::define ChannelGss method finalize {id} {
-        my destroy
     }
 
 # ---------------------------------------------------------------------
@@ -628,7 +627,7 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     oo::define HttpConnectionGss method setup {} {
-        my variable chan bufsize transform
+        my variable chan transform
         set transform [ChannelGss new $chan]
         if {[catch {chan create {read write} $transform} result]} {
             my log error {Error during connection setup:} $result
@@ -636,7 +635,8 @@ namespace eval ::srmlite::http::server {
             return
         }
         set chan $result
-        chan configure $chan -blocking 0 -buffersize $bufsize -translation {auto crlf}
+        chan configure $chan -buffersize 16360
+        chan configure $chan -blocking 0 -translation {auto crlf}
         chan event $chan readable [mymethod authorization]
     }
 
@@ -711,7 +711,7 @@ namespace eval ::srmlite::http::server {
         set result [list]
 
         regsub -all {[&=]} $query { }    query
-        regsub -all {  }   $query { {} } query; # Othewise we lose empty values
+        regsub -all {  }   $query { {} } query ;# Othewise we lose empty values
 
         foreach {key val} $query {
             lappend result [decodeUrl $key] [decodeUrl $val]
