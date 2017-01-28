@@ -10,12 +10,11 @@ namespace eval ::srmlite::frontend {
 # -------------------------------------------------------------------------
 
     oo::class create FrontendService
+    oo::define FrontendService variable in out
 
 # -------------------------------------------------------------------------
 
     oo::define FrontendService constructor {args} {
-        my variable in out
-
         set in stdin
         set out stdout
 
@@ -43,15 +42,12 @@ namespace eval ::srmlite::frontend {
 # -------------------------------------------------------------------------
 
     oo::define FrontendService method process {arg} {
-        my variable out
         chan puts $out $arg
     }
 
 # -------------------------------------------------------------------------
 
     oo::define FrontendService method GetInput {} {
-        my variable in
-
         if {[catch {chan gets $in line} readCount]} {
             my log error "Error during chan gets: $readCount"
             my close
@@ -88,7 +84,6 @@ namespace eval ::srmlite::frontend {
 # -------------------------------------------------------------------------
 
     oo::define FrontendService method close {} {
-        my variable in
         if {[info exists in]} {
             catch {
                 chan event $in readable {}

@@ -31,11 +31,12 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::class create SrmManager
+    oo::define SrmManager export variable
+    oo::define SrmManager variable frontendService cleanupService
 
 # -------------------------------------------------------------------------
 
     oo::define SrmManager constructor {args} {
-        my variable frontendService cleanupService
         namespace path [list {*}[namespace path] ::srmlite::srm::server]
 
         foreach {param value} $args {
@@ -112,8 +113,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmManager method createRequest {connection requestType isSync SURLS {dstSURLS {}} {sizes {}} {depth 0}} {
-        my variable frontendService cleanupService
-
         $connection variable userName
 
         set requestId [NewUniqueId]
@@ -390,14 +389,11 @@ namespace eval ::srmlite::srm::server {
 
     oo::class create SrmRequest
     oo::define SrmRequest export variable
+    oo::define SrmRequest variable connection fileDict isSyncRequest queueSize requestState requestToken requestType successFlag failureFlag
 
 # -------------------------------------------------------------------------
 
     oo::define SrmRequest constructor {args} {
-        my variable requestState isSyncRequest queueSize
-        my variable requestType requestToken connection
-        my variable successFlag failureFlag fileDict
-
         set requestState SRM_REQUEST_QUEUED
         set isSyncRequest 0
         set queueSize 0
@@ -428,7 +424,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmRequest destructor {
-        my variable fileDict
         foreach fileObj [dict values $fileDict] {
             $fileObj destroy
         }
@@ -437,38 +432,30 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmRequest method setFile {SURL obj} {
-        my variable fileDict
         dict set fileDict $SURL $obj
     }
 
 # -------------------------------------------------------------------------
 
     oo::define SrmRequest method getFiles {} {
-        my variable fileDict
         dict values $fileDict
     }
 
 # -------------------------------------------------------------------------
 
     oo::define SrmRequest method getFile {SURL} {
-        my variable fileDict
         dict get $fileDict $SURL
     }
 
 # -------------------------------------------------------------------------
 
     oo::define SrmRequest method existsFile {SURL} {
-        my variable fileDict
         dict exists $fileDict $SURL
     }
 
 # -------------------------------------------------------------------------
 
     oo::define SrmRequest method updateState {} {
-        my variable requestState isSyncRequest queueSize
-        my variable requestType connection
-        my variable successFlag failureFlag
-
         if {$queueSize > 0} {
             set requestState SRM_REQUEST_INPROGRESS
             return
@@ -493,7 +480,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmRequest method successCallback {} {
-        my variable successFlag queueSize
         set successFlag 1
         incr queueSize -1
         my updateState
@@ -502,7 +488,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmRequest method failureCallback {} {
-        my variable failureFlag queueSize
         set failureFlag 1
         incr queueSize -1
         my updateState
@@ -527,13 +512,11 @@ namespace eval ::srmlite::srm::server {
 
     oo::class create SrmFile
     oo::define SrmFile export variable
+    oo::define SrmFile variable parent counter depth dstSURL faultString fileSize fileState fileStateComment finishTime frontendService host lifeTime metadata state submitTime SURL TURL userName waitTime
 
 # -------------------------------------------------------------------------
 
     oo::define SrmFile constructor {args} {
-        my variable parent fileState submitTime lifeTime waitTime counter
-        my variable depth fileSize SURL dstSURL TURL userName frontendService
-        my variable finishTime
         namespace path [list {*}[namespace path] ::srmlite::srm::server]
 
         set lifeTime 7200
@@ -586,14 +569,12 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method log {level args} {
-        my variable host
         log::log $level [join $args { }]
     }
 
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method updateState {code} {
-        my variable state faultString
         namespace upvar ::srmlite::srm::server resp resp
 
         foreach {retCode newState} $resp($state) {
@@ -610,8 +591,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method updateTime {currentTime} {
-        my variable fileState counter submitTime finishTime lifeTime waitTime
-
         incr counter
         set waitTime [expr {$counter / 4 * 5 + 1}]
 
@@ -627,8 +606,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method notify {method} {
-        my variable parent
-
         if {[info exists parent]} {
             after 0 [list $parent $method]
         }
@@ -651,8 +628,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method getDone {} {
-        my variable fileState state
-
         set fileState SRM_SUCCESS
         set state getDone
     }
@@ -660,8 +635,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method putDone {} {
-        my variable fileState state
-
         my set fileState SRM_SUCCESS
         my set state putDone
     }
@@ -669,8 +642,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method abort {reason} {
-        my variable fileState fileStateComment state
-
         set fileState SRM_SUCCESS
         set fileStateComment $reason
         set state abort
@@ -679,16 +650,12 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method done {} {
-        my variable state
-
         set state done
     }
 
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method srmLs {} {
-        my variable parent depth SURL userName frontendService state
-
         set state ls
         $frontendService process [list ls [self] $userName $depth $SURL]
     }
@@ -696,8 +663,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method srmRm {} {
-        my variable parent SURL userName frontendService state
-
         set state rm
         $frontendService process [list rm [self] $userName $SURL]
     }
@@ -705,8 +670,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method srmMkdir {} {
-        my variable SURL userName frontendService state
-
         set state mkdir
         $frontendService process [list mkdir [self] $userName $SURL]
     }
@@ -714,8 +677,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method srmRmdir {} {
-        my variable SURL userName frontendService state
-
         set state rmdir
         $frontendService process [list rmdir [self] $userName $SURL]
     }
@@ -723,8 +684,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method srmPrepareToGet {} {
-        my variable parent SURL userName frontendService state
-
         set state get
         $frontendService process [list get [self] $userName $SURL]
     }
@@ -732,8 +691,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method srmPrepareToPut {} {
-        my variable parent dstSURL userName frontendService state
-
         set state put
         $frontendService process [list put [self] $userName $dstSURL]
     }
@@ -741,8 +698,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method lsSuccess {result} {
-        my variable fileState metadata
-
         set fileState SRM_SUCCESS
         set metadata $result
         my updateState Ready
@@ -751,8 +706,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method lsFailure {reason} {
-        my variable fileState fileStateComment
-
         set fileState SRM_INVALID_PATH
         set fileStateComment [join $reason { }]
         my updateState Failed
@@ -761,8 +714,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method rmSuccess {result} {
-        my variable fileState
-
         set fileState SRM_SUCCESS
         my updateState Ready
     }
@@ -770,8 +721,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method rmFailure {reason} {
-        my variable fileState fileStateComment
-
         set fileState SRM_FAILURE
         set fileStateComment [join $reason { }]
         my updateState Failed
@@ -780,8 +729,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method mkdirSuccess {result} {
-        my variable fileState
-
         set fileState SRM_SUCCESS
         my updateState Ready
     }
@@ -789,8 +736,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method mkdirFailure {reason} {
-        my variable fileState fileStateComment
-
         set fileState SRM_FAILURE
         set fileStateComment [join $reason { }]
         my updateState Failed
@@ -799,8 +744,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method rmdirSuccess {result} {
-        my variable fileState
-
         set fileState SRM_SUCCESS
         my updateState Ready
     }
@@ -808,8 +751,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method rmdirFailure {reason} {
-        my variable fileState fileStateComment
-
         set fileState SRM_FAILURE
         set fileStateComment [join $reason { }]
         my updateState Failed
@@ -818,8 +759,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method getSuccess {result} {
-        my variable fileSize SURL TURL fileState
-
         set fileState SRM_FILE_PINNED
         set fileSize [lindex [lindex $result 0] 4]
         set TURL [ConvertSURL2TURL $SURL]
@@ -829,8 +768,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method getFailure {reason} {
-        my variable fileState fileStateComment
-
         set fileState SRM_INVALID_PATH
         set fileStateComment [join $reason { }]
         my updateState Failed
@@ -839,8 +776,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method putSuccess {result} {
-        my variable TURL fileState
-
         set fileState SRM_SPACE_AVAILABLE
         set TURL "gsiftp://[TransferHost]:2811/$result"
         my updateState Ready
@@ -849,8 +784,6 @@ namespace eval ::srmlite::srm::server {
 # -------------------------------------------------------------------------
 
     oo::define SrmFile method putFailure {reason} {
-        my variable fileState fileStateComment
-
         set fileState SRM_INVALID_PATH
         set fileStateComment [join $reason { }]
         my updateState Failed

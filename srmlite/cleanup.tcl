@@ -10,11 +10,11 @@ namespace eval ::srmlite::cleanup {
 # -------------------------------------------------------------------------
 
     oo::class create CleanupService
+    oo::define CleanupService variable logFile objectDict
 
 # -------------------------------------------------------------------------
 
     oo::define CleanupService constructor {args} {
-        my variable logFile objectDict
         namespace path [list {*}[namespace path] ::srmlite::cleanup]
 
         foreach {param value} $args {
@@ -31,14 +31,12 @@ namespace eval ::srmlite::cleanup {
 # -------------------------------------------------------------------------
 
     oo::define CleanupService method addObject {obj} {
-        my variable objectDict
         dict set objectDict $obj 0
     }
 
 # -------------------------------------------------------------------------
 
     oo::define CleanupService method removeObject {obj} {
-        my variable objectDict
         if {[dict exists $objectDict $obj]} {
             dict unset objectDict $obj
         }
@@ -47,8 +45,6 @@ namespace eval ::srmlite::cleanup {
 # -------------------------------------------------------------------------
 
     oo::define CleanupService method timeout {seconds} {
-        my variable logFile objectDict
-
         log::log debug "cleanup $seconds"
 
         LogRotate $logFile
