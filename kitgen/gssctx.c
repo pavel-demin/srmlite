@@ -194,8 +194,6 @@ GssExport(Tcl_Interp *interp, GssContext *context)
   gss_buffer_desc bufferOut;
   Tcl_Obj *result;
 
-  if(context->gssContext == GSS_C_NO_CONTEXT) return TCL_ERROR;
-
   majorStatus
     = gss_export_sec_context(&minorStatus,
                              &context->gssContext,
