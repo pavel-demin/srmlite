@@ -308,6 +308,17 @@ GssContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
     }
     return GssWrap(interp, context, objv[2]);
   }
+  else if(strcmp(option, "state") == 0)
+  {
+    if(objc != 2)
+    {
+      Tcl_WrongNumArgs(interp, 1, objv, "state");
+      return TCL_ERROR;
+    }
+    result = Tcl_NewIntObj(context->state);
+    Tcl_SetObjResult(interp, result);
+    return TCL_OK;
+  }
   else if(strcmp(option, "name") == 0)
   {
     if(objc != 2)

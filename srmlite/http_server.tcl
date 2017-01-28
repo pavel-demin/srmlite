@@ -567,6 +567,12 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
+    oo::define ChannelGss method state {} {
+        $context state
+    }
+
+# -------------------------------------------------------------------------
+
     oo::define ChannelGss method name {} {
         $context name
     }
@@ -620,13 +626,17 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     oo::define HttpConnectionGss method authorization {} {
-        chan event $channel readable {}
+        if {[$transform state] != 1} {
+            my done 1
+            return
+        }
         my log notice {Distinguished name} [$transform name]
         if {[catch {$transform export} result]} {
             my log error $result
             my done 1
             return
         }
+        chan event $channel readable {}
         $frontendService process [list authorization [self] [binary encode base64 $result]]
     }
 
