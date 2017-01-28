@@ -60,6 +60,7 @@ GssHandshake(Tcl_Interp *interp, GssContext *context)
 {
   OM_uint32 majorStatus, minorStatus;
   gss_buffer_desc bufferIn, bufferOut;
+  char *message = NULL;
 
   bufferIn.value = context->buffer;
   bufferIn.length = context->length;
@@ -102,9 +103,11 @@ GssHandshake(Tcl_Interp *interp, GssContext *context)
     }
     else
     {
-      globus_gss_assist_display_status(
-        stderr, "Failed to establish security context: ",
-        majorStatus, minorStatus, 0);
+      if(globus_gss_assist_display_status_str(
+        &message, "Failed to establish security context: ",
+        majorStatus, minorStatus, 0) == 0)
+        Tcl_AppendResult(interp, message, NULL);
+      free(message);
       return TCL_ERROR;
     }
   }
@@ -118,6 +121,7 @@ GssUnwrap(Tcl_Interp *interp, GssContext *context)
   OM_uint32 majorStatus, minorStatus;
   gss_buffer_desc bufferIn, bufferOut;
   Tcl_Obj *result;
+  char *message = NULL;
 
   bufferIn.value = context->buffer;
   bufferIn.length = context->length;
@@ -139,9 +143,11 @@ GssUnwrap(Tcl_Interp *interp, GssContext *context)
   }
   else
   {
-    globus_gss_assist_display_status(
-      stderr, "Failed to unwrap buffer: ",
-      majorStatus, minorStatus, 0);
+    if(globus_gss_assist_display_status_str(
+      &message, "Failed to unwrap buffer: ",
+      majorStatus, minorStatus, 0) == 0)
+      Tcl_AppendResult(interp, message, NULL);
+    free(message);
     return TCL_ERROR;
   }
 }
@@ -155,6 +161,7 @@ GssWrap(Tcl_Interp *interp, GssContext *context, Tcl_Obj *obj)
   gss_buffer_desc bufferIn, bufferOut;
   Tcl_Obj *result;
   int length;
+  char *message = NULL;
 
   bufferIn.value = Tcl_GetByteArrayFromObj(obj, &length);
   bufferIn.length = length;
@@ -178,9 +185,11 @@ GssWrap(Tcl_Interp *interp, GssContext *context, Tcl_Obj *obj)
   }
   else
   {
-    globus_gss_assist_display_status(
-      stderr, "Failed to wrap buffer: ",
-      majorStatus, minorStatus, 0);
+    if(globus_gss_assist_display_status_str(
+      &message, "Failed to wrap buffer: ",
+      majorStatus, minorStatus, 0) == 0)
+      Tcl_AppendResult(interp, message, NULL);
+    free(message);
     return TCL_ERROR;
   }
 }
@@ -193,6 +202,7 @@ GssExport(Tcl_Interp *interp, GssContext *context)
   OM_uint32 majorStatus, minorStatus;
   gss_buffer_desc bufferOut;
   Tcl_Obj *result;
+  char *message = NULL;
 
   majorStatus
     = gss_export_sec_context(&minorStatus,
@@ -208,9 +218,11 @@ GssExport(Tcl_Interp *interp, GssContext *context)
   }
   else
   {
-    globus_gss_assist_display_status(
-      stderr, "Failed to export context: ",
-      majorStatus, minorStatus, 0);
+    if(globus_gss_assist_display_status_str(
+      &message, "Failed to export context: ",
+      majorStatus, minorStatus, 0) == 0)
+      Tcl_AppendResult(interp, message, NULL);
+    free(message); 
     return TCL_ERROR;
   }
 }
@@ -392,6 +404,7 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
 
   Tcl_Channel channel;
   GssContext *context;
+  char *message = NULL;
 
   OM_uint32 majorStatus, minorStatus;
 
@@ -435,12 +448,12 @@ GssCreateContextObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_
 
   if(majorStatus != GSS_S_COMPLETE)
   {
-    globus_gss_assist_display_status(
-      stderr, "Failed to acquire credentials: ",
-      majorStatus, minorStatus, 0);
-
     GssContextDestroy((ClientData) context);
-    Tcl_AppendResult(interp, "Failed to acquire credentials", NULL);
+    if(globus_gss_assist_display_status_str(
+      &message, "Failed to acquire credentials: ",
+      majorStatus, minorStatus, 0) == 0)
+      Tcl_AppendResult(interp, message, NULL);
+    free(message);
     return TCL_ERROR;
   }
 
