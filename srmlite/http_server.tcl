@@ -126,7 +126,7 @@ namespace eval ::srmlite::http::server {
     oo::define HttpConnection constructor {args} {
         namespace path [list {*}[namespace path] ::srmlite::http::server]
 
-        set timeout 900000
+        set timeout 3600000
         set reqleft 25
 
         foreach {param value} $args {
