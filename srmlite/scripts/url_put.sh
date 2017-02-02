@@ -10,7 +10,7 @@ dirDst=`dirname $fileDst`
 
 checkFileDst $fileDst $dirDst
 
-result=`./makeFile squirrel.config $fileDst`
+result=`./putfile storage.cfg $fileDst`
 
 rc=$?
 if [ $rc != 0 ]
