@@ -84,9 +84,6 @@ getuser$(EXE): build/globus ../../getuser.c
 	  build/lib/libssl$A build/lib/libcrypto$A \
 	  $(LDFLAGS) && $(STRIP) $@
 
-setuser$(EXE): build/globus ../../setuser.c
-	$(CC) -o $@ $(CFLAGS) ../../setuser.c && $(STRIP) $@
-
 build/files:
 	mkdir -p $@ && cd $@ && ln -s ../../../../files/* .
 
