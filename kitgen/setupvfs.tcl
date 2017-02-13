@@ -42,7 +42,6 @@ if {[llength $argv] != 2} {
 
 load {} vfs
 load {} tdom
-load {} starfishLib
 load {} g2lite
 load {} gssctx
 
@@ -50,7 +49,6 @@ load {} gssctx
 # this relies on having all necessary extensions already loaded at this point
 set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   vfs1@ vfs[package require vfs] \
-                  starfish1@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
                   g2lite0@ g2lite[package require g2lite] \
                   gssctx0@ gssctx[package require gssctx]]
@@ -97,17 +95,6 @@ set clifiles {
   lib/vfs1@/zipvfs.tcl
   lib/tdom0@/pkgIndex.tcl
   lib/tdom0@/tdom.tcl
-  lib/starfish1@/pkgIndex.tcl
-  lib/starfish1@/pkgStarfish.tcl
-  lib/starfish1@/pkgStarfishBase.tcl
-  lib/starfish1@/pkgStarfishGui.tcl
-  lib/starfish1@/pkgStarfishLib.tcl
-  lib/starfish1@/conn.tcl
-  lib/starfish1@/dialog.tcl
-  lib/starfish1@/gui.tcl
-  lib/starfish1@/meta.tcl
-  lib/starfish1@/misc.tcl
-  lib/starfish1@/tree.tcl
   lib/g2lite0@/pkgIndex.tcl
   lib/gssctx0@/pkgIndex.tcl
   lib/tcllib1.18/pkgIndex.tcl
@@ -116,6 +103,7 @@ set clifiles {
   lib/tcllib1.18/comm
   lib/tcllib1.18/cmdline
   lib/tcllib1.18/csv
+  lib/tcllib1.18/dns
   lib/tcllib1.18/fileutil
   lib/tcllib1.18/ldap
   lib/tcllib1.18/log

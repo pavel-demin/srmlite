@@ -38,14 +38,11 @@ tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 	cp kit-cli$(EXE) $@ && $(STRIP) $@ && $(UPX) $@
 	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ cli
 
-kit-cli$(EXE): build/tcl build/tclvfs \
-	build/globus build/tdom build/starfish \
-	build/tclx build/tcllib $(CLIOBJ)
+kit-cli$(EXE): build/tcl build/tclvfs build/globus build/tdom build/tclx build/tcllib $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
 	  build/lib/vfs1*/*vfs1*$A \
 	  build/lib/tdom0*/*tdom0*$A \
-	  build/lib/starfish1*/libstarfish1*$A \
 	  build/lib/tclx8*/libtclx8*$A \
 	  build/lib/*tclstub8*$A build/lib/*tcl8*$A \
 	  build/lib64/libglobus_gss_assist$A \
@@ -125,14 +122,6 @@ build/tclx: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/tclx/configure $(STATIC) $(TCLDIR) $(TCLX_OPTS) && \
 	  $(MAKE) install
-
-build/starfish: build/tcl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/starfish/configure $(STATIC) $(TCLDIR) $(STARFISH_OPTS) && \
-	  $(MAKE) && cp libstarfish1*$A $(OUTDIR)/lib && \
-	  cd $(OUTDIR)/lib && mkdir -p starfish1.0 && \
-	  mv libstarfish1*$A starfish1.0/ && \
-	  cp -r $(EXTDIR)/starfish/tcl/*.tcl starfish1.0/
 
 tidy: cleanext
 	rm -rf build/tcl

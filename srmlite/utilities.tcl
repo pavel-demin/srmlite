@@ -1,15 +1,9 @@
 package require log
-package require starfish
 
 namespace eval ::srmlite::utilities {
 
     variable ftpHosts
     set ftpHosts [list]
-
-# -------------------------------------------------------------------------
-
-    variable localHostNames
-    set localHostNames [list]
 
 # -------------------------------------------------------------------------
 
@@ -59,19 +53,6 @@ namespace eval ::srmlite::utilities {
         6 RW
         7 RWX
     }
-# -------------------------------------------------------------------------
-
-    foreach interface [::starfish::netdb ip interfaces] {
-
-        set ip [lindex $interface 1]
-        if {[lsearch $localHostNames $ip] == -1} {lappend  localHostNames $ip}
-
-        if {![catch {::starfish::netdb hosts name $ip} longName]} {
-            set shortName [lindex [split $longName .] 0]
-            if {[lsearch $localHostNames $longName] == -1} {lappend localHostNames $longName}
-            if {[lsearch $localHostNames $shortName] == -1} {lappend localHostNames $shortName}
-        }
-    }
 
 # -------------------------------------------------------------------------
 
@@ -81,6 +62,7 @@ namespace eval ::srmlite::utilities {
 
         return [incr uniqueId]
     }
+
 # -------------------------------------------------------------------------
 
     proc ExtractFileType {mode} {
@@ -119,17 +101,6 @@ namespace eval ::srmlite::utilities {
         variable permArray
         set permMode [string map $permDict $mode]
         return $permArray([string index $permMode 2])
-    }
-
-# -------------------------------------------------------------------------
-
-    proc IsLocalHost {url} {
-
-        variable localHostNames
-
-        set host [lindex [ExtractHostPortFile $url] 0]
-
-        return [expr [lsearch $localHostNames $host] != -1]
     }
 
 # -------------------------------------------------------------------------
@@ -199,7 +170,7 @@ namespace eval ::srmlite::utilities {
 
 # -------------------------------------------------------------------------
 
-    namespace export NewUniqueId IsLocalHost ExtractFileType ExtractOwnerMode \
+    namespace export NewUniqueId ExtractFileType ExtractOwnerMode \
         ExtractGroupMode ExtractOtherMode ExtractHostPortFile TransferHost \
         ConvertSURL2TURL LogRotate
 }

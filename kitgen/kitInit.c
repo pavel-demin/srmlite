@@ -45,7 +45,6 @@ Tcl_AppInitProc Tdom_Init, Tdom_SafeInit;
 Tcl_AppInitProc G2lite_Init;
 Tcl_AppInitProc Gssctx_Init, Gssctx_SafeInit;
 Tcl_AppInitProc Tclx_Init, Tclx_SafeInit;
-Tcl_AppInitProc Starfish_Init, Starfish_SafeInit;
 
 #ifdef WIN32
 #define DEV_NULL "NUL"
@@ -111,7 +110,6 @@ TclKit_AppInit(Tcl_Interp *interp)
     Tcl_StaticPackage(0, "g2lite", G2lite_Init, NULL);
     Tcl_StaticPackage(0, "gssctx", Gssctx_Init, Gssctx_SafeInit);
     Tcl_StaticPackage(0, "tdom", Tdom_Init, Tdom_SafeInit);
-    Tcl_StaticPackage(0, "starfishLib", Starfish_Init, Starfish_SafeInit);
     Tcl_StaticPackage(0, "Tclx", Tclx_Init, Tclx_SafeInit);
 
     /* the tcl_rcFileName variable only exists in the initial interpreter */

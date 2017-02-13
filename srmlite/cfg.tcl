@@ -1,5 +1,5 @@
 package require Tclx
-package require starfish
+package require dns
 
 # -------------------------------------------------------------------------
 
@@ -74,9 +74,12 @@ proc ValidateFile {fileName} {
 proc ValidateFtpHosts {ftpHosts} {
 
     foreach host $ftpHosts {
-        if {[catch {::starfish::netdb hosts name $host} result] &&
-            [catch {::starfish::netdb hosts address $host} result]} {
-            return -code error $result
+        set token [dns::resolve $host]
+        set status [dns::wait $token]
+        set error [dns::error $token]
+        dns::cleanup $token
+        if {$status ne {ok}} {
+            return -code error $error
         }
     }
 }
