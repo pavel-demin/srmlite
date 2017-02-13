@@ -326,6 +326,7 @@ namespace eval ::srmlite::srm::server {
                 set fileId [NewUniqueId]
                 set fileTmp ${requestTmp}::${fileId}
                 SrmFile create $fileTmp \
+                    -parent $requestTmp \
                     -fileState SRM_INVALID_PATH \
                     -SURL $SURL
                 lappend files $fileTmp
@@ -375,6 +376,7 @@ namespace eval ::srmlite::srm::server {
                 set fileId [NewUniqueId]
                 set fileTmp ${requestTmp}::${fileId}
                 SrmFile create $fileTmp \
+                    -parent $requestTmp \
                     -fileState SRM_INVALID_PATH \
                     -SURL $SURL
                 lappend files $fileTmp
