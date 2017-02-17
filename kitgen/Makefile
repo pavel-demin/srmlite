@@ -3,19 +3,16 @@ TCLLIB_URL   = http://heanet.dl.sourceforge.net/project/tcllib/tcllib/1.18/tclli
 ZLIB_URL     = http://heanet.dl.sourceforge.net/project/libpng/zlib/1.2.3/zlib-1.2.3.tar.gz
 TCL_URL      = http://heanet.dl.sourceforge.net/project/tcl/Tcl/8.5.19/tcl8.5.19-src.tar.gz
 XOTCL_URL    = http://heanet.dl.sourceforge.net/project/xotcl/xotcl/1.6.8/xotcl-1.6.8.tar.gz
-STARFISH_URL = http://www.starfishsystems.ca/Share/Source/starfish-1.0.tar.gz
-OPENSSL_URL  = http://www.openssl.org/source/openssl-1.0.2j.tar.gz
+OPENSSL_URL  = http://www.openssl.org/source/openssl-1.0.2k.tar.gz
 GLOBUS_SRC   = gt5.2.5-all-source-installer
 GLOBUS_URL   = http://toolkit.globus.org/ftppub/gt5/5.2/5.2.5/installers/src/$(GLOBUS_SRC).tar.gz
 
-VFS_CVS      = :pserver:anonymous@tclvfs.cvs.sourceforge.net:/cvsroot/tclvfs
 TCLX_CVS     = :pserver:anonymous@tclx.cvs.sourceforge.net:/cvsroot/tclx
 
 unspecified-target:
 
 cvs:
 	mkdir -p 8.x && cd 8.x && \
-	  cvs -d $(VFS_CVS) co tclvfs && \
 	  cvs -d $(TCLX_CVS) co tclx
 
 tars:
@@ -23,7 +20,6 @@ tars:
 	  curl -LO $(TCL_URL)
 	mkdir -p 8.x && cd 8.x && \
 	  curl -LO $(ZLIB_URL) && \
-	  curl -LO $(STARFISH_URL) && \
 	  curl -LO $(XOTCL_URL) && \
 	  curl -LO $(TCLLIB_URL) && \
 	  curl -LO $(TDOM_URL) && \
@@ -39,8 +35,7 @@ untar:
 	  tar xfz tcllib-1.18.tar.gz && \
 	  tar xfz zlib-1.2.3.tar.gz && \
 	  tar xfz xotcl-1.6.8.tar.gz && \
-	  tar xfz starfish-1.0.tar.gz && \
-	  tar xfz openssl-1.0.2j.tar.gz && \
+	  tar xfz openssl-1.0.2k.tar.gz && \
 	  tar xfz $(GLOBUS_SRC).tar.gz \
 	    $(GLOBUS_SRC)/config.guess \
 	    $(GLOBUS_SRC)/config.site.in \
@@ -62,12 +57,9 @@ untar:
 	  mv tcllib-1.18 tcllib && \
 	  mv zlib-1.2.3 zlib && \
 	  mv xotcl-1.6.8 xotcl && \
-	  mv starfish-1.0/src/starfish ./ && \
-	  mv starfish-1.0/tcl starfish/ && \
-          mv openssl-1.0.2j openssl && \
+          mv openssl-1.0.2k openssl && \
           mv $(GLOBUS_SRC) globus && \
-	  patch -p 0 < ../patches/globus-export_sec_context.patch && \
-	  patch -p 0 < ../patches/starfish-noyp.patch && rm -rf starfish-1.0
+	  patch -p 0 < ../patches/globus-export_sec_context.patch
 
 configs:
 	sh config.sh 8.5/base-std

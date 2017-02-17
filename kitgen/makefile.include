@@ -15,7 +15,7 @@
 EXTDIR = ../../../../8.x
 STATIC = --disable-shared --enable-static
 OUTDIR = $(shell pwd)/build
-OBJ    = $(OUTDIR)/zvfs$O $(OUTDIR)/zlib$O $(OUTDIR)/g2lite$O
+OBJ    = $(OUTDIR)/zvfs$O $(OUTDIR)/zlib$O $(OUTDIR)/g2lite$O $(OUTDIR)/gsschan$O
 CLIOBJ ?= $(OBJ) $(OUTDIR)/tclAppInit$O
 TCLDIR = --with-tcl=$(OUTDIR)/lib --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR)
 STRIP ?= strip
@@ -26,17 +26,12 @@ SO    ?=.so
 
 OPENSSL_OPTS = --prefix=$(OUTDIR) --openssldir=$(OUTDIR) no-threads no-shared no-engines no-hw
 
-export OPENSSL_INCLUDES := -I$(OUTDIR)/include
-export OPENSSL_CFLAGS := -I$(OUTDIR)/include
-export OPENSSL_LDFLAGS := -L$(OUTDIR)/lib
-
 GLOBUS_FLAVOR = gcc64
 GLOBUS_OPTS = --prefix=$(OUTDIR) --with-flavor=$(GLOBUS_FLAVOR) --with-buildopts="--disable-shared --enable-static"
 
 GSS_OPTS = --disable-threads --enable-64bit --with-globus=$(OUTDIR)
 #GSS_OPTS = --disable-threads --with-globus=$(OUTDIR)
 TCLZLIB_OPTS = --disable-threads
-VFS_OPTS = --disable-threads
 TDOM_OPTS = --disable-threads
 TCLX_OPTS = --disable-threads
 XOTCL_OPTS = --disable-threads
@@ -46,19 +41,14 @@ tclkit-cli$(EXE): kit-cli$(EXE) ../../setupvfs.tcl build/files
 	cp kit-cli$(EXE) $@ && $(STRIP) $@ && $(UPX) $@
 	./kit-cli -init- ../../setupvfs.tcl $(KIT_OPTS) $@ cli
 
-kit-cli$(EXE): build/tcl build/tclvfs build/zlib \
-	build/globus build/gss_socket \
-	build/tdom build/starfish \
+kit-cli$(EXE): build/tcl build/zlib build/globus build/tdom \
 	build/tclx build/tcllib build/xotcl $(CLIOBJ)
 	$(CC) -o $@ $(CFLAGS) ../../kitInit.c $(CLIOBJ) \
 	  -Ibuild/include -DKIT_LITE -DSTATIC_BUILD \
-	  build/lib/vfs1*/*vfs1*$A \
 	  build/lib/libz$A build/lib/*tcl8*$A \
 	  build/lib/tdom0*/*tdom0*$A \
-	  build/lib/starfish1*/libstarfish1*$A \
 	  build/lib/tclx8*/libtclx8*$A \
 	  build/lib/xotcl1*/*xotcl1*$A \
-	  build/lib/gss_socket0*/libgss_socket0*$A \
 	  build/lib64/libglobus_gss_assist$A \
 	  build/lib64/libglobus_gssapi_gsi$A \
 	  build/lib64/libglobus_gsi_proxy_core$A \
@@ -95,9 +85,6 @@ getuser$(EXE): build/globus ../../getuser.c
 	  build/lib/libssl$A build/lib/libcrypto$A \
 	  $(LDFLAGS) && $(STRIP) $@
 
-setuser$(EXE): build/globus ../../setuser.c
-	$(CC) -o $@ $(CFLAGS) ../../setuser.c && $(STRIP) $@
-
 build/files:
 	mkdir -p $@ && cd $@ && ln -s ../../../../files/* .
 
@@ -107,18 +94,13 @@ build/tcl:
 	    --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) && \
 	  $(MAKE) install-binaries install-libraries $(PRIV)
 
-build/tclvfs: build/tcl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/tclvfs/configure $(STATIC) $(TCLDIR) $(VFS_OPTS) && \
-	  $(MAKE) install
-
 build/zlib: build/tcl
 	cp -R ../../8.x/zlib/. $@
 	cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh $(EXTDIR)/zlib/configure $(ZLIB_OPTS) && \
 	  $(MAKE) install
 
-build/openssl:
+build/openssl: build/tcl
 	cp -R ../../8.x/openssl/. $@
 	cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
 	  sh ./config $(OPENSSL_OPTS) && \
@@ -126,13 +108,10 @@ build/openssl:
 
 build/globus: build/tcl build/openssl
 	mkdir -p $@ && cd ../../8.x/globus && \
+	  export OPENSSL_CFLAGS="-I$(OUTDIR)/include" && \
+	  export OPENSSL_LIBS="-L$(OUTDIR)/lib -lssl -lcrypto -ldl" && \
 	  sh ./configure $(GLOBUS_OPTS) && \
 	  $(MAKE) globus_gass_copy install
-
-build/gss_socket: build/tcl build/globus
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh ../../../../../gss_socket/configure $(STATIC) $(TCLDIR) $(GSS_OPTS) && \
-	  $(MAKE) install
 
 build/tdom: build/tcl
 	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
@@ -154,20 +133,11 @@ build/xotcl: build/tcl
 	  sh $(EXTDIR)/xotcl/configure $(STATIC) $(TCLDIR) $(XOTCL_OPTS) && \
 	  $(MAKE) install-binaries
 
-build/starfish: build/tcl
-	mkdir -p $@ && cd $@ && CFLAGS="$(CFLAGS)" && export CFLAGS && \
-	  sh $(EXTDIR)/starfish/configure $(STATIC) $(TCLDIR) $(STARFISH_OPTS) && \
-	  $(MAKE) && cp libstarfish1*$A $(OUTDIR)/lib && \
-	  cd $(OUTDIR)/lib && mkdir -p starfish1.0 && \
-	  mv libstarfish1*$A starfish1.0/ && \
-	  cp -r $(EXTDIR)/starfish/tcl/*.tcl starfish1.0/
-
 tidy: cleanext
 	rm -rf build/tcl
 
 cleanext:
-	rm -rf build/tclvfs build/thread build/zlib build/*.o
-	rm -rf build/lib/vfs* build/lib/thread*
+	rm -rf build/zlib build/*.o
 
 clean:
 	rm -rf build kit-cli$(EXE)
@@ -185,6 +155,10 @@ $(OUTDIR)/zlib$O: ../../zlib.c
 
 $(OUTDIR)/g2lite$O: ../../g2lite.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
+
+$(OUTDIR)/gsschan$O: ../../gsschan.c
+	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
+	  -Ibuild/include/globus -Ibuild/include/globus/gcc64 -c $<
 
 $(OUTDIR)/tclAppInit$O: ../tcl/$(PLAT)/tclAppInit.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \

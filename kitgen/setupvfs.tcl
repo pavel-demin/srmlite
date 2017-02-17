@@ -41,23 +41,19 @@ if {[llength $argv] != 2} {
 }
 
 load {} zlib
-load {} vfs
 load {} xotcl
 load {} tdom
-load {} starfishLib
 load {} g2lite
-load {} gss
+load {} gsschan
 
 # map of proper version numbers to replace @ markers in paths given to vfscopy
 # this relies on having all necessary extensions already loaded at this point
 set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   zlib1@ zlib[package require zlib] \
-                  vfs1@ vfs[package require vfs] \
-                  starfish1@ starfish[package require starfishLib] \
                   tdom0@ tdom[package require tdom] \
                   xotcl1@ xotcl[package require XOTcl] \
                   g2lite0@ g2lite[package require g2lite] \
-                  gss_socket0@ gss_socket[package require gss::socket]]
+                  gsschan0@ gsschan[package require gsschan]]
 
 if {$debugOpt} {
   puts "Starting [info script]"
@@ -73,7 +69,7 @@ set tcl_library ../tcl/library
 source ../tcl/library/init.tcl ;# for tcl::CopyDirectory
 
 # Create package index files for the static extensions.
-set exts {g2lite XOTcl zlib Tclx}
+set exts {g2lite XOTcl zlib Tclx gsschan}
 foreach ext $exts {
   load {} $ext
   set dst [file join lib "[string tolower $ext][package provide $ext]" pkgIndex.tcl]
@@ -93,28 +89,11 @@ set clifiles {
   lib/tcl8@/safe.tcl
   lib/tcl8@/tclIndex
   lib/tcl8@/word.tcl
-  lib/vfs1@/mk4vfs.tcl
-  lib/vfs1@/pkgIndex.tcl
-  lib/vfs1@/starkit.tcl
-  lib/vfs1@/vfslib.tcl
-  lib/vfs1@/vfsUtils.tcl
-  lib/vfs1@/zipvfs.tcl
   lib/xotcl1@/pkgIndex.tcl
   lib/tdom0@/pkgIndex.tcl
   lib/tdom0@/tdom.tcl
-  lib/starfish1@/pkgIndex.tcl
-  lib/starfish1@/pkgStarfish.tcl
-  lib/starfish1@/pkgStarfishBase.tcl
-  lib/starfish1@/pkgStarfishGui.tcl
-  lib/starfish1@/pkgStarfishLib.tcl
-  lib/starfish1@/conn.tcl
-  lib/starfish1@/dialog.tcl
-  lib/starfish1@/gui.tcl
-  lib/starfish1@/meta.tcl
-  lib/starfish1@/misc.tcl
-  lib/starfish1@/tree.tcl
   lib/g2lite0@/pkgIndex.tcl
-  lib/gss_socket0@/pkgIndex.tcl
+  lib/gsschan0@/pkgIndex.tcl
   lib/zlib1@/pkgIndex.tcl
   lib/tcllib1.18/pkgIndex.tcl
   lib/tcllib1.18/asn
