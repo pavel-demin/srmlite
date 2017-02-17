@@ -27,7 +27,7 @@ foreach file [$request info children] {
             set owner [lindex $stat 2]
             set group [lindex $stat 3]
             set fileSize 0
-            if {[string equal $fileType FILE]} {
+            if {$fileType eq {FILE}} {
                 set fileSize [lindex $stat 4]
             }
             set seconds [clock scan [lrange $stat 5 6]]
@@ -83,7 +83,7 @@ foreach file [$request info children] {
                     set owner [lindex $stat 2]
                     set group [lindex $stat 3]
                     set fileSize 0
-                    if {[string equal $fileType FILE]} {
+                    if {$fileType eq {FILE}} {
                         set fileSize [lindex $stat 4]
                     }
                     set seconds [clock scan [lrange $stat 5 6]]

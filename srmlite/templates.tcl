@@ -127,17 +127,6 @@ proc InitTemplateSrmPrepareToPutRes {} {
 
 # -------------------------------------------------------------------------
 
-proc InitTemplateSrmStatusOfCopyRequestRes {} {
-
-  set fid [open templates/srmStatusOfCopyRequest_res.g2]
-  set content [read $fid]
-  close $fid
-
-  proc srmStatusOfCopyRequestResBody {request files} [g2lite $content]
-}
-
-# -------------------------------------------------------------------------
-
 proc InitTemplateSrmStatusOfGetRequestRes {} {
 
   set fid [open templates/srmStatusOfGetRequest_res.g2]

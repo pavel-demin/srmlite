@@ -1,5 +1,5 @@
 
-package ifneeded srmlite::cfg            0.1 [list source [file join $dir cfg.tcl]]
+package ifneeded srmlite::cfg            0.2 [list source [file join $dir cfg.tcl]]
 package ifneeded srmlite::soap           0.1 [list source [file join $dir soap.tcl]]
 package ifneeded srmlite::http::server   0.2 [list source [file join $dir http_server.tcl]]
 package ifneeded srmlite::srm::server    0.2 [list source [file join $dir srm_server.tcl]]

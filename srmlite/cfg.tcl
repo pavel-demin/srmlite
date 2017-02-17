@@ -1,6 +1,4 @@
-
 package require Tclx
-package require starfish
 
 # -------------------------------------------------------------------------
 
@@ -15,23 +13,21 @@ array set CfgValidators {
     frontendPort ValidatePort
     frontendLog ValidateFrontendLog
     backendLog ValidateBackendLog
-    srmv1Prefix ValidateEverything
-    srmv2Prefix ValidateEverything
+    srmPrefix ValidateEverything
 }
 
 array set Cfg {
     logLevel notice
-    ftpHosts ingrid-phedex.cism.ucl.ac.be
+    ftpHosts ingrid-se03.cism.ucl.ac.be
     workDir .
     chrootDir .
     daemonize false
     frontendUser edguser
     frontendGroup edguser
-    frontendPort 8443
+    frontendPort 8444
     frontendLog logs/frontend.log
     backendLog logs/backend.log
-    srmv1Prefix /srm/managerv1
-    srmv2Prefix /srm/managerv2
+    srmPrefix /srm/managerv2
 }
 
 # -------------------------------------------------------------------------
@@ -75,13 +71,6 @@ proc ValidateFile {fileName} {
 # -------------------------------------------------------------------------
 
 proc ValidateFtpHosts {ftpHosts} {
-
-    foreach host $ftpHosts {
-        if {[catch {::starfish::netdb hosts name $host} result] &&
-            [catch {::starfish::netdb hosts address $host} result]} {
-            return -code error $result
-        }
-    }
 }
 
 # -------------------------------------------------------------------------
@@ -146,7 +135,7 @@ proc CfgParser {content} {
             set line [string replace $line $commentIndex end]
         }
         set line [string trim $line]
-        if {[string equal $line {}]} continue
+        if {$line eq {}} continue
 
         append data $line { }
 
@@ -182,4 +171,4 @@ proc CfgValidate {} {
 
 # -------------------------------------------------------------------------
 
-package provide srmlite::cfg 0.1
+package provide srmlite::cfg 0.2

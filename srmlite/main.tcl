@@ -1,4 +1,3 @@
-
 lappend auto_path .
 
 package require Tclx
@@ -13,12 +12,12 @@ proc ::log::Puts {level text} {
     variable fill
 
     set chan $channelMap($level)
-    if {$chan == {}} {
+    if {$chan eq {}} {
         # Ignore levels without channel.
         return
     }
 
-    puts $chan "$text"
+    chan puts $chan "$text"
     return
 }
 
@@ -62,8 +61,8 @@ proc frontend {pipein pipeout} {
 
     global Cfg
 
-    package require srmlite::httpd
-    namespace import ::srmlite::httpd::*
+    package require srmlite::http::server
+    namespace import ::srmlite::http::server::*
 
     package require srmlite::cleanup
     namespace import ::srmlite::cleanup::*
@@ -71,8 +70,8 @@ proc frontend {pipein pipeout} {
     package require srmlite::frontend
     namespace import ::srmlite::frontend::*
 
-    package require srmlite::srmv2::server
-    namespace import ::srmlite::srmv2::server::*
+    package require srmlite::srm::server
+    namespace import ::srmlite::srm::server::*
 
     package require srmlite::utilities
 
@@ -80,7 +79,7 @@ proc frontend {pipein pipeout} {
     id user $Cfg(frontendUser)
 
     set fid [open $Cfg(frontendLog) w]
-    fconfigure $fid -blocking 0 -buffering line
+    chan configure $fid -blocking 0 -buffering line -buffersize 32768
     log::lvChannelForall $fid
 
     set ::srmlite::utilities::logFileId $fid
@@ -96,15 +95,15 @@ proc frontend {pipein pipeout} {
         -in [lindex $pipeout 0] \
         -out [lindex $pipein 1]
 
-    Srmv2Manager srmv2 \
-	-cleanupService timeout \
-	-frontendService frontend
+    SrmManager manager \
+        -cleanupService timeout \
+        -frontendService frontend
 
     HttpServerGss server \
         -port $Cfg(frontendPort) \
-	-frontendService frontend
+        -frontendService frontend
 
-    server exportObject -prefix /srm/managerv2 -object srmv2
+    server exportObject -prefix $Cfg(srmPrefix) -object manager
 
     server start
 
@@ -128,7 +127,7 @@ proc backend {pipein pipeout} {
     global Cfg State
 
     set fid [open $Cfg(backendLog) w]
-    fconfigure $fid -blocking 0 -buffering line
+    chan configure $fid -blocking 0 -buffering line -buffersize 32768
     log::lvChannelForall $fid
 
     set ::srmlite::utilities::logFileId $fid
@@ -139,10 +138,10 @@ proc backend {pipein pipeout} {
     set State(in) [lindex $pipein 0]
     set State(out) [lindex $pipeout 1]
 
-    fconfigure $State(in) -blocking 0 -buffering line
-    fconfigure $State(out) -blocking 0 -buffering line
+    chan configure $State(in) -blocking 0 -buffering line -buffersize 32768
+    chan configure $State(out) -blocking 0 -buffering line -buffersize 32768
 
-    fileevent $State(in) readable [list GetInput $State(in)]
+    chan event $State(in) readable [list GetInput $State(in)]
 
     SetupTimer 600 [list Timeout 600]
 

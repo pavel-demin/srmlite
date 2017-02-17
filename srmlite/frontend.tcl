@@ -22,9 +22,9 @@ namespace eval ::srmlite::frontend {
 
     FrontendService instproc init {} {
         my instvar in out
-        fconfigure $in -blocking false -buffering line
-        fconfigure $out -blocking false -buffering line
-        fileevent $in readable [myproc GetInput]
+        chan configure $in -blocking 0 -buffering line -buffersize 32768
+        chan configure $out -blocking 0 -buffering line -buffersize 32768
+        chan event $in readable [myproc GetInput]
         next
     }
 
@@ -37,10 +37,27 @@ namespace eval ::srmlite::frontend {
 # -------------------------------------------------------------------------
 
     FrontendService instproc GetInput {} {
-
+        my instvar in
         variable permDict
 
-        if {[my getLine line] < 0} {
+        if {[catch {chan gets $in line} readCount]} {
+            my log error "Error during chan gets: $readCount"
+            my close
+            return
+        }
+
+        if {$readCount == -1} {
+            if {[chan eof $in]} {
+                my log error {Broken connection}
+                my close
+                return
+            } else {
+                my log warning {No full line available, retrying...}
+                return
+            }
+        }
+
+        if {$readCount < 0} {
             return
         }
 
@@ -58,43 +75,18 @@ namespace eval ::srmlite::frontend {
 
 # -------------------------------------------------------------------------
 
-    FrontendService instproc getLine {var} {
-        my upvar $var line
-        my instvar in
-
-        if {[catch {gets $in line} readCount]} {
-            my log error "Error during gets: $readCount"
-            my close
-            return -2
-        }
-
-        if {$readCount == -1} {
-            if {[eof $in]} {
-                my log error {Broken connection}
-                my close
-                return -2
-            } else {
-                my log warning {No full line available, retrying...}
-                return -1
-            }
-        }
-
-        return $readCount
-    }
-
-# -------------------------------------------------------------------------
-
     FrontendService instproc close {} {
         my instvar in
         if {[my exists in]} {
             catch {
-                fileevent $in readable {}
-                fileevent $in writable {}
-                ::close $in
+                chan event $in readable {}
+                chan event $in writable {}
+                chan close $in
                 unset in
             }
-    	}
+        }
     }
+
 # -------------------------------------------------------------------------
 
     namespace export FrontendService

@@ -26,7 +26,7 @@ foreach file $files {
             </status>
             <estimatedWaitTime xsi:type="xsd:int">$${waitTime}</estimatedWaitTime>
 @@
-        if {[string equal $fileState SRM_SPACE_AVAILABLE]} {
+        if {$fileState eq {SRM_SPACE_AVAILABLE}} {
 @@
             <remainingPinLifetime xsi:type="xsd:int"@@nillableValue remainingPinLifetime lifeTime@@>
             <remainingFileLifetime xsi:type="xsd:int"@@nillableValue remainingFileLifetime lifeTime@@>

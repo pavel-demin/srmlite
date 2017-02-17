@@ -1,3 +1,4 @@
+package require log
 package require Tclx
 
 package require srmlite::utilities
@@ -33,8 +34,7 @@ proc ExtractHostFile {url} {
 
 proc SrmLs {requestType uniqueId userName depth SURL} {
 
-    set command "./setuser $userName ./scripts/url_ls.sh $depth [ExtractHostFile $SURL]"
-#    set command "./scripts/url_ls.sh [ExtractHostFile $SURL]"
+    set command "sudo -u $userName ./scripts/url_ls.sh $depth [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -42,8 +42,7 @@ proc SrmLs {requestType uniqueId userName depth SURL} {
 
 proc SrmGet {requestType uniqueId userName SURL} {
 
-    set command "./setuser $userName ./scripts/url_get.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_get.sh [ExtractHostFile $SURL]"
+    set command "sudo -u $userName ./scripts/url_get.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -51,8 +50,7 @@ proc SrmGet {requestType uniqueId userName SURL} {
 
 proc SrmPut {requestType uniqueId userName SURL} {
 
-    set command "./setuser $userName ./scripts/url_put.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_put.sh [ExtractHostFile $SURL]"
+    set command "sudo -u $userName ./scripts/url_put.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -60,8 +58,7 @@ proc SrmPut {requestType uniqueId userName SURL} {
 
 proc SrmRm {requestType uniqueId userName SURL} {
 
-    set command "./setuser $userName ./scripts/url_del.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_del.sh [ExtractHostFile $SURL]"
+    set command "sudo -u $userName ./scripts/url_del.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -69,8 +66,7 @@ proc SrmRm {requestType uniqueId userName SURL} {
 
 proc SrmMkdir {requestType uniqueId userName SURL} {
 
-    set command "./setuser $userName ./scripts/url_mkdir.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_mkdir.sh [ExtractHostFile $SURL]"
+    set command "sudo -u $userName ./scripts/url_mkdir.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -78,8 +74,7 @@ proc SrmMkdir {requestType uniqueId userName SURL} {
 
 proc SrmRmdir {requestType uniqueId userName SURL} {
 
-    set command "./setuser $userName ./scripts/url_rmdir.sh [ExtractHostFile $SURL]"
-#    set command "./scripts/url_mkdir.sh [ExtractHostFile $SURL]"
+    set command "sudo -u $userName ./scripts/url_rmdir.sh [ExtractHostFile $SURL]"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -87,7 +82,7 @@ proc SrmRmdir {requestType uniqueId userName SURL} {
 
 proc SrmAuth {requestType uniqueId gssContext} {
 
-    set command "./scripts/getuser.sh $gssContext"
+    set command "./getuser $gssContext"
     SubmitCommand $requestType $uniqueId $command
 }
 
@@ -97,25 +92,23 @@ proc SubmitCommand {requestType uniqueId command} {
 
     global State
 
-    log::log debug $command
-
     if {[catch {open "| $command" {RDONLY NONBLOCK}} pipe]} {
-        set faultString "Failed to execute '$command'"
+        set faultString "Failed to execute '[string range $command 0 99]'"
         log::log error $faultString
         log::log error $pipe
-        puts $State(out) [list Failure $requestType $uniqueId $faultString]
+        chan puts $State(out) [list Failure $requestType $uniqueId $faultString]
         return
     }
 
     set processId [pid $pipe]
-    log::log notice "\[process: $processId\] $command"
+    log::log notice "\[process: $processId\] [string range $command 0 99]"
 
     upvar #0 SrmProcesses($processId) process
 
     set process [dict create requestType $requestType uniqueId $uniqueId output {}]
 
-    fconfigure $pipe -buffering none -blocking 0
-    fileevent $pipe readable [list GetCommandOutput $requestType $uniqueId $processId $pipe]
+    chan configure $pipe -buffering none -blocking 0
+    chan event $pipe readable [list GetCommandOutput $requestType $uniqueId $processId $pipe]
 }
 
 # -------------------------------------------------------------------------
@@ -124,14 +117,14 @@ proc GetCommandOutput {requestType uniqueId processId pipe} {
 
     upvar #0 SrmProcesses($processId) process
 
-    if {[catch {gets $pipe line} readCount]} {
+    if {[catch {chan gets $pipe line} readCount]} {
         log::log error $readCount
         Finish $requestType $uniqueId $processId $pipe
         return
     }
 
     if {$readCount == -1} {
-        if {[eof $pipe]} {
+        if {[chan eof $pipe]} {
             Finish $requestType $uniqueId $processId $pipe
         } else {
             log::log warning "\[process: $processId\] No full line available, retrying..."
@@ -139,7 +132,7 @@ proc GetCommandOutput {requestType uniqueId processId pipe} {
         return
     }
 
-    if {$line != {}} {
+    if {$line ne {}} {
         dict lappend process output $line
         log::log debug "+> $line"
     }
@@ -153,10 +146,10 @@ proc Finish {requestType uniqueId processId pipe} {
     upvar #0 SrmProcesses($processId) process
 
     set hadError 0
-    if {[file channels $pipe] != {}} {
+    if {[file channels $pipe] ne {}} {
 
-        fileevent $pipe readable {}
-        fconfigure $pipe -blocking 1
+        chan event $pipe readable {}
+        chan configure $pipe -blocking 1
 
         if {[catch {close $pipe} result]} {
             set hadError 1
@@ -177,7 +170,7 @@ proc Finish {requestType uniqueId processId pipe} {
         set output [dict get $process output]
         unset process
     }
-    
+
     incr QueueSize -1
 
     if {$QueueSize < 10 && [llength $QueueData] > 0} {
@@ -185,8 +178,8 @@ proc Finish {requestType uniqueId processId pipe} {
         set QueueData [lreplace $QueueData [set QueueData 0] 0]
         Start $line
     }
-    
-    puts $State(out) [list $state $requestType $uniqueId $output]
+
+    chan puts $State(out) [list $state $requestType $uniqueId $output]
 }
 
 # -------------------------------------------------------------------------
@@ -208,14 +201,14 @@ proc GetInput {chan} {
 
     global State QueueSize QueueData
 
-    if {[catch {gets $chan line} readCount]} {
+    if {[catch {chan gets $chan line} readCount]} {
         log::log error $readCount
         close $chan
         return
     }
 
     if {$readCount == -1} {
-        if {[eof $chan]} {
+        if {[chan eof $chan]} {
             log::log error {Broken connection fetching request}
             close $chan
         } else {
@@ -224,8 +217,6 @@ proc GetInput {chan} {
         return
     }
 
-    log::log debug $line
-    
     if {$QueueSize < 10} {
         Start $line
     } else {
@@ -267,7 +258,7 @@ proc Start {line} {
             log::log error "Unknown request type $requestType"
         }
     }
-    
+
     incr QueueSize
 }
 

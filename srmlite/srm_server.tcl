@@ -113,8 +113,8 @@ namespace eval ::srmlite::srm::server {
         set submitTime [clock seconds]
 
         SrmRequest $requestObj \
-	    -requestState SRM_REQUEST_QUEUED \
-	    -isSyncRequest $isSync \
+            -requestState SRM_REQUEST_QUEUED \
+            -isSyncRequest $isSync \
             -queueSize 0 \
             -requestType $requestType \
             -requestToken $requestId \
@@ -188,7 +188,6 @@ namespace eval ::srmlite::srm::server {
         my createRequest $connection srmRmdir 1 [dict get $argValues SURL]
     }
 
-
 # -------------------------------------------------------------------------
 
     SrmManager instproc srmPrepareToGet {connection argValues} {
@@ -241,17 +240,21 @@ namespace eval ::srmlite::srm::server {
 
     SrmManager instproc srmReleaseFiles {connection argValues} {
         set requestToken [dict get $argValues requestToken]
-        my releaseFiles $connection $requestToken srmReleaseFiles \
-	    Done [dict get $argValues arrayOfSURLs]
-    }
 
+        if {[dict exists $argValues arrayOfSURLs]} {
+            my releaseFiles $connection $requestToken srmReleaseFiles \
+                Done [dict get $argValues arrayOfSURLs]
+        } else {
+            my releaseFiles $connection $requestToken srmReleaseFiles Done {}
+        }
+    }
 
 # -------------------------------------------------------------------------
 
     SrmManager instproc srmPutDone {connection argValues} {
         set requestToken [dict get $argValues requestToken]
         my releaseFiles $connection $requestToken srmPutDone \
-	    Done [dict get $argValues arrayOfSURLs]
+            Done [dict get $argValues arrayOfSURLs]
     }
 
 # -------------------------------------------------------------------------
@@ -259,7 +262,7 @@ namespace eval ::srmlite::srm::server {
     SrmManager instproc srmAbortFiles {connection argValues} {
         set requestToken [dict get $argValues requestToken]
         my releaseFiles $connection $requestToken srmAbortFiles \
-	    Canceled [dict get $argValues arrayOfSURLs]
+            Canceled [dict get $argValues arrayOfSURLs]
     }
 
 # -------------------------------------------------------------------------
@@ -281,7 +284,7 @@ namespace eval ::srmlite::srm::server {
 
         set currentTime [clock seconds]
 
-        if {[llength $SURLS] == 0} {
+        if {$SURLS eq {}} {
             set files [$requestObj info children]
 
             foreach fileObj $files {
@@ -296,7 +299,7 @@ namespace eval ::srmlite::srm::server {
         set requestTmp [self]::${requestId}
 
         SrmRequest $requestTmp \
-	    -requestState [$requestObj requestState] \
+            -requestState [$requestObj requestState] \
             -requestType $requestType \
             -requestToken $requestId
 
@@ -332,7 +335,7 @@ namespace eval ::srmlite::srm::server {
             return
         }
 
-        if {[llength $SURLS] == 0} {
+        if {$SURLS eq {}} {
             set files [$requestObj info children]
 
             foreach fileObj $files {
@@ -347,19 +350,19 @@ namespace eval ::srmlite::srm::server {
         set requestTmp [self]::${requestId}
 
         SrmRequest $requestTmp \
-	    -requestState [$requestObj requestState] \
+            -requestState [$requestObj requestState] \
             -requestType $requestType \
             -requestToken $requestId
 
         set files [list]
         foreach SURL $SURLS {
-	    if {[$requestObj existsFile $SURL]} {
+            if {[$requestObj existsFile $SURL]} {
                 set fileObj [$requestObj getFile $SURL]
 
                 $fileObj abort $explanation
 
                 lappend files $fileObj
-	    } else {
+            } else {
                 set fileId [NewUniqueId]
                 set fileTmp ${requestTmp}::${fileId}
                 SrmFile $fileTmp \
@@ -510,8 +513,8 @@ namespace eval ::srmlite::srm::server {
 
         foreach {retCode newState} $resp($state) {
             if {[string equal $retCode $code]} {
-	        my $newState
-    	        return
+                my $newState
+                return
             }
         }
 
@@ -524,7 +527,7 @@ namespace eval ::srmlite::srm::server {
     SrmFile instproc updateTime {currentTime} {
         my instvar counter submitTime finishTime lifeTime waitTime
 
-	incr counter
+        incr counter
         set waitTime [expr {$counter / 4 * 5 + 1}]
 
         if {$lifeTime > 0} {

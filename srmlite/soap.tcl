@@ -38,7 +38,7 @@ package require tdom
 proc SoapElements {node} {
     set result {}
     foreach childNode [$node childNodes] {
-        if {[$childNode nodeType] == {ELEMENT_NODE}} {
+        if {[$childNode nodeType] eq {ELEMENT_NODE}} {
             lappend result $childNode
         }
     }
@@ -166,7 +166,7 @@ proc SoapDecompose {node} {
         } else {
             foreach element $elementNodes {
                 set name [$element localName]
-                if {[string equal $name {}]} {
+                if {$name eq {}} {
                     set name [$element nodeName]
                 }
                 lappend result $name [SoapDecompose $element]

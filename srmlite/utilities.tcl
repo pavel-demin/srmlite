@@ -1,5 +1,4 @@
 package require log
-package require starfish
 
 namespace eval ::srmlite::utilities {
 
@@ -8,14 +7,9 @@ namespace eval ::srmlite::utilities {
 
 # -------------------------------------------------------------------------
 
-    variable localHostNames
-    set localHostNames [list]
-
-# -------------------------------------------------------------------------
-
     variable logFileId
     set logFileId {}
-    
+
 # -------------------------------------------------------------------------
 
     variable uniqueId
@@ -59,19 +53,6 @@ namespace eval ::srmlite::utilities {
         6 RW
         7 RWX
     }
-# -------------------------------------------------------------------------
-
-    foreach interface [::starfish::netdb ip interfaces] {
-
-        set ip [lindex $interface 1]
-        if {[lsearch $localHostNames $ip] == -1} {lappend  localHostNames $ip}
-
-        if {![catch {::starfish::netdb hosts name $ip} longName]} {
-            set shortName [lindex [split $longName .] 0]
-            if {[lsearch $localHostNames $longName] == -1} {lappend localHostNames $longName}
-            if {[lsearch $localHostNames $shortName] == -1} {lappend localHostNames $shortName}
-        }
-    }
 
 # -------------------------------------------------------------------------
 
@@ -81,13 +62,14 @@ namespace eval ::srmlite::utilities {
 
         return [incr uniqueId]
     }
+
 # -------------------------------------------------------------------------
 
     proc ExtractFileType {mode} {
         set fileType [string index $mode 0]
-        if {[string equal $fileType d]} {
+        if {$fileType eq {d}} {
             return DIRECTORY
-        } elseif {[string equal $fileType l]} {
+        } elseif {$fileType eq {l}} {
             return LINK
         } else {
             return FILE
@@ -98,7 +80,7 @@ namespace eval ::srmlite::utilities {
 
     proc ExtractOwnerMode {mode} {
         variable permDict
-	variable permArray
+        variable permArray
         set permMode [string map $permDict $mode]
         return $permArray([string index $permMode 0])
     }
@@ -107,7 +89,7 @@ namespace eval ::srmlite::utilities {
 
     proc ExtractGroupMode {mode} {
         variable permDict
-	variable permArray
+        variable permArray
         set permMode [string map $permDict $mode]
         return $permArray([string index $permMode 1])
     }
@@ -116,20 +98,9 @@ namespace eval ::srmlite::utilities {
 
     proc ExtractOtherMode {mode} {
         variable permDict
-	variable permArray
+        variable permArray
         set permMode [string map $permDict $mode]
         return $permArray([string index $permMode 2])
-    }
-
-# -------------------------------------------------------------------------
-
-    proc IsLocalHost {url} {
-
-        variable localHostNames
-
-        set host [lindex [ExtractHostPortFile $url] 0]
-
-        return [expr [lsearch $localHostNames $host] != -1]
     }
 
 # -------------------------------------------------------------------------
@@ -178,20 +149,20 @@ namespace eval ::srmlite::utilities {
             log::log error $result
             return
         }
-    
+
         if {$result < 200000000} {
             return
         }
 
         set fid $logFileId
         set channels [file channels $fid]
-        if {![string equal $channels {}]} {
+        if {$channels ne {}} {
             close $fid
-    
+
             file rename -force $file $file.old
-    
+
             set fid [open $file w]
-            fconfigure $fid -blocking 0 -buffering line
+            chan configure $fid -blocking 0 -buffering line
             log::lvChannelForall $fid
             set logFileId $fid
         }
@@ -199,9 +170,9 @@ namespace eval ::srmlite::utilities {
 
 # -------------------------------------------------------------------------
 
-    namespace export NewUniqueId IsLocalHost ExtractFileType ExtractOwnerMode \
+    namespace export NewUniqueId ExtractFileType ExtractOwnerMode \
         ExtractGroupMode ExtractOtherMode ExtractHostPortFile TransferHost \
-	ConvertSURL2TURL LogRotate
+        ConvertSURL2TURL LogRotate
 }
 
 package provide srmlite::utilities 0.1
