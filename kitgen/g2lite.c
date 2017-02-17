@@ -66,9 +66,6 @@ static int G2liteObjCmdProc(ClientData clientData, Tcl_Interp *interp,
   Tcl_UniChar ch, tmp;
   Tcl_UniChar *inbuffer = NULL;
   Tcl_Obj *result = NULL;
-  Tcl_Obj *command_begin = NULL;
-  Tcl_Obj *command_append = NULL;
-  Tcl_Obj *command_end = NULL;
 
   g2state g2;
   g2.pos = 0;
@@ -78,22 +75,12 @@ static int G2liteObjCmdProc(ClientData clientData, Tcl_Interp *interp,
   if(objc != 2)
   {
     Tcl_WrongNumArgs(interp, 1, objv, "string");
-		return TCL_ERROR;
+    return TCL_ERROR;
   }
 
   inbuffer = Tcl_GetUnicodeFromObj(objv[1], &size);
 
-  result = Tcl_NewObj();
-  command_begin = Tcl_NewStringObj("variable g2result {}\n", -1);
-  command_append = Tcl_NewStringObj("\nappend g2result \"", -1);
-  command_end = Tcl_NewStringObj("\nreturn $g2result", -1);
-
-  Tcl_IncrRefCount(result);
-  Tcl_IncrRefCount(command_begin);
-  Tcl_IncrRefCount(command_append);
-  Tcl_IncrRefCount(command_end);
-
-  Tcl_AppendObjToObj(result, command_begin);
+  result = Tcl_NewStringObj("variable g2result {}\n", 21);
 
   while(i < size)
   {
@@ -114,7 +101,7 @@ static int G2liteObjCmdProc(ClientData clientData, Tcl_Interp *interp,
         if(g2.mode & G2_MODE_COPY)
         {
           Tcl_AppendUnicodeToObj(result, g2.buffer, g2.pos);
-          Tcl_AppendObjToObj(result, command_append);
+          Tcl_AppendToObj(result, "\nappend g2result \"", 18);
           g2.pos = 0;
         }
         else
@@ -165,7 +152,7 @@ static int G2liteObjCmdProc(ClientData clientData, Tcl_Interp *interp,
       continue;
     }
 
-    /* output mode is not COPY *
+    /* output mode is not COPY */
 
     /* if current symbol is $ */
     if('$' == ch)
@@ -260,14 +247,9 @@ static int G2liteObjCmdProc(ClientData clientData, Tcl_Interp *interp,
     g2.pos = 0;
   }
 
-  Tcl_AppendObjToObj(result, command_end);
+  Tcl_AppendToObj(result, "\nreturn $g2result", 17);
 
   Tcl_SetObjResult(interp, result);
-
-  Tcl_DecrRefCount(command_end);
-  Tcl_DecrRefCount(command_append);
-  Tcl_DecrRefCount(command_begin);
-  Tcl_DecrRefCount(result);
 
   return TCL_OK;
 }
