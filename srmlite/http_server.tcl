@@ -1,7 +1,7 @@
 package require log
 package require XOTcl
 
-package require gss::socket
+package require gsschan
 
 package require srmlite::templates
 
@@ -42,7 +42,7 @@ namespace eval ::srmlite::http::server {
 
     Class HttpServer -parameter {
         {port 80}
-        {addr}
+        {address}
     }
 
 
@@ -58,14 +58,14 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
      HttpServer instproc start {} {
-        my instvar port addr chan
+        my instvar port address channel
 
         set myaddrOpts {}
-        if {[my exists addr]} {
-	    set myaddrOpts "-myaddr $addr"
+        if {[my exists address]} {
+            set myaddrOpts "-myaddr $address"
         }
 
-        set chan [socket -server [myproc accept] {*}$myaddrOpts $port]
+        set channel [socket -server [myproc accept] {*}$myaddrOpts $port]
 
     }
 
@@ -76,9 +76,6 @@ namespace eval ::srmlite::http::server {
     }
 
 # -------------------------------------------------------------------------
-
-# Handle file system queries.  This is a place holder for a more
-# generic dispatch mechanism.
 
     HttpServer instproc findObject {url} {
         my instvar objectMap urlCache
@@ -102,52 +99,49 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
-    HttpServer instproc accept {chan addr port} {
+    HttpServer instproc accept {channel address port} {
         HttpConnection new \
-	    -childof [self] \
-	    -chan $chan \
-	    -addr $addr \
-	    -port $port
+            -childof [self] \
+            -channel $channel \
+            -address $address \
+            -port $port
     }
 
 # -------------------------------------------------------------------------
 
     HttpServer instproc destroy {} {
-        catch {::close [my set chan]}
+        catch {chan close [my set channel]}
         next
     }
 
 # -------------------------------------------------------------------------
 
     Class HttpConnection -parameter {
-        {chan}
-        {addr}
+        {channel}
+        {address}
         {port}
-        {timeout 300000}
-        {bufsize 32768}
+        {timeout 3600000}
         {reqleft 25}
     }
 
 # -------------------------------------------------------------------------
 
     HttpConnection instproc init {} {
-        my reset [my reqleft]
+        my reset
         my setup
         next
     }
 
 # -------------------------------------------------------------------------
 
-    HttpConnection instproc reset {reqleft} {
+    HttpConnection instproc reset {} {
         my instvar timeout
 
-	my reqleft $reqleft
-
-	my set version 0
-	my set url {}
+        my set version 0
+        my set url {}
 
         if {[my array exists mime]} {
-	    my unset mime
+            my unset mime
         }
 
         if {[my exists postdata]} {
@@ -160,19 +154,19 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnection instproc setup {} {
-        my instvar chan bufsize
-
-        fconfigure $chan -blocking 0 -buffersize $bufsize -translation {auto crlf}
-        fileevent $chan readable [myproc firstLine]
+        my instvar channel
+        chan configure $channel -blocking 0 -buffersize 16384
+        chan configure $channel -translation {auto crlf}
+        chan event $channel readable [myproc firstLine]
     }
 
 # -------------------------------------------------------------------------
 
     HttpConnection instproc getLine {var} {
         my upvar $var line
-        my instvar chan
+        my instvar channel
 
-        if {[catch {gets $chan line} readCount]} {
+        if {[catch {chan gets $channel line} readCount]} {
             my log error $readCount
             my log error {Broken connection fetching request}
             my done 1
@@ -180,7 +174,7 @@ namespace eval ::srmlite::http::server {
         }
 
         if {$readCount == -1} {
-            if {[eof $chan]} {
+            if {[chan eof $channel]} {
                 my log error {Broken connection fetching request}
                 my done 1
                 return -2
@@ -196,7 +190,7 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnection instproc firstLine {} {
-        my instvar chan method url query version
+        my instvar channel method url query version
 
         set readCount [my getLine line]
 
@@ -220,7 +214,7 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnection instproc firstLineDone {} {
-        fileevent [my set chan] readable [myproc header]
+        chan event [my set channel] readable [myproc header]
     }
 
 # -------------------------------------------------------------------------
@@ -256,24 +250,24 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnection instproc headerDone {} {
-        my instvar chan method version mime count
+        my instvar channel method version mime count
         variable requiresBody
 
         if {[my exists mime(content-length)] &&
-            [my set mime(content-length)] > 0} {
+            $mime(content-length) > 0} {
             set count $mime(content-length)
             if {$version && [my exists mime(expect)]} {
-                if {[string equal $mime(expect) 100-continue]} {
-                    puts $chan {100 Continue HTTP/1.1\n}
-                    flush $chan
+                if {$mime(expect) eq {100-continue}} {
+                    chan puts $channel {100 Continue HTTP/1.1\n}
+                    chan flush $channel
                 } else {
                     my error 419 $mime(expect)
                     return
                 }
             }
             my set postdata {}
-            fconfigure $chan -translation {binary crlf}
-            fileevent $chan readable [myproc data]
+            chan configure $channel -translation {binary crlf}
+            chan event $channel readable [myproc data]
         } elseif {$requiresBody($method)} {
             my error 411 {Confusing mime headers}
             return
@@ -285,23 +279,25 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnection instproc data {} {
-        my instvar chan mime postdata count
+        my instvar channel mime postdata count
 
-        if {[eof $chan]} {
-            my log error {Broken connection reading POST data}
-            my done 1
-            return
-        } elseif {[catch {read $chan $count} block]} {
+        if {[catch {chan read $channel $count} block]} {
             my log error $block
             my log error {Error during read POST data}
             my done 1
             return
-        } else {
-            my append postdata $block
-            set count [expr {$count - [string length $block]}]
-            if {$count == 0} {
-                my dataDone
-            }
+        }
+
+        if {[chan eof $channel]} {
+            my log error {Broken connection reading POST data}
+            my done 1
+            return
+        }
+
+        my append postdata $block
+        set count [expr {$count - [string length $block]}]
+        if {$count == 0} {
+            my dataDone
         }
     }
 
@@ -313,14 +309,11 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
-# Handle file system queries.  This is a place holder for a more
-# generic dispatch mechanism.
-
     HttpConnection instproc dispatch {} {
-        my instvar chan method url
+        my instvar channel method url
         variable requiresBody
 
-        fileevent $chan readable {}
+        chan event $channel readable {}
 
         set object [[my info parent] findObject $url]
 
@@ -336,78 +329,78 @@ namespace eval ::srmlite::http::server {
 
         } else {
             my error 404
-            return
         }
     }
 
 # -------------------------------------------------------------------------
 
     HttpConnection instproc respond {result} {
-        my instvar chan version reqleft mime
+        my instvar channel version reqleft mime
 
-        fconfigure $chan -translation {auto crlf}
-        fileevent $chan readable [myproc firstLine]
+        chan configure $channel -translation {auto crlf}
 
-        puts $chan "HTTP/1.$version 200 Data follows"
-        puts $chan "Date: [my date [clock seconds]]"
-        puts $chan "Content-Type: text/xml; charset=utf-8"
-        puts $chan "Content-Length: [string length $result]"
+        chan puts $channel "HTTP/1.$version 200 Data follows"
+        chan puts $channel "Date: [my date [clock seconds]]"
+        chan puts $channel "Content-Type: text/xml; charset=utf-8"
+        chan puts $channel "Content-Length: [string length $result]"
 
-        ## Should also close socket if recvd connection close header
+        # Should also close socket if recvd connection close header
         set close [expr {$reqleft == 0}]
 
         if {$close} {
-            puts $chan "Connection: close"
+            chan puts $channel "Connection: close"
         } elseif {$version > 0 && [info exists mime(connection)]} {
-            if {[string equal $mime(connection) Keep-Alive]} {
+            if {$mime(connection) eq {Keep-Alive}} {
                 set close 0
-                puts $chan "Connection: Keep-Alive"
+                chan puts $channel "Connection: Keep-Alive"
             }
         } else {
             set close 1
         }
 
-        puts $chan {}
-        puts $chan $result
-        flush $chan
+        chan puts $channel {}
+        chan configure $channel -translation {auto binary}
+        chan puts -nonewline $channel $result
+        chan flush $channel
 
         my done $close
-        return
     }
 
 # -------------------------------------------------------------------------
 
 # Respond with an error reply
-# code:  The http error code
-# args:  Additional information for error logging
+# code: The http error code
+# args: Additional information for error logging
 
     HttpConnection instproc error {code args} {
-        my instvar chan url version
+        my instvar channel url version
         variable errorFormat
-	variable errorCodes
+        variable errorCodes
 
         set message [srmErrorBody $code $errorCodes($code) $url]
-        append head "HTTP/1.$version $code $errorCodes($code)"  \n
-        append head "Date: [my date [clock seconds]]"  \n
-        append head "Connection: close"  \n
-        append head "Content-Length: [string length $message]"  \n
+        append head "HTTP/1.$version $code $errorCodes($code)" \n
+        append head "Date: [my date [clock seconds]]" \n
+        append head "Connection: close" \n
+        append head "Content-Length: [string length $message]" \n
 
         # Because there is an error condition, the socket may be "dead"
 
         catch {
-            fconfigure $chan -translation {auto crlf}
-            puts -nonewline $chan $head\n$message
-            flush $chan
+            chan configure $channel -translation {auto crlf}
+            chan puts $channel $head
+            chan configure $channel -translation {auto binary}
+            chan puts -nonewline $channel $message
+            chan flush $channel
         } result
 
         my log error $code $errorCodes($code) $args $result
         my done 1
-        return
     }
 
 # -------------------------------------------------------------------------
 
     HttpConnection instproc done {close} {
+        my instvar channel
 
         after cancel [my set afterId]
 
@@ -416,18 +409,20 @@ namespace eval ::srmlite::http::server {
         if {$close} {
             my destroy
         } else {
-            my reset [my reqleft]
+            my reset
+            chan configure $channel -translation {auto crlf}
+            chan event $channel readable [myproc firstLine]
         }
     }
 
 # -------------------------------------------------------------------------
 
     HttpConnection instproc destroy {} {
-        my instvar chan
+        my instvar channel
 
         catch {
-	    fileevent $chan readable {}
-            ::close $chan
+            chan event $channel readable {}
+            chan close $channel
         }
 
         next
@@ -436,8 +431,8 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnection instproc log {level args} {
-        my instvar addr
-        log::log $level "\[client $addr\] [join $args { }]"
+        my instvar address
+        log::log $level "\[client $address\] [join $args { }]"
     }
 
 # -------------------------------------------------------------------------
@@ -454,67 +449,80 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
-    HttpServerGss instproc accept {chan addr port} {
+    HttpServerGss instproc accept {channel address port} {
         HttpConnectionGss new \
-	    -childof [self] \
-	    -chan $chan \
-	    -addr $addr \
-	    -port $port \
-	    -frontendService [my frontendService]
+            -childof [self] \
+            -rawchan $channel \
+            -address $address \
+            -port $port \
+            -frontendService [my frontendService]
     }
 
 # -------------------------------------------------------------------------
 
     Class HttpConnectionGss -superclass HttpConnection -parameter {
+        {rawchan}
         {frontendService}
     }
 
 # -------------------------------------------------------------------------
 
     HttpConnectionGss instproc setup {} {
-        my instvar chan bufsize
-        if {[catch {gss::import $chan -server true} result]} {
-            my log error {Error during gssimport:} $result
+        my instvar rawchan channel
+        chan configure $rawchan -blocking 0
+        chan configure $rawchan -translation {binary binary}
+        if {[catch {gsschan $rawchan} result]} {
+            my log error {Error during connection setup:} $result
             my done 1
             return
         }
-        next
-    }
-
-# -------------------------------------------------------------------------
-
-    HttpConnectionGss instproc dataDone {} {
-        my authorization
+        set channel $result
+        chan configure $channel -blocking 0
+        chan configure $channel -translation {auto crlf}
+        chan event $channel readable [myproc authorization]
     }
 
 # -------------------------------------------------------------------------
 
     HttpConnectionGss instproc authorization {} {
-        my instvar chan
+        my instvar channel
 
-	fileevent $chan readable {}
-
-        my log notice {Distinguished name} [fconfigure $chan -gssname]
-        if {[catch {fconfigure $chan -gsscontext} result]} {
+        my log notice {Distinguished name} [chan configure $channel -gssname]
+        if {[catch {chan configure $channel -gsscontext} result]} {
             my log error {Error during gsscontext:} $result
             my done 1
             return
         }
+        chan event $channel readable {}
         [my frontendService] process [list authorization [self] $result]
     }
 
 # -------------------------------------------------------------------------
 
-    HttpConnectionGss instproc authorizationSuccess {userName} {
-        my set userName $userName
-        my dispatch
+    HttpConnectionGss instproc authorizationSuccess {name} {
+        my instvar channel
+        my set userName $name
+        chan event $channel readable [myproc firstLine]
     }
 
 # -------------------------------------------------------------------------
 
     HttpConnectionGss instproc authorizationFailure {reason} {
-	my log error {Authorization failed:} $reason
+        my log error {Authorization failed:} $reason
         my error 403 {Acess is not allowed}
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnectionGss instproc destroy {} {
+        my instvar rawchan
+
+        catch {
+            chan event $rawchan readable {}
+            chan close $rawchan
+        }
+
+        next
     }
 
 # -------------------------------------------------------------------------
@@ -532,7 +540,7 @@ namespace eval ::srmlite::http::server {
         if {![regexp {\x81|%2\[eEfF]} $url]} {      ;# invalid /../, / or . ?
             return [decodeUrl $url]
         } else {
-            return {}
+            return
         }
     }
 
@@ -559,7 +567,7 @@ namespace eval ::srmlite::http::server {
         set result [list]
 
         regsub -all {[&=]} $query { }    query
-        regsub -all {  }   $query { {} } query; # Othewise we lose empty values
+        regsub -all {  }   $query { {} } query ;# Othewise we lose empty values
 
         foreach {key val} $query {
             lappend result [decodeUrl $key] [decodeUrl $val]
