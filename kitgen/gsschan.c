@@ -231,6 +231,7 @@ GssInput(ClientData instanceData, char *buffer, int length, int *errorCodePtr)
       if(length > bufferOut.length) length = bufferOut.length;
       memcpy(buffer, bufferOut.value, length);
       majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+      Tcl_CreateChannelHandler(state->parent, TCL_READABLE, GssHandler, instanceData);
       return length;
     }
     else
@@ -376,25 +377,66 @@ GssHandshake(GssState *state)
     Tcl_Write(state->parent, bufferOut.value, bufferOut.length);
     Tcl_Flush(state->parent);
     majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+    return 0;
+  }
+  else if(majorStatus == GSS_S_COMPLETE)
+  {
+    majorStatus
+      = gss_display_name(&minorStatus,
+                         state->gssName,
+                         &state->gssNameBuf,
+                         NULL);
+    Tcl_Write(state->parent, bufferOut.value, bufferOut.length);
+    Tcl_Flush(state->parent);
+    majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+    state->flags &= ~(GSS_TCL_HANDSHAKE);
+    return 0;
   }
   else
   {
-    if(majorStatus == GSS_S_COMPLETE)
+    return 1;
+  }
+}
+
+/* ----------------------------------------------------------------- */
+
+static int
+GssRead(GssState *state)
+{
+  int length;
+
+  if(state->length < 5)
+  {
+    state->length += Tcl_Read(state->parent, state->buffer + state->length, 5 - state->length);
+    if(state->length < 5)
     {
-      majorStatus
-        = gss_display_name(&minorStatus,
-                           state->gssName,
-                           &state->gssNameBuf,
-                           NULL);
-      Tcl_Write(state->parent, bufferOut.value, bufferOut.length);
-      Tcl_Flush(state->parent);
-      majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
-      state->flags &= ~(GSS_TCL_HANDSHAKE);
+      return Tcl_Eof(state->parent);
     }
-    else
+  }
+
+  length = (((int) state->buffer[3]) << 8 | ((int) state->buffer[4])) + 5;
+  if(length < 5 || length > 16389)
+  {
+    return 1;
+  }
+
+  if(state->length < length)
+  {
+    state->length += Tcl_Read(state->parent, state->buffer + state->length, length - state->length);
+    if(state->length < length)
     {
-      Tcl_NotifyChannel(state->channel, TCL_READABLE);
+      return Tcl_Eof(state->parent);
     }
+  }
+
+  if(state->flags & GSS_TCL_HANDSHAKE)
+  {
+    return GssHandshake(state);
+  }
+  else
+  {
+    state->flags |= GSS_TCL_READABLE;
+    return 1;
   }
 }
 
@@ -404,45 +446,9 @@ static void
 GssHandler(ClientData instanceData, int mask)
 {
   GssState *state = (GssState *) instanceData;
-  int length;
-
-  if(state->length < 5)
+  if(GssRead(state))
   {
-    state->length += Tcl_Read(state->parent, state->buffer + state->length, 5 - state->length);
-    if(state->length < 5)
-    {
-      if(Tcl_Eof(state->parent))
-      {
-        Tcl_NotifyChannel(state->channel, TCL_READABLE);
-      }
-      return;
-    }
-  }
-  length = (((int) state->buffer[3]) << 8 | ((int) state->buffer[4])) + 5;
-  if(length < 5 || length > 16389)
-  {
-    Tcl_NotifyChannel(state->channel, TCL_READABLE);
-    return;
-  }
-  if(state->length < length)
-  {
-    state->length += Tcl_Read(state->parent, state->buffer + state->length, length - state->length);
-    if(state->length < length)
-    {
-      if(Tcl_Eof(state->parent))
-      {
-        Tcl_NotifyChannel(state->channel, TCL_READABLE);
-      }
-      return;
-    }
-  }
-  if(state->flags & GSS_TCL_HANDSHAKE)
-  {
-    GssHandshake(state);
-  }
-  else
-  {
-    state->flags |= GSS_TCL_READABLE;
+    Tcl_DeleteChannelHandler(state->parent, GssHandler, instanceData);
     Tcl_NotifyChannel(state->channel, TCL_READABLE);
   }
 }
