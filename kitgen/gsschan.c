@@ -209,14 +209,13 @@ GssInput(ClientData instanceData, char *buffer, int length, int *errorCodePtr)
   GssState *state = (GssState *) instanceData;
   OM_uint32 majorStatus, minorStatus;
   gss_buffer_desc bufferIn, bufferOut;
-  int result;
 
-  state->flags &= ~(GSS_TCL_READABLE);
-
-  if(state->length > 0)
+  if(state->flags & GSS_TCL_READABLE)
   {
     bufferIn.value = state->buffer;
     bufferIn.length = state->length;
+
+    state->flags &= ~(GSS_TCL_READABLE);
     state->length = 0;
 
     majorStatus
@@ -224,14 +223,15 @@ GssInput(ClientData instanceData, char *buffer, int length, int *errorCodePtr)
                    state->gssContext,
                    &bufferIn,
                    &bufferOut,
-                   NULL, GSS_C_QOP_DEFAULT);
+                   NULL,
+                   GSS_C_QOP_DEFAULT);
 
     if(majorStatus == GSS_S_COMPLETE)
     {
-      memcpy(buffer, bufferOut.value, bufferOut.length);
-      result = bufferOut.length;
+      if(length > bufferOut.length) length = bufferOut.length;
+      memcpy(buffer, bufferOut.value, length);
       majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
-      return result;
+      return length;
     }
     else
     {
@@ -261,7 +261,8 @@ GssOutput(ClientData instanceData, const char *buffer, int length, int *errorCod
   majorStatus
     = gss_wrap(&minorStatus,
                state->gssContext,
-               0, GSS_C_QOP_DEFAULT,
+               0,
+               GSS_C_QOP_DEFAULT,
                &bufferIn,
                NULL,
                &bufferOut);
