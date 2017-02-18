@@ -137,26 +137,23 @@ GssHandshake(Tcl_Interp *interp, GssContext *context)
     majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
     return 5;
   }
+  else if(majorStatus == GSS_S_COMPLETE)
+  {
+    majorStatus
+      = gss_display_name(&minorStatus,
+                         context->gssName,
+                         &context->gssNameBuf,
+                         NULL);
+    Tcl_Write(context->channel, bufferOut.value, bufferOut.length);
+    Tcl_Flush(context->channel);
+    majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+    context->state = 1;
+    return 5;
+  }
   else
   {
-    if(majorStatus == GSS_S_COMPLETE)
-    {
-      majorStatus
-        = gss_display_name(&minorStatus,
-                           context->gssName,
-                           &context->gssNameBuf,
-                           NULL);
-      Tcl_Write(context->channel, bufferOut.value, bufferOut.length);
-      Tcl_Flush(context->channel);
-      majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
-      context->state = 1;
-      return 5;
-    }
-    else
-    {
-      Tcl_AppendResult(interp, "Failed to establish security context", NULL);
-      return TCL_ERROR;
-    }
+    Tcl_AppendResult(interp, "Failed to establish security context", NULL);
+    return TCL_ERROR;
   }
 }
 
@@ -192,6 +189,64 @@ GssUnwrap(Tcl_Interp *interp, GssContext *context)
   {
     Tcl_AppendResult(interp, "Failed to unwrap buffer", NULL);
     return TCL_ERROR;
+  }
+}
+
+/* ----------------------------------------------------------------- */
+
+static int
+GssCallback(Tcl_Interp *interp, GssContext *context)
+{
+  int length;
+
+  if(context->length < 5)
+  {
+    context->length += Tcl_Read(context->channel, context->buffer + context->length, 5 - context->length);
+    if(context->length < 5)
+    {
+      if(Tcl_Eof(context->channel))
+      {
+        Tcl_AppendResult(interp, "Failed to read packet length", NULL);
+        return TCL_ERROR;
+      }
+      else
+      {
+        return 5;
+      }
+    }
+  }
+
+  length = (((int) context->buffer[3]) << 8 | ((int) context->buffer[4])) + 5;
+  if(length < 5 || length > 16389)
+  {
+    Tcl_AppendResult(interp, "Invalid packet length", NULL);
+    return TCL_ERROR;
+  }
+
+  if(context->length < length)
+  {
+    context->length += Tcl_Read(context->channel, context->buffer + context->length, length - context->length);
+    if(context->length < length)
+    {
+      if(Tcl_Eof(context->channel))
+      {
+        Tcl_AppendResult(interp, "Failed to read packet length", NULL);
+        return TCL_ERROR;
+      }
+      else
+      {
+        return 5;
+      }
+    }
+  }
+
+  if(context->state == 0)
+  {
+    return GssHandshake(interp, context);
+  }
+  else
+  {
+    return GssUnwrap(interp, context);
   }
 }
 
@@ -267,7 +322,6 @@ GssExport(Tcl_Interp *interp, GssContext *context)
 static int
 GssContextObjCmd(ClientData instanceData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
-  int length;
   char *option;
   GssContext *context = (GssContext *) instanceData;
   Tcl_Obj *result;
@@ -280,68 +334,23 @@ GssContextObjCmd(ClientData instanceData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
   option = Tcl_GetStringFromObj(objv[1], NULL);
 
-  if(strcmp(option, "read") == 0)
+  if(strcmp(option, "callback") == 0)
   {
     if(objc != 2)
     {
-      Tcl_WrongNumArgs(interp, 1, objv, "read");
+      Tcl_WrongNumArgs(interp, 1, objv, "callback");
       return TCL_ERROR;
     }
-    if(context->length < 5)
-    {
-      context->length += Tcl_Read(context->channel, context->buffer + context->length, 5 - context->length);
-      if(context->length < 5)
-      {
-        if(Tcl_Eof(context->channel))
-        {
-          Tcl_AppendResult(interp, "Failed to read packet length", NULL);
-          return TCL_ERROR;
-        }
-        else
-        {
-          return 5;
-        }
-      }
-    }
-    length = (((int) context->buffer[3]) << 8 | ((int) context->buffer[4])) + 5;
-    if(length < 5 || length > 16389)
-    {
-      Tcl_AppendResult(interp, "Invalid packet length", NULL);
-      return TCL_ERROR;
-    }
-    if(context->length < length)
-    {
-      context->length += Tcl_Read(context->channel, context->buffer + context->length, length - context->length);
-      if(context->length < length)
-      {
-        if(Tcl_Eof(context->channel))
-        {
-          Tcl_AppendResult(interp, "Failed to read packet length", NULL);
-          return TCL_ERROR;
-        }
-        else
-        {
-          return 5;
-        }
-      }
-    }
-    if(context->state == 0)
-    {
-      return GssHandshake(interp, context);
-    }
-    else
-    {
-      return GssUnwrap(interp, context);
-    }
+    return GssCallback(interp, context);
   }
   else if(strcmp(option, "write") == 0)
   {
-    if(objc != 3)
+    if(objc != 4)
     {
-      Tcl_WrongNumArgs(interp, 1, objv, "write data");
+      Tcl_WrongNumArgs(interp, 1, objv, "write id bytes");
       return TCL_ERROR;
     }
-    return GssWrap(interp, context, objv[2]);
+    return GssWrap(interp, context, objv[3]);
   }
   else if(strcmp(option, "state") == 0)
   {
@@ -434,7 +443,7 @@ GssContextDestroy(ClientData instanceData)
                            &context->gssNameBuf);
   }
 
-  ckfree(context);
+  ckfree((char *) context);
 }
 
 /* ----------------------------------------------------------------- */
