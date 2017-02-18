@@ -467,10 +467,15 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     ChannelGss instproc init {} {
-        my instvar rawchan
+        my instvar rawchan context
 
         my set ready 0
         my set context [gssctx $rawchan]
+
+        my forward write $context write
+        my forward state $context state
+        my forward name $context name
+        my forward export $context export
 
         next
     }
@@ -501,7 +506,7 @@ namespace eval ::srmlite::http::server {
 
     ChannelGss instproc callback {id} {
         my instvar rawchan context
-        set code [catch {$context read} result]
+        set code [catch {$context callback} result]
         switch -- $code {
             0 {
                 my set ready 1
@@ -539,38 +544,6 @@ namespace eval ::srmlite::http::server {
         chan event $rawchan readable [myproc callback $id]
         my set ready 0
         return $buffer
-    }
-
-# -------------------------------------------------------------------------
-
-    ChannelGss instproc write {id bytes} {
-        my instvar context
-
-        $context write $bytes
-    }
-
-# -------------------------------------------------------------------------
-
-    ChannelGss instproc state {} {
-        my instvar context
-
-        $context state
-    }
-
-# -------------------------------------------------------------------------
-
-    ChannelGss instproc name {} {
-        my instvar context
-
-        $context name
-    }
-
-# -------------------------------------------------------------------------
-
-    ChannelGss instproc export {} {
-        my instvar context
-
-        $context export
     }
 
 # -------------------------------------------------------------------------
