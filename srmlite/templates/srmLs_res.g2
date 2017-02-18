@@ -1,5 +1,4 @@
-$request eval {
-    upvar g2result g2result
+$request instvar requestState requestStateComment
 @@
 <?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -13,26 +12,24 @@ $request eval {
         <requestToken xsi:type="xsd:string" xsi:nil="true"/>
         <details xsi:type="ns1:ArrayOfTMetaDataPathDetail">
 @@
-}
 foreach file [$request info children] {
-    $file eval {
-        upvar g2result g2result
-        if {[info exists metadata]} {
-            set stat [lindex $metadata 0]
-            set permMode [lindex $stat 0]
-            set fileType [ExtractFileType $permMode]
-            set ownerMode [ExtractOwnerMode $permMode]
-            set groupMode [ExtractGroupMode $permMode]
-            set otherMode [ExtractOtherMode $permMode]
-            set owner [lindex $stat 2]
-            set group [lindex $stat 3]
-            set fileSize 0
-            if {$fileType eq {FILE}} {
-                set fileSize [lindex $stat 4]
-            }
-            set seconds [clock scan [lrange $stat 5 6]]
-            set fileTime [clock format $seconds -format {%Y-%m-%dT%H:%M:%S.000Z} -gmt yes]
-            set filePath [lindex $stat 7]
+    $file instvar metadata SURL fileState fileStateComment
+    if {[info exists metadata]} {
+        set stat [lindex $metadata 0]
+        set permMode [lindex $stat 0]
+        set fileType [ExtractFileType $permMode]
+        set ownerMode [ExtractOwnerMode $permMode]
+        set groupMode [ExtractGroupMode $permMode]
+        set otherMode [ExtractOtherMode $permMode]
+        set owner [lindex $stat 2]
+        set group [lindex $stat 3]
+        set fileSize 0
+        if {$fileType eq {FILE}} {
+            set fileSize [lindex $stat 4]
+        }
+        set seconds [clock scan [lrange $stat 5 6]]
+        set fileTime [clock format $seconds -format {%Y-%m-%dT%H:%M:%S.000Z} -gmt yes]
+        set filePath [lindex $stat 7]
 @@
           <pathDetailArray xsi:type="ns1:TMetaDataPathDetail">
             <path xsi:type="xsd:string">$${filePath}</path>
@@ -65,30 +62,30 @@ foreach file [$request info children] {
             <checkSumType xsi:type="xsd:string" xsi:nil="true"/>
             <checkSumValue xsi:type="xsd:string" xsi:nil="true"/>
 @@
-            if {[llength $metadata] == 1} {
+        if {[llength $metadata] == 1} {
 @@
             <arrayOfSubPaths xsi:type="ns1:ArrayOfTMetaDataPathDetail" xsi:nil="true"/>
 @@
-            } else {
+        } else {
 @@
             <arrayOfSubPaths xsi:type="ns1:ArrayOfTMetaDataPathDetail">
 
 @@
-                foreach stat [lrange $metadata 1 end] {
-                    set permMode [lindex $stat 0]
-                    set fileType [ExtractFileType $permMode]
-                    set ownerMode [ExtractOwnerMode $permMode]
-                    set groupMode [ExtractGroupMode $permMode]
-                    set otherMode [ExtractOtherMode $permMode]
-                    set owner [lindex $stat 2]
-                    set group [lindex $stat 3]
-                    set fileSize 0
-                    if {$fileType eq {FILE}} {
-                        set fileSize [lindex $stat 4]
-                    }
-                    set seconds [clock scan [lrange $stat 5 6]]
-                    set fileTime [clock format $seconds -format {%Y-%m-%dT%H:%M:%S.000Z} -gmt yes]
-                    set filePath [lindex $stat 7]
+            foreach stat [lrange $metadata 1 end] {
+                set permMode [lindex $stat 0]
+                set fileType [ExtractFileType $permMode]
+                set ownerMode [ExtractOwnerMode $permMode]
+                set groupMode [ExtractGroupMode $permMode]
+                set otherMode [ExtractOtherMode $permMode]
+                set owner [lindex $stat 2]
+                set group [lindex $stat 3]
+                set fileSize 0
+                if {$fileType eq {FILE}} {
+                    set fileSize [lindex $stat 4]
+                }
+                set seconds [clock scan [lrange $stat 5 6]]
+                set fileTime [clock format $seconds -format {%Y-%m-%dT%H:%M:%S.000Z} -gmt yes]
+                set filePath [lindex $stat 7]
 @@
               <pathDetailArray xsi:type="ns1:TMetaDataPathDetail">
                 <path xsi:type="xsd:string">$${filePath}</path>
@@ -122,13 +119,13 @@ foreach file [$request info children] {
                 <checkSumValue xsi:type="xsd:string" xsi:nil="true"/>
               </pathDetailArray>
 @@
-                }
+            }
 @@
             </arrayOfSubPaths>
 @@
-            }
-        } else {
-            set filePath [lindex [ExtractHostPortFile $SURL] 2]
+        }
+    } else {
+        set filePath [lindex [ExtractHostPortFile $SURL] 2]
 @@
           <pathDetailArray xsi:type="ns1:TMetaDataPathDetail">
             <path xsi:type="xsd:string">$${filePath}</path>
@@ -137,11 +134,10 @@ foreach file [$request info children] {
               <explanation xsi:type="xsd:string"@@nillableValue explanation fileStateComment@@>
             </status>
 @@
-        }
+    }
 @@
           </pathDetailArray>
 @@
-    }
 }
 @@
         </details>

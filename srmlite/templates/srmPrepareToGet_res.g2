@@ -1,5 +1,4 @@
-$request eval {
-    upvar g2result g2result
+$request instvar requestState requestStateComment requestToken
 @@
 <?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -13,10 +12,8 @@ $request eval {
         <requestToken xsi:type="xsd:string">$${requestToken}</requestToken>
         <arrayOfFileStatuses xsi:type="ns1:ArrayOfTGetRequestFileStatus">
 @@
-}
 foreach file [$request info children] {
-    $file eval {
-        upvar g2result g2result
+    $file instvar SURL fileSize fileState fileStateComment waitTime
 @@
           <statusArray xsi:type="ns1:TGetRequestFileStatus">
             <sourceSURL xsi:type="xsd:anyURI">$${SURL}</sourceSURL>
@@ -28,7 +25,6 @@ foreach file [$request info children] {
             <estimatedWaitTime xsi:type="xsd:int">$${waitTime}</estimatedWaitTime>
           </statusArray>
 @@
-    }
 }
 @@
         </arrayOfFileStatuses>
