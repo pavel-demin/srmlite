@@ -44,6 +44,7 @@ load {} zlib
 load {} xotcl
 load {} tdom
 load {} g2lite
+load {} gssctx
 load {} gsschan
 
 # map of proper version numbers to replace @ markers in paths given to vfscopy
@@ -53,6 +54,7 @@ set versmap [list tcl8@ tcl$tcl_version tk8@ tk$tcl_version \
                   tdom0@ tdom[package require tdom] \
                   xotcl1@ xotcl[package require XOTcl] \
                   g2lite0@ g2lite[package require g2lite] \
+                  gssctx0@ gssctx[package require gssctx] \
                   gsschan0@ gsschan[package require gsschan]]
 
 if {$debugOpt} {
@@ -69,7 +71,7 @@ set tcl_library ../tcl/library
 source ../tcl/library/init.tcl ;# for tcl::CopyDirectory
 
 # Create package index files for the static extensions.
-set exts {g2lite XOTcl zlib Tclx gsschan}
+set exts {g2lite XOTcl zlib Tclx gssctx gsschan}
 foreach ext $exts {
   load {} $ext
   set dst [file join lib "[string tolower $ext][package provide $ext]" pkgIndex.tcl]
@@ -93,6 +95,7 @@ set clifiles {
   lib/tdom0@/pkgIndex.tcl
   lib/tdom0@/tdom.tcl
   lib/g2lite0@/pkgIndex.tcl
+  lib/gssctx0@/pkgIndex.tcl
   lib/gsschan0@/pkgIndex.tcl
   lib/zlib1@/pkgIndex.tcl
   lib/tcllib1.18/pkgIndex.tcl

@@ -27,6 +27,7 @@ extern void TclSetStartupScriptPath(Tcl_Obj*);
 Tcl_AppInitProc Zlib_Init;
 Tcl_AppInitProc Tdom_Init, Tdom_SafeInit;
 Tcl_AppInitProc G2lite_Init;
+Tcl_AppInitProc Gssctx_Init, Gssctx_SafeInit;
 Tcl_AppInitProc Gsschan_Init, Gsschan_SafeInit;
 Tcl_AppInitProc Xotcl_Init;
 Tcl_AppInitProc Tclx_Init, Tclx_SafeInit;
@@ -72,6 +73,7 @@ TclKit_AppInit(Tcl_Interp *interp)
     Tcl_StaticPackage(0, "zlib", Zlib_Init, NULL);
     Tcl_StaticPackage(0, "XOTcl", Xotcl_Init, NULL);
     Tcl_StaticPackage(0, "g2lite", G2lite_Init, NULL);
+    Tcl_StaticPackage(0, "gssctx", Gssctx_Init, Gssctx_SafeInit);
     Tcl_StaticPackage(0, "gsschan", Gsschan_Init, Gsschan_SafeInit);
     Tcl_StaticPackage(0, "tdom", Tdom_Init, Tdom_SafeInit);
     Tcl_StaticPackage(0, "Tclx", Tclx_Init, Tclx_SafeInit);
