@@ -1,7 +1,7 @@
 package require log
 package require XOTcl
 
-package require gsschan
+package require gssctx
 
 package require srmlite::templates
 
@@ -460,6 +460,121 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
+    Class ChannelGss -parameter {
+        {rawchan}
+    }
+
+# -------------------------------------------------------------------------
+
+    ChannelGss instproc init {} {
+        my instvar rawchan
+
+        my set ready 0
+        my set context [gssctx $rawchan]
+
+        next
+    }
+
+# -------------------------------------------------------------------------
+
+    ChannelGss instproc destroy {} {
+        my instvar context
+
+        $context destroy
+
+        next
+    }
+
+# -------------------------------------------------------------------------
+
+    ChannelGss instproc initialize {id mode} {
+        return {initialize finalize watch read write}
+    }
+
+# -------------------------------------------------------------------------
+
+    ChannelGss instproc finalize {id} {
+        my destroy
+    }
+
+# -------------------------------------------------------------------------
+
+    ChannelGss instproc callback {id} {
+        my instvar rawchan context
+        set code [catch {$context read} result]
+        switch -- $code {
+            0 {
+                my set ready 1
+                my set buffer $result
+                chan event $rawchan readable {}
+                chan postevent $id {read}
+            }
+            1 {
+                my set buffer {}
+                chan event $rawchan readable {}
+                chan postevent $id {read}
+            }
+        }
+    }
+
+# ---------------------------------------------------------------------
+
+    ChannelGss instproc watch {id events} {
+        my instvar rawchan ready
+        if {"read" in $events} {
+            if {$ready} {
+                chan postevent $id {read}
+            } else {
+                chan event $rawchan readable [myproc callback $id]
+            }
+        } else {
+            chan event $rawchan readable {}
+        }
+    }
+
+# ---------------------------------------------------------------------
+
+    ChannelGss instproc read {id count} {
+        my instvar rawchan buffer
+        chan event $rawchan readable [myproc callback $id]
+        my set ready 0
+        return $buffer
+    }
+
+# -------------------------------------------------------------------------
+
+    ChannelGss instproc write {id bytes} {
+        my instvar context
+
+        $context write $bytes
+    }
+
+# -------------------------------------------------------------------------
+
+    ChannelGss instproc state {} {
+        my instvar context
+
+        $context state
+    }
+
+# -------------------------------------------------------------------------
+
+    ChannelGss instproc name {} {
+        my instvar context
+
+        $context name
+    }
+
+# -------------------------------------------------------------------------
+
+    ChannelGss instproc export {} {
+        my instvar context
+
+        $context export
+    }
+
+# -------------------------------------------------------------------------
+
     Class HttpConnectionGss -superclass HttpConnection -parameter {
         {rawchan}
         {frontendService}
@@ -468,16 +583,20 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnectionGss instproc setup {} {
-        my instvar rawchan channel
-        chan configure $rawchan -blocking 0
+        my instvar rawchan channel transform
+
+        chan configure $rawchan -blocking 0 -buffersize 16389
         chan configure $rawchan -translation {binary binary}
-        if {[catch {gsschan $rawchan} result]} {
-            my log error {Error during connection setup:} $result
+
+        my set transform [ChannelGss new -rawchan $rawchan]
+        if {[catch {chan create {read write} $transform} result]} {
+            my log error $result
             my done 1
             return
         }
-        set channel $result
-        chan configure $channel -blocking 0
+
+        my set channel $result
+        chan configure $channel -blocking 0 -buffersize 16360
         chan configure $channel -translation {auto crlf}
         chan event $channel readable [myproc authorization]
     }
@@ -485,14 +604,20 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnectionGss instproc authorization {} {
-        my instvar channel
+        my instvar channel transform
 
-        my log notice {Distinguished name} [chan configure $channel -gssname]
-        if {[catch {chan configure $channel -gsscontext} result]} {
-            my log error {Error during gsscontext:} $result
+        if {[$transform state] != 1} {
             my done 1
             return
         }
+
+        my log notice {Distinguished name} [$transform name]
+        if {[catch {$transform export} result]} {
+            my log error $result
+            my done 1
+            return
+        }
+
         chan event $channel readable {}
         [my frontendService] process [list authorization [self] $result]
     }
