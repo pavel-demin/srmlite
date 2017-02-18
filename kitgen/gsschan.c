@@ -296,6 +296,18 @@ GssGetOption(ClientData instanceData, Tcl_Interp *interp, const char *optionName
   {
     return TCL_OK;
   }
+  else if(strcmp(optionName, "-gsshandshake") == 0)
+  {
+    if(state->flags & GSS_TCL_HANDSHAKE)
+    {
+      Tcl_DStringAppend(optionValue, "1", 1);
+    }
+    else
+    {
+      Tcl_DStringAppend(optionValue, "0", 1);
+    }
+    return TCL_OK;
+  }
   else if(strcmp(optionName, "-gssname") == 0)
   {
     Tcl_DStringAppend(optionValue, state->gssNameBuf.value, state->gssNameBuf.length);
@@ -539,7 +551,7 @@ GssChannelObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *c
 int
 Gsschan_Init(Tcl_Interp *interp)
 {
-  Tcl_CreateObjCommand(interp, "gsschan", GssChannelObjCmd, (ClientData) 0, NULL);
+  Tcl_CreateObjCommand(interp, "gsschan", GssChannelObjCmd, 0, NULL);
   return Tcl_PkgProvide(interp, "gsschan", "0.1");
 }
 
