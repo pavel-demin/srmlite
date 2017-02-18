@@ -127,7 +127,7 @@ namespace eval ::srmlite::srm::server {
             set fileId [NewUniqueId]
             set fileObj ${requestObj}::${fileId}
 
-            if {$size == {}} {
+            if {$size eq {}} {
                 set size 0
             }
 
@@ -512,7 +512,7 @@ namespace eval ::srmlite::srm::server {
         variable resp
 
         foreach {retCode newState} $resp($state) {
-            if {[string equal $retCode $code]} {
+            if {$retCode eq $code} {
                 my $newState
                 return
             }
