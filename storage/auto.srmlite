@@ -1,0 +1,4 @@
+meta -fstype=nfs,vers=3,tcp,intr,noatime,noacl,rw 10.1.2.10:/storage/meta
+ms01 -fstype=nfs,vers=3,tcp,intr,noatime,noacl,rw 10.1.2.11:/storage/data
+ms02 -fstype=nfs,vers=3,tcp,intr,noatime,noacl,rw 10.1.2.12:/storage/data
+ms03 -fstype=nfs,vers=3,tcp,intr,noatime,noacl,rw 10.1.2.13:/storage/data
