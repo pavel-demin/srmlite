@@ -15,7 +15,7 @@
 EXTDIR = ../../../../8.x
 STATIC = --disable-shared --enable-static
 OUTDIR = $(shell pwd)/build
-OBJ    = $(OUTDIR)/zvfs$O $(OUTDIR)/zlib$O $(OUTDIR)/g2lite$O $(OUTDIR)/gssctx$O $(OUTDIR)/gsschan$O
+OBJ    = $(OUTDIR)/zvfs$O $(OUTDIR)/zlib$O $(OUTDIR)/g2lite$O $(OUTDIR)/gssctx$O
 CLIOBJ ?= $(OBJ) $(OUTDIR)/tclAppInit$O
 TCLDIR = --with-tcl=$(OUTDIR)/lib --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR)
 STRIP ?= strip
@@ -157,10 +157,6 @@ $(OUTDIR)/g2lite$O: ../../g2lite.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include -c $<
 
 $(OUTDIR)/gssctx$O: ../../gssctx.c
-	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
-	  -Ibuild/include/globus -Ibuild/include/globus/gcc64 -c $<
-
-$(OUTDIR)/gsschan$O: ../../gsschan.c
 	$(CC) -o $@ $(CFLAGS) -DSTATIC_BUILD -Ibuild/include \
 	  -Ibuild/include/globus -Ibuild/include/globus/gcc64 -c $<
 
