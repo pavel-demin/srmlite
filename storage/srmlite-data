@@ -1,0 +1,138 @@
+#!/bin/bash
+#
+# chkconfig: 35 90 12
+# description: srmlite client
+# processname: srmlite
+#
+
+# Source function library.
+. /etc/init.d/functions
+
+svcname=srmlite-data
+binname=srmlite
+binpath=/usr/sbin
+libpath=/usr/lib64
+
+binfile=$binpath/$binname
+
+cfgfile=/etc/srmlite/srmlite.cfg
+logfile=/var/log/srmlite/$svcname.log
+
+mntpoint=/storage/data
+
+command="$binfile -c $cfgfile -o direct_io,allow_other,default_permissions $mntpoint"
+
+runfile=/var/lock/subsys/$svcname
+pidfile=/var/run/$svcname.pid
+
+#<define any local shell functions used by the code that follows>
+LD_LIBRARY_PATH=$libpath
+export LD_LIBRARY_PATH
+
+status() {
+    if [ -f "$pidfile" ]
+    then
+        local line p
+        read line < "$pidfile"
+        for p in $line
+        do
+            [ -z "${p//[0-9]/}" -a -d "/proc/$p" ] && pid="$pid $p"
+        done
+        if [ -n "$pid" ]
+        then
+            echo $"${svcname} (pid $pid) is running..."
+            return 0
+        fi
+        echo $"${svcname} dead but pid file exists"
+        return 1
+    fi
+
+    if [ -f "$runfile" ]; then
+        echo $"${svcname} dead but subsys locked"
+        return 2
+    fi
+
+    echo $"${svcname} is stopped"
+    return 3
+}
+
+start() {
+    status > /dev/null
+    if [ $? -eq 0 ]
+    then
+        echo $"$svcname is already running" >&2
+        return
+    fi
+
+    if ! /sbin/lsmod | grep fuse > /dev/null 2>&1
+    then
+        action $"Initializing fuse: " modprobe fuse
+        sleep 2
+    fi
+
+    action $"Starting $svcname: " $command
+    RETVAL=$?
+    if [ "$RETVAL" = 0 ]
+    then
+        touch $runfile
+        /sbin/pidof -s $binfile > $pidfile
+    fi
+}
+
+stop() {
+    status > /dev/null
+    if [ $? -ne 0 ]
+    then
+        echo "$svcname is not running" >&2
+        return
+    fi
+
+    action $"Shutting down $svcname: " umount $mntpoint
+    RETVAL=$?
+    if [ "$RETVAL" = 0 ]
+    then
+        rm -f $runfile
+        rm -f $pidfile
+    fi
+    if /sbin/lsmod | grep fuse > /dev/null 2>&1
+    then
+        sleep 2
+        action $"Disabling fuse: " rmmod fuse
+    fi
+}
+
+reload()
+{
+    status > /dev/null
+    if [ $? -ne 0 ]
+    then
+        echo "$svcname is not running" >&2
+        return
+    fi
+
+    action $"Reloading ${svcname}: " kill -HUP $pid
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status
+        ;;
+    reload)
+        reload
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: <servicename> {start|stop|status|reload|restart}"
+        exit 1
+        ;;
+esac
+exit $?
