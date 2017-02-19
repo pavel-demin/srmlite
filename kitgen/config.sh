@@ -51,7 +51,6 @@ cli=1
 
     SunOS)
       echo "LDFLAGS    = -ldl -lsocket -lnsl -lm"
-      echo "GUI_OPTS   = -lX11 -lXext"
       ;;
 
     *) echo "warning: no settings known for '$mach'" >&2 ;;
@@ -63,7 +62,6 @@ cli=1
   esac
   case $b64 in 1)
     echo "TCL_OPTS   += --enable-64bit" 
-    echo "VFS_OPTS   += --enable-64bit" 
   esac
 
   case $allenc  in 1) kitopts="$kitopts -e" ;; esac
