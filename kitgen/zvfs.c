@@ -1524,7 +1524,7 @@ OpenFileChannel( Tcl_Interp *interp, Tcl_Obj *pathPtr,
     pInfo->readSoFar  = 0;
     Tcl_Seek( chan, INT16(zBuf,26) + INT16(zBuf,28), SEEK_CUR );
     pInfo->startOfData = Tcl_Tell(chan);
-    sprintf( zName, "zvfs%x%x", ((int)pFile)>>12, count++ );
+    sprintf( zName, "zvfs%x%x", ((uintptr_t)pFile)>>12, count++ );
 
     return Tcl_CreateChannel( &vfsChannelType, zName, 
                                 (ClientData)pInfo, TCL_READABLE );
