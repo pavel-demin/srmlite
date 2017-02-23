@@ -1,9 +1,6 @@
 CFLAGS = -O2 -Wall
 
-all: putfile srmlite
-
-putfile: putfile.c
-	gcc $(CFLAGS) -o $@ $^
+all: srmlite
 
 srmlite: srmlite.c
 	gcc $(CFLAGS) $(shell pkg-config fuse --cflags --libs) -o $@ $^
