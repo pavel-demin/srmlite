@@ -528,7 +528,7 @@ namespace eval ::srmlite::http::server {
         my instvar rawchan ready
         if {"read" in $events} {
             if {$ready} {
-                chan postevent $id {read}
+                after 0 [list chan postevent $id {read}]
             } else {
                 chan event $rawchan readable [myproc callback $id]
             }
