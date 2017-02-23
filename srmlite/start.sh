@@ -1,1 +1,1 @@
-./tclkit-cli main.tcl srmlite.cfg
+tclsh main.tcl srmlite.cfg
