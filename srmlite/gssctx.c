@@ -34,11 +34,12 @@
 
 #include <tcl.h>
 
-#include <gssapi.h>
+#include <globus/gssapi.h>
 
 /* ----------------------------------------------------------------- */
 
-typedef struct GssContext {
+typedef struct
+{
   Tcl_Command token;
   Tcl_Channel channel;
   unsigned char buffer[16389];
@@ -54,9 +55,9 @@ typedef struct GssContext {
 
 /* ----------------------------------------------------------------- */
 
-static unsigned char GssBase64Pad = '=';
+static char GssBase64Pad = '=';
 
-static unsigned char GssBase64CharSet[64] =
+static char GssBase64CharSet[64] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /* ----------------------------------------------------------------- */
@@ -66,7 +67,7 @@ GssBase64Encode(Tcl_Obj *outputObject, unsigned char *inputBuffer, int length)
 {
   int i, j;
   unsigned char character;
-  unsigned char buffer[4];
+  char buffer[4];
 
   character = 0;
 
@@ -117,36 +118,35 @@ GssHandshake(Tcl_Interp *interp, GssContext *context)
   bufferIn.length = context->length;
   context->length = 0;
 
-  majorStatus
-    = gss_accept_sec_context(&minorStatus,              /* (out) minor status */
-                             &context->gssContext,      /* (in) security context */
-                             context->gssCredential,    /* (in) cred handle */
-                             &bufferIn,                 /* (in) input token */
-                             GSS_C_NO_CHANNEL_BINDINGS, /* (in) */
-                             &context->gssName,         /* (out) name of initiator */
-                             NULL,                      /* (out) mechanisms */
-                             &bufferOut,                /* (out) output token */
-                             &context->gssFlags,        /* (out) return flags */
-                             &context->gssTime,         /* (out) time ctx is valid */
-                             &context->gssCredProxy);   /* (out) delegated cred */
+  majorStatus =
+    gss_accept_sec_context(&minorStatus,              /* (out) minor status */
+                           &context->gssContext,      /* (in) security context */
+                           context->gssCredential,    /* (in) cred handle */
+                           &bufferIn,                 /* (in) input token */
+                           GSS_C_NO_CHANNEL_BINDINGS, /* (in) */
+                           &context->gssName,         /* (out) name of initiator */
+                           NULL,                      /* (out) mechanisms */
+                           &bufferOut,                /* (out) output token */
+                           &context->gssFlags,        /* (out) return flags */
+                           &context->gssTime,         /* (out) time ctx is valid */
+                           &context->gssCredProxy);   /* (out) delegated cred */
 
   if(majorStatus & GSS_S_CONTINUE_NEEDED)
   {
     Tcl_Write(context->channel, bufferOut.value, bufferOut.length);
     Tcl_Flush(context->channel);
-    majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+    gss_release_buffer(&minorStatus, &bufferOut);
     return 5;
   }
   else if(majorStatus == GSS_S_COMPLETE)
   {
-    majorStatus
-      = gss_display_name(&minorStatus,
-                         context->gssName,
-                         &context->gssNameBuf,
-                         NULL);
+    gss_display_name(&minorStatus,
+                     context->gssName,
+                     &context->gssNameBuf,
+                     NULL);
     Tcl_Write(context->channel, bufferOut.value, bufferOut.length);
     Tcl_Flush(context->channel);
-    majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+    gss_release_buffer(&minorStatus, &bufferOut);
     context->state = 1;
     return 5;
   }
@@ -170,18 +170,18 @@ GssUnwrap(Tcl_Interp *interp, GssContext *context)
   bufferIn.length = context->length;
   context->length = 0;
 
-  majorStatus
-    = gss_unwrap(&minorStatus,
-                 context->gssContext,
-                 &bufferIn,
-                 &bufferOut,
-                 NULL,
-                 GSS_C_QOP_DEFAULT);
+  majorStatus =
+    gss_unwrap(&minorStatus,
+               context->gssContext,
+               &bufferIn,
+               &bufferOut,
+               NULL,
+               GSS_C_QOP_DEFAULT);
 
   if(majorStatus == GSS_S_COMPLETE)
   {
     result = Tcl_NewByteArrayObj(bufferOut.value, bufferOut.length);
-    majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+    gss_release_buffer(&minorStatus, &bufferOut);
     Tcl_SetObjResult(interp, result);
     return TCL_OK;
   }
@@ -201,7 +201,7 @@ GssCallback(Tcl_Interp *interp, GssContext *context)
 
   if(context->length < 5)
   {
-    context->length += Tcl_Read(context->channel, context->buffer + context->length, 5 - context->length);
+    context->length += Tcl_Read(context->channel, (char *) context->buffer + context->length, 5 - context->length);
     if(context->length < 5)
     {
       if(Tcl_Eof(context->channel))
@@ -225,7 +225,7 @@ GssCallback(Tcl_Interp *interp, GssContext *context)
 
   if(context->length < length)
   {
-    context->length += Tcl_Read(context->channel, context->buffer + context->length, length - context->length);
+    context->length += Tcl_Read(context->channel, (char *) context->buffer + context->length, length - context->length);
     if(context->length < length)
     {
       if(Tcl_Eof(context->channel))
@@ -276,7 +276,7 @@ GssWrap(Tcl_Interp *interp, GssContext *context, Tcl_Obj *obj)
   {
     Tcl_Write(context->channel, bufferOut.value, bufferOut.length);
     Tcl_Flush(context->channel);
-    majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+    gss_release_buffer(&minorStatus, &bufferOut);
     result = Tcl_NewIntObj(length);
     Tcl_SetObjResult(interp, result);
     return TCL_OK;
@@ -297,16 +297,20 @@ GssExport(Tcl_Interp *interp, GssContext *context)
   gss_buffer_desc bufferOut;
   Tcl_Obj *result;
 
-  majorStatus
-    = gss_export_sec_context(&minorStatus,
-                             &context->gssContext,
-                             &bufferOut);
+  majorStatus =
+    gss_export_sec_context(&minorStatus,
+                           &context->gssContext,
+                           &bufferOut);
 
   if(majorStatus == GSS_S_COMPLETE)
   {
+    gss_import_sec_context(&minorStatus,
+                           &bufferOut,
+                           &context->gssContext);
+
     result = Tcl_NewObj();
     GssBase64Encode(result, bufferOut.value, bufferOut.length);
-    majorStatus = gss_release_buffer(&minorStatus, &bufferOut);
+    gss_release_buffer(&minorStatus, &bufferOut);
     Tcl_SetObjResult(interp, result);
     return TCL_OK;
   }
@@ -404,43 +408,32 @@ GssContextObjCmd(ClientData instanceData, Tcl_Interp *interp, int objc, Tcl_Obj 
 static void
 GssContextDestroy(ClientData instanceData)
 {
-  OM_uint32 majorStatus, minorStatus;
+  OM_uint32 minorStatus;
   GssContext *context = (GssContext *) instanceData;
 
   if(context->gssContext != GSS_C_NO_CONTEXT)
   {
-    majorStatus
-      = gss_delete_sec_context(&minorStatus,
-                               &context->gssContext,
-                               GSS_C_NO_BUFFER);
+    gss_delete_sec_context(&minorStatus, &context->gssContext, GSS_C_NO_BUFFER);
   }
 
   if(context->gssCredential != GSS_C_NO_CREDENTIAL)
   {
-    majorStatus
-      = gss_release_cred(&minorStatus,
-                         &context->gssCredential);
+    gss_release_cred(&minorStatus, &context->gssCredential);
   }
 
   if(context->gssCredProxy != GSS_C_NO_CREDENTIAL)
   {
-    majorStatus
-      = gss_release_cred(&minorStatus,
-                         &context->gssCredProxy);
+    gss_release_cred(&minorStatus, &context->gssCredProxy);
   }
 
   if(context->gssName != GSS_C_NO_NAME)
   {
-    majorStatus
-      = gss_release_name(&minorStatus,
-                         &context->gssName);
+    gss_release_name(&minorStatus, &context->gssName);
   }
 
   if(context->gssNameBuf.value != NULL)
   {
-    majorStatus
-      = gss_release_buffer(&minorStatus,
-                           &context->gssNameBuf);
+    gss_release_buffer(&minorStatus, &context->gssNameBuf);
   }
 
   ckfree((char *) context);
@@ -486,31 +479,33 @@ GssCreateContextObjCmd(ClientData instanceData, Tcl_Interp *interp, int objc, Tc
   context->gssNameBuf.value = NULL;
   context->gssNameBuf.length = 0;
 
-  majorStatus
-    = gss_acquire_cred(&minorStatus,            /* (out) minor status */
-                       GSS_C_NO_NAME,           /* (in) desired name */
-                       GSS_C_INDEFINITE,        /* (in) desired time valid */
-                       GSS_C_NO_OID_SET,        /* (in) desired mechs */
-                       GSS_C_BOTH,              /* (in) cred usage */
-                       &context->gssCredential, /* (out) cred handle */
-                       NULL,                    /* (out) actual mechs */
-                       NULL);                   /* (out) actual time valid */
+  majorStatus =
+    gss_acquire_cred(&minorStatus,            /* (out) minor status */
+                     GSS_C_NO_NAME,           /* (in) desired name */
+                     GSS_C_INDEFINITE,        /* (in) desired time valid */
+                     GSS_C_NO_OID_SET,        /* (in) desired mechs */
+                     GSS_C_BOTH,              /* (in) cred usage */
+                     &context->gssCredential, /* (out) cred handle */
+                     NULL,                    /* (out) actual mechs */
+                     NULL);                   /* (out) actual time valid */
 
-  if(majorStatus != GSS_S_COMPLETE)
+  if(majorStatus == GSS_S_COMPLETE)
+  {
+    sprintf(cmdString, "::gssctx%lu", cmdCounter);
+    ++cmdCounter;
+
+    context->token = Tcl_CreateObjCommand(interp, cmdString, GssContextObjCmd,
+      (ClientData) context, GssContextDestroy);
+
+    Tcl_AppendResult(interp, cmdString, NULL);
+    return TCL_OK;
+  }
+  else
   {
     GssContextDestroy((ClientData) context);
     Tcl_AppendResult(interp, "Failed to acquire credentials", NULL);
     return TCL_ERROR;
   }
-
-  sprintf(cmdString, "::gssctx%d", cmdCounter);
-  ++cmdCounter;
-
-  context->token = Tcl_CreateObjCommand(interp, cmdString, GssContextObjCmd,
-    (ClientData) context, GssContextDestroy);
-
-  Tcl_AppendResult(interp, cmdString, NULL);
-  return TCL_OK;
 }
 
 /* ----------------------------------------------------------------- */
@@ -520,12 +515,4 @@ Gssctx_Init(Tcl_Interp *interp)
 {
   Tcl_CreateObjCommand(interp, "gssctx", GssCreateContextObjCmd, 0, NULL);
   return Tcl_PkgProvide(interp, "gssctx", "0.2");
-}
-
-/* ----------------------------------------------------------------- */
-
-int
-Gssctx_SafeInit(Tcl_Interp *interp)
-{
-  return Gssctx_Init(interp);
 }
