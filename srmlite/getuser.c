@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <gssapi.h>
-#include <globus_gss_assist.h>
+#include <globus/gssapi.h>
+#include <globus/globus_gss_assist.h>
 
 #define XX 100
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
   int i, j;
   char index;
   char buffer[32768];
-  char *input;
+  unsigned char *input;
   char output[256];
 
   memset(output, 0, 256);
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 
   if(majorStatus != GSS_S_COMPLETE)
   {
-    globus_gss_assist_display_status( stderr, "Failed to import context: ", majorStatus, minorStatus, 0);
+    globus_gss_assist_display_status(stderr, "Failed to import context: ", majorStatus, minorStatus, 0);
     return 1;
   }
 
@@ -124,4 +124,3 @@ int main(int argc, char *argv[])
 
   return 0;
 }
-
