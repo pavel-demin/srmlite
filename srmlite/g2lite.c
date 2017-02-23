@@ -57,8 +57,8 @@ typedef struct
 
 /* ----------------------------------------------------------------- */
 
-static int G2liteObjCmdProc(ClientData clientData, Tcl_Interp *interp,
-                            int objc, Tcl_Obj *CONST objv[])
+static int
+G2liteObjCmdProc(ClientData instanceData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
   int size = 0;
   int i = 0;
@@ -256,8 +256,9 @@ static int G2liteObjCmdProc(ClientData clientData, Tcl_Interp *interp,
 
 /* ----------------------------------------------------------------- */
 
-int G2lite_Init(Tcl_Interp *interp)
+int
+G2lite_Init(Tcl_Interp *interp)
 {
-    Tcl_CreateObjCommand(interp, "g2lite", G2liteObjCmdProc, 0, 0);
-    return Tcl_PkgProvide(interp, "g2lite", "0.1");
+  Tcl_CreateObjCommand(interp, "g2lite", G2liteObjCmdProc, 0, NULL);
+  return Tcl_PkgProvide(interp, "g2lite", "0.1");
 }
