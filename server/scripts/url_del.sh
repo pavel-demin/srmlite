@@ -4,7 +4,12 @@
 hostSrc="$1"
 fileSrc="$2"
 
-fileDst=`readlink $fileSrc`
+if [ -L "$fileSrc" ]
+then
+  fileDst=`readlink $fileSrc`
+else
+  fileDst=$fileSrc
+fi
 
 . ./scripts/url_common.sh
 
