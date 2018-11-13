@@ -10,7 +10,7 @@
 #include <libgen.h>
 #include <time.h>
 
-#define MIN_FREE_BLOCKS 2048000
+#define MIN_FREE_BLOCKS 512000
 
 #define MAX_STORAGE 100
 
