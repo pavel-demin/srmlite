@@ -2,8 +2,13 @@ package require log
 
 namespace eval ::srmlite::utilities {
 
-    variable ftpHosts
-    set ftpHosts [list]
+    variable getHosts
+    set getHosts [list]
+
+# -------------------------------------------------------------------------
+
+    variable putHosts
+    set putHosts [list]
 
 # -------------------------------------------------------------------------
 
@@ -13,7 +18,7 @@ namespace eval ::srmlite::utilities {
 # -------------------------------------------------------------------------
 
     variable uniqueId
-    set uniqueId   -2147483648
+    set uniqueId -2147483648
 
 # -------------------------------------------------------------------------
 
@@ -118,13 +123,26 @@ namespace eval ::srmlite::utilities {
 
 # -------------------------------------------------------------------------
 
-    proc TransferHost {} {
-        variable ftpHosts
+    proc GetTransferHost {} {
+        variable getHosts
 
         # round robin scheduling
-        set host [lindex $ftpHosts 0]
-        set ftpHosts [lreplace $ftpHosts 0 0]
-        lappend ftpHosts $host
+        set host [lindex $getHosts 0]
+        set getHosts [lreplace $getHosts 0 0]
+        lappend getHosts $host
+
+        return $host
+    }
+
+# -------------------------------------------------------------------------
+
+    proc PutTransferHost {} {
+        variable putHosts
+
+        # round robin scheduling
+        set host [lindex $putHosts 0]
+        set putHosts [lreplace $putHosts 0 0]
+        lappend putHosts $host
 
         return $host
     }
@@ -135,7 +153,7 @@ namespace eval ::srmlite::utilities {
 
         set file [lindex [ExtractHostPortFile $url] 2]
 
-        return "gsiftp://[TransferHost]:2811/$file"
+        return "gsiftp://[GetTransferHost]:2811/$file"
     }
 
 # -------------------------------------------------------------------------
@@ -171,8 +189,8 @@ namespace eval ::srmlite::utilities {
 # -------------------------------------------------------------------------
 
     namespace export NewUniqueId ExtractFileType ExtractOwnerMode \
-        ExtractGroupMode ExtractOtherMode ExtractHostPortFile TransferHost \
-        ConvertSURL2TURL LogRotate
+        ExtractGroupMode ExtractOtherMode ExtractHostPortFile GetTransferHost \
+        PutTransferHost ConvertSURL2TURL LogRotate
 }
 
 package provide srmlite::utilities 0.1

@@ -83,7 +83,9 @@ proc frontend {pipein pipeout} {
     log::lvChannelForall $fid
 
     set ::srmlite::utilities::logFileId $fid
-    set ::srmlite::utilities::ftpHosts $Cfg(ftpHosts)
+
+    set ::srmlite::utilities::getHosts $Cfg(getHosts)
+    set ::srmlite::utilities::putHosts $Cfg(putHosts)
 
     log::log notice "frontend started with pid [pid]"
 #    close $fid

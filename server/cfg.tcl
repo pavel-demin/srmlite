@@ -4,7 +4,8 @@ package require Tclx
 
 array set CfgValidators {
     logLevel ValidateLogLevel
-    ftpHosts ValidateFtpHosts
+    getHosts ValidateFtpHosts
+    putHosts ValidateFtpHosts
     workDir ValidateWorkDir
     chrootDir ValidateChrootDir
     daemonize ValidateBoolean
@@ -18,7 +19,8 @@ array set CfgValidators {
 
 array set Cfg {
     logLevel notice
-    ftpHosts ingrid-se03.cism.ucl.ac.be
+    getHosts ingrid-se03.cism.ucl.ac.be
+    putHosts ingrid-se03.cism.ucl.ac.be
     workDir .
     chrootDir .
     daemonize false

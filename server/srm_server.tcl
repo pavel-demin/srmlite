@@ -712,7 +712,7 @@ namespace eval ::srmlite::srm::server {
 
     SrmFile instproc putSuccess {result} {
         my set fileState SRM_SPACE_AVAILABLE
-        my set TURL "gsiftp://[TransferHost]:2811/$result"
+        my set TURL "gsiftp://[PutTransferHost]:2811/$result"
         my updateState Ready
     }
 
