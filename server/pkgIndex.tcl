@@ -9,5 +9,3 @@ package ifneeded srmlite::frontend     0.1 [list source [file join $dir frontend
 package ifneeded srmlite::backend      0.2 [list source [file join $dir backend.tcl]]
 package ifneeded g2lite                0.1 [list load [file join $dir g2lite.so] g2lite]
 package ifneeded gssctx                0.2 [list load [file join $dir gssctx.so] gssctx]
-package ifneeded XOTcl               1.6.8 [list load [file join $dir libxotcl1.6.8.so] XOTcl]
-package ifneeded tdom                0.8.3 "load [list [file join $dir libtdom0.8.3.so] tdom]; source [list [file join $dir tdom.tcl]]"
