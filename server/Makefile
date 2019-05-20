@@ -6,6 +6,8 @@ TCLLIB_TAG = 1.19
 
 OUTDIR = $(shell pwd)/tcl
 
+CFGARGS = --disable-threads --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR)
+
 CFLAGS = -O2 -Wall -I$(OUTDIR)/include
 
 TCL_LIB = $(OUTDIR)/lib/libtcl8.6.so
@@ -71,19 +73,19 @@ $(TCLLIB_DIR): $(TCLLIB_TAR)
 	tar -mzxf $< --directory=$(@D)
 
 $(TCL_LIB): $(TCL_DIR)
-	cd $< && sh unix/configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) && make install-binaries install-libraries install-headers
+	cd $< && sh unix/configure $(CFGARGS) && make install-binaries install-libraries install-headers
 
 $(TCLX_LIB): $(TCLX_DIR)
-	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=$(OUTDIR)/lib && make install-binaries install-libraries
+	cd $< && sh configure $(CFGARGS) --with-tcl=$(OUTDIR)/lib && make install-binaries install-libraries
 
 $(TDOM_LIB): $(TDOM_DIR)
-	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=$(OUTDIR)/lib && make install-binaries install-libraries
+	cd $< && sh configure $(CFGARGS) --with-tcl=$(OUTDIR)/lib && make install-binaries install-libraries
 
 $(XOTCL_LIB): $(XOTCL_DIR)
-	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=$(OUTDIR)/lib && make install-binaries install-libraries
+	cd $< && sh configure $(CFGARGS) --with-tcl=$(OUTDIR)/lib && make install-binaries install-libraries
 
 $(TCLLIB_LIB): $(TCLLIB_DIR)
-	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=$(OUTDIR)/lib && make install-libraries
+	cd $< && sh configure $(CFGARGS) --with-tcl=$(OUTDIR)/lib && make install-libraries
 
 getuser: getuser.c
 	gcc $(CFLAGS) -o $@ $^ -lglobus_gss_assist
