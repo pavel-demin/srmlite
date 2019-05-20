@@ -1,0 +1,24 @@
+diff -rupN old/tDOM-0.8.3/generic/domxslt.c tDOM-0.8.3/generic/domxslt.c
+--- old/tDOM-0.8.3/generic/domxslt.c
++++ tDOM-0.8.3/generic/domxslt.c
+@@ -2679,7 +2679,7 @@ static int fastMergeSort (
+         }
+     }
+     memcpy(a,    b,     size*sizeof(domNode*));
+-    memcpy(posa, posb,  size*sizeof(int*));
++    memcpy(posa, posb,  size*sizeof(int));
+     memcpy(vs,   vstmp, size*sizeof(char*));
+     memcpy(vd,   vdtmp, size*sizeof(double));
+     return 0;
+diff -rupN old/tDOM-0.8.3/generic/tcldom.c tDOM-0.8.3/generic/tcldom.c
+--- old/tDOM-0.8.3/generic/tcldom.c
++++ tDOM-0.8.3/generic/tcldom.c
+@@ -5934,7 +5934,7 @@ int tcldom_EvalLocked (
+     if (ret == TCL_ERROR) {
+         char msg[64 + TCL_INTEGER_SPACE];
+         sprintf(msg, "\n    (\"%s %s\" body line %d)", Tcl_GetString(objv[0]),
+-                Tcl_GetString(objv[1]), interp->errorLine);
++                Tcl_GetString(objv[1]), Tcl_GetErrorLine(interp));
+         Tcl_AddErrorInfo(interp, msg);
+     }
+ 

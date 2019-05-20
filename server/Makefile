@@ -1,23 +1,46 @@
+TCL_TAG = 8.6.9
+TCLX_TAG = 8.4.1
 TDOM_TAG = 0.8.3
 XOTCL_TAG = 1.6.8
+TCLLIB_TAG = 1.19
 
-TDOM_LIB = libtdom$(TDOM_TAG).so
-XOTCL_LIB = libxotcl$(XOTCL_TAG).so
+OUTDIR = $(shell pwd)/tcl
 
+CFLAGS = -O2 -Wall -I$(OUTDIR)/include
+
+TCL_LIB = $(OUTDIR)/lib/libtcl8.6.so
+TCLX_LIB = $(OUTDIR)/lib/tclx8.4/libtclx8.4.so
+TDOM_LIB = $(OUTDIR)/lib/tdom$(TDOM_TAG)/libtdom$(TDOM_TAG).so
+XOTCL_LIB = $(OUTDIR)/lib/xotcl$(XOTCL_TAG)/libxotcl$(XOTCL_TAG).so
+TCLLIB_LIB = $(OUTDIR)/lib/tcllib1.19
+
+TCL_DIR = tmp/tcl$(TCL_TAG)
+TCLX_DIR = tmp/tclx8.4
 TDOM_DIR = tmp/tDOM-$(TDOM_TAG)
 XOTCL_DIR = tmp/xotcl-$(XOTCL_TAG)
+TCLLIB_DIR = tmp/tcllib-$(TCLLIB_TAG)
 
+TCL_TAR = tmp/tcl-$(TCL_TAG).tar.gz
+TCLX_TAR = tmp/tclx-$(TCLX_TAG).tar.bz2
 TDOM_TAR = tmp/tDOM-$(TDOM_TAG).tgz
 XOTCL_TAR = tmp/xotcl-$(XOTCL_TAG).tar.gz
+TCLLIB_TAR = tmp/tcllib-$(TCLLIB_TAG).tar.gz
 
+TCL_URL = https://sourceforge.net/projects/tcl/files/Tcl/$(TCL_TAG)/tcl$(TCL_TAG)-src.tar.gz
+TCLX_URL = https://sourceforge.net/projects/tclx/files/TclX/$(TCLX_TAG)/tclx$(TCLX_TAG).tar.bz2
 TDOM_URL = https://github.com/downloads/tDOM/tdom/tDOM-$(TDOM_TAG).tgz
-XOTCL_URL = http://download.sourceforge.net/project/xotcl/xotcl/$(XOTCL_TAG)/xotcl-$(XOTCL_TAG).tar.gz
+XOTCL_URL = https://sourceforge.net/projects/xotcl/files/xotcl/$(XOTCL_TAG)/xotcl-$(XOTCL_TAG).tar.gz
+TCLLIB_URL = https://sourceforge.net/projects/tcllib/files/tcllib/1.19/tcllib-1.19.tar.gz
 
-CFLAGS = -O2 -Wall
+all: $(TCL_LIB) $(TCLX_LIB) $(TDOM_LIB) $(XOTCL_LIB) $(TCLLIB_LIB) getuser putfile g2lite.so gssctx.so
 
-OUTDIR = $(shell pwd)/tmp
+$(TCL_TAR):
+	mkdir -p $(@D)
+	curl -L $(TCL_URL) -o $@
 
-all: $(TDOM_LIB) $(XOTCL_LIB) getuser putfile g2lite.so gssctx.so
+$(TCLX_TAR):
+	mkdir -p $(@D)
+	curl -L $(TCLX_URL) -o $@
 
 $(TDOM_TAR):
 	mkdir -p $(@D)
@@ -27,20 +50,40 @@ $(XOTCL_TAR):
 	mkdir -p $(@D)
 	curl -L $(XOTCL_URL) -o $@
 
+$(TCLLIB_TAR):
+	mkdir -p $(@D)
+	curl -L $(TCLLIB_URL) -o $@
+
+$(TCL_DIR): $(TCL_TAR)
+	tar -mzxf $< --directory=$(@D)
+
+$(TCLX_DIR): $(TCLX_TAR)
+	tar -mjxf $< --directory=$(@D)
+
 $(TDOM_DIR): $(TDOM_TAR)
 	tar -mzxf $< --directory=$(@D)
+	patch -d tmp -p 0 < patches/tDOM.patch
 
 $(XOTCL_DIR): $(XOTCL_TAR)
 	tar -mzxf $< --directory=$(@D)
 
+$(TCLLIB_DIR): $(TCLLIB_TAR)
+	tar -mzxf $< --directory=$(@D)
+
+$(TCL_LIB): $(TCL_DIR)
+	cd $< && sh unix/configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) && make install-binaries install-libraries install-headers
+
+$(TCLX_LIB): $(TCLX_DIR)
+	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=$(OUTDIR)/lib && make install-binaries install-libraries
+
 $(TDOM_LIB): $(TDOM_DIR)
-	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=/usr/lib64/tcl8.5 && make install-binaries
-	cp $(OUTDIR)/lib/tdom$(TDOM_TAG)/$@ $@
-	cp $(OUTDIR)/lib/tdom$(TDOM_TAG)/tdom.tcl tdom.tcl
+	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=$(OUTDIR)/lib && make install-binaries install-libraries
 
 $(XOTCL_LIB): $(XOTCL_DIR)
-	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=/usr/lib64/tcl8.5 && make install-binaries
-	cp $(OUTDIR)/lib/xotcl$(XOTCL_TAG)/$@ $@
+	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=$(OUTDIR)/lib && make install-binaries install-libraries
+
+$(TCLLIB_LIB): $(TCLLIB_DIR)
+	cd $< && sh configure --prefix=$(OUTDIR) --exec-prefix=$(OUTDIR) --with-tcl=$(OUTDIR)/lib && make install-libraries
 
 getuser: getuser.c
 	gcc $(CFLAGS) -o $@ $^ -lglobus_gss_assist
@@ -55,6 +98,5 @@ gssctx.so: gssctx.c
 	gcc -shared -fPIC $(CFLAGS) -o $@ $^ -lglobus_gssapi_gsi
 
 clean:
-	rm -f $(TDOM_LIB) tdom.tcl $(XOTCL_LIB)
 	rm -f getuser putfile g2lite.so gssctx.so
-	rm -rf tmp
+	rm -rf tcl tmp

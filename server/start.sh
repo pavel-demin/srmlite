@@ -1,1 +1,1 @@
-tclsh main.tcl srmlite.cfg
+./tcl/bin/tclsh8.6 main.tcl srmlite.cfg
