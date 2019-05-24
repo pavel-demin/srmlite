@@ -211,8 +211,8 @@ namespace eval ::srmlite::http::server {
         {rawchan}
         {address}
         {port}
-        {timeout 3600000}
-        {reqleft 25}
+        {timeout 36000000}
+        {reqleft 100}
         {frontendService}
     }
 
