@@ -1,3 +1,4 @@
+package require Tclx
 package require log
 package require XOTcl
 
@@ -100,6 +101,7 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpServer instproc accept {channel address port} {
+        fcntl $channel KEEPALIVE 1
         HttpConnection new \
             -childof [self] \
             -rawchan $channel \
