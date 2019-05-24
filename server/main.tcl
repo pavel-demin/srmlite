@@ -47,7 +47,7 @@ proc SetupTimer {seconds command} {
 
 # -------------------------------------------------------------------------
 
-proc shutdown {} {
+proc Shutdown {} {
   # whatever cleanup you need to do
 
   log::log notice "Shutting down process [pid]..."
@@ -57,7 +57,7 @@ proc shutdown {} {
 
 # -------------------------------------------------------------------------
 
-proc frontend {pipein pipeout} {
+proc StartFrontend {pipein pipeout} {
 
     global Cfg
 
@@ -116,12 +116,12 @@ proc frontend {pipein pipeout} {
     # start the Tcl event loop
     vwait forever
 
-    shutdown
+    Shutdown
 }
 
 # -------------------------------------------------------------------------
 
-proc backend {pipein pipeout} {
+proc StartBackend {pipein pipeout} {
 
     package require srmlite::backend
     package require srmlite::utilities
@@ -150,7 +150,7 @@ proc backend {pipein pipeout} {
     # start the Tcl event loop
     vwait forever
 
-    shutdown
+    Shutdown
 }
 
 # -------------------------------------------------------------------------
@@ -163,7 +163,7 @@ proc bgerror {msg} {
 
 # -------------------------------------------------------------------------
 
-proc daemonize {} {
+proc Daemonize {} {
     close stdin
     close stdout
     close stderr
@@ -228,10 +228,10 @@ SetLogLevel $Cfg(logLevel)
 #    chroot $Cfg(chrootDir)
 
 
-#daemonize
+#Daemonize
 signal ignore  SIGHUP
 signal unblock {INT QUIT TERM}
-signal -restart trap {INT QUIT TERM} shutdown
+signal -restart trap {INT QUIT TERM} Shutdown
 
 
 set pipein [pipe]
@@ -239,13 +239,13 @@ set pipeout [pipe]
 
 switch [fork] {
     -1 {
-        shutdown
+        Shutdown
     }
     0 {
-        frontend $pipein $pipeout
+        StartFrontend $pipein $pipeout
     }
     default {
-        backend $pipein $pipeout
+        StartBackend $pipein $pipeout
     }
 }
 
