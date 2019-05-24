@@ -101,7 +101,7 @@ proc StartFrontend {pipein pipeout} {
         -cleanupService timeout \
         -frontendService frontend
 
-    HttpServerGss server \
+    HttpServer server \
         -port $Cfg(frontendPort) \
         -frontendService frontend
 

@@ -41,10 +41,10 @@ namespace eval ::srmlite::http::server {
 
 
     Class HttpServer -parameter {
-        {port 80}
+        {port 8443}
         {address}
+        {frontendService}
     }
-
 
 # -------------------------------------------------------------------------
 
@@ -102,9 +102,10 @@ namespace eval ::srmlite::http::server {
     HttpServer instproc accept {channel address port} {
         HttpConnection new \
             -childof [self] \
-            -channel $channel \
+            -rawchan $channel \
             -address $address \
-            -port $port
+            -port $port \
+            -frontendService [my frontendService]
     }
 
 # -------------------------------------------------------------------------
@@ -116,12 +117,101 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
+    Class GssChannel -parameter {
+        {rawchan}
+    }
+
+# -------------------------------------------------------------------------
+
+    GssChannel instproc init {} {
+        my instvar rawchan context
+
+        my set ready 0
+        my set context [gssctx $rawchan]
+
+        my forward write $context write
+        my forward state $context state
+        my forward name $context name
+        my forward export $context export
+
+        next
+    }
+
+# -------------------------------------------------------------------------
+
+    GssChannel instproc destroy {} {
+        my instvar context
+
+        $context destroy
+
+        next
+    }
+
+# -------------------------------------------------------------------------
+
+    GssChannel instproc initialize {id mode} {
+        return {initialize finalize watch read write}
+    }
+
+# -------------------------------------------------------------------------
+
+    GssChannel instproc finalize {id} {
+        my destroy
+    }
+
+# -------------------------------------------------------------------------
+
+    GssChannel instproc callback {id} {
+        my instvar rawchan context
+        set code [catch {$context callback} result]
+        switch -- $code {
+            0 {
+                my set ready 1
+                my set buffer $result
+                chan event $rawchan readable {}
+                chan postevent $id {read}
+            }
+            1 {
+                my set buffer {}
+                chan event $rawchan readable {}
+                chan postevent $id {read}
+            }
+        }
+    }
+
+# ---------------------------------------------------------------------
+
+    GssChannel instproc watch {id events} {
+        my instvar rawchan ready
+        if {"read" in $events} {
+            if {$ready} {
+                after 0 [list chan postevent $id {read}]
+            } else {
+                chan event $rawchan readable [myproc callback $id]
+            }
+        } else {
+            chan event $rawchan readable {}
+        }
+    }
+
+# ---------------------------------------------------------------------
+
+    GssChannel instproc read {id count} {
+        my instvar rawchan buffer
+        chan event $rawchan readable [myproc callback $id]
+        my set ready 0
+        return $buffer
+    }
+
+# -------------------------------------------------------------------------
+
     Class HttpConnection -parameter {
-        {channel}
+        {rawchan}
         {address}
         {port}
         {timeout 3600000}
         {reqleft 25}
+        {frontendService}
     }
 
 # -------------------------------------------------------------------------
@@ -154,10 +244,58 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnection instproc setup {} {
-        my instvar channel
-        chan configure $channel -blocking 0 -buffersize 16384
+        my instvar rawchan channel transform
+
+        chan configure $rawchan -blocking 0 -buffersize 16389
+        chan configure $rawchan -translation {binary binary}
+
+        my set transform [GssChannel new -rawchan $rawchan]
+        if {[catch {chan create {read write} $transform} result]} {
+            my log error $result
+            my done 1
+            return
+        }
+
+        my set channel $result
+        chan configure $channel -blocking 0 -buffersize 16360
         chan configure $channel -translation {auto crlf}
+        chan event $channel readable [myproc authorization]
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc authorization {} {
+        my instvar channel transform
+
+        if {[$transform state] != 1} {
+            my done 1
+            return
+        }
+
+        my log notice {Distinguished name} [$transform name]
+        if {[catch {$transform export} result]} {
+            my log error $result
+            my done 1
+            return
+        }
+
+        chan event $channel readable {}
+        [my frontendService] process [list authorization [self] $result]
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc authorizationSuccess {name} {
+        my instvar channel
+        my set userName $name
         chan event $channel readable [myproc firstLine]
+    }
+
+# -------------------------------------------------------------------------
+
+    HttpConnection instproc authorizationFailure {reason} {
+        my log error {Authorization failed:} $reason
+        my error 403 {Acess is not allowed}
     }
 
 # -------------------------------------------------------------------------
@@ -418,16 +556,17 @@ namespace eval ::srmlite::http::server {
 # -------------------------------------------------------------------------
 
     HttpConnection instproc destroy {} {
-        my instvar channel
+        my instvar rawchan channel
 
         catch {
             chan event $channel readable {}
             chan close $channel
+            chan event $rawchan readable {}
+            chan close $rawchan
         }
 
         next
     }
-
 # -------------------------------------------------------------------------
 
     HttpConnection instproc log {level args} {
@@ -439,188 +578,6 @@ namespace eval ::srmlite::http::server {
 
     HttpConnection instproc date {seconds} {
         clock format $seconds -format {%a, %d %b %Y %T %Z}
-    }
-
-# -------------------------------------------------------------------------
-
-    Class HttpServerGss -superclass HttpServer -parameter {
-        {frontendService}
-    }
-
-# -------------------------------------------------------------------------
-
-    HttpServerGss instproc accept {channel address port} {
-        HttpConnectionGss new \
-            -childof [self] \
-            -rawchan $channel \
-            -address $address \
-            -port $port \
-            -frontendService [my frontendService]
-    }
-
-# -------------------------------------------------------------------------
-
-    Class ChannelGss -parameter {
-        {rawchan}
-    }
-
-# -------------------------------------------------------------------------
-
-    ChannelGss instproc init {} {
-        my instvar rawchan context
-
-        my set ready 0
-        my set context [gssctx $rawchan]
-
-        my forward write $context write
-        my forward state $context state
-        my forward name $context name
-        my forward export $context export
-
-        next
-    }
-
-# -------------------------------------------------------------------------
-
-    ChannelGss instproc destroy {} {
-        my instvar context
-
-        $context destroy
-
-        next
-    }
-
-# -------------------------------------------------------------------------
-
-    ChannelGss instproc initialize {id mode} {
-        return {initialize finalize watch read write}
-    }
-
-# -------------------------------------------------------------------------
-
-    ChannelGss instproc finalize {id} {
-        my destroy
-    }
-
-# -------------------------------------------------------------------------
-
-    ChannelGss instproc callback {id} {
-        my instvar rawchan context
-        set code [catch {$context callback} result]
-        switch -- $code {
-            0 {
-                my set ready 1
-                my set buffer $result
-                chan event $rawchan readable {}
-                chan postevent $id {read}
-            }
-            1 {
-                my set buffer {}
-                chan event $rawchan readable {}
-                chan postevent $id {read}
-            }
-        }
-    }
-
-# ---------------------------------------------------------------------
-
-    ChannelGss instproc watch {id events} {
-        my instvar rawchan ready
-        if {"read" in $events} {
-            if {$ready} {
-                after 0 [list chan postevent $id {read}]
-            } else {
-                chan event $rawchan readable [myproc callback $id]
-            }
-        } else {
-            chan event $rawchan readable {}
-        }
-    }
-
-# ---------------------------------------------------------------------
-
-    ChannelGss instproc read {id count} {
-        my instvar rawchan buffer
-        chan event $rawchan readable [myproc callback $id]
-        my set ready 0
-        return $buffer
-    }
-
-# -------------------------------------------------------------------------
-
-    Class HttpConnectionGss -superclass HttpConnection -parameter {
-        {rawchan}
-        {frontendService}
-    }
-
-# -------------------------------------------------------------------------
-
-    HttpConnectionGss instproc setup {} {
-        my instvar rawchan channel transform
-
-        chan configure $rawchan -blocking 0 -buffersize 16389
-        chan configure $rawchan -translation {binary binary}
-
-        my set transform [ChannelGss new -rawchan $rawchan]
-        if {[catch {chan create {read write} $transform} result]} {
-            my log error $result
-            my done 1
-            return
-        }
-
-        my set channel $result
-        chan configure $channel -blocking 0 -buffersize 16360
-        chan configure $channel -translation {auto crlf}
-        chan event $channel readable [myproc authorization]
-    }
-
-# -------------------------------------------------------------------------
-
-    HttpConnectionGss instproc authorization {} {
-        my instvar channel transform
-
-        if {[$transform state] != 1} {
-            my done 1
-            return
-        }
-
-        my log notice {Distinguished name} [$transform name]
-        if {[catch {$transform export} result]} {
-            my log error $result
-            my done 1
-            return
-        }
-
-        chan event $channel readable {}
-        [my frontendService] process [list authorization [self] $result]
-    }
-
-# -------------------------------------------------------------------------
-
-    HttpConnectionGss instproc authorizationSuccess {name} {
-        my instvar channel
-        my set userName $name
-        chan event $channel readable [myproc firstLine]
-    }
-
-# -------------------------------------------------------------------------
-
-    HttpConnectionGss instproc authorizationFailure {reason} {
-        my log error {Authorization failed:} $reason
-        my error 403 {Acess is not allowed}
-    }
-
-# -------------------------------------------------------------------------
-
-    HttpConnectionGss instproc destroy {} {
-        my instvar rawchan
-
-        catch {
-            chan event $rawchan readable {}
-            chan close $rawchan
-        }
-
-        next
     }
 
 # -------------------------------------------------------------------------
@@ -676,7 +633,7 @@ namespace eval ::srmlite::http::server {
 
 # -------------------------------------------------------------------------
 
-     namespace export HttpServer HttpServerGss
+    namespace export HttpServer
 }
 
 package provide srmlite::http::server 0.2
