@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 
   int i, j;
   char index;
-  char buffer[32768];
+  char buffer[65536];
   unsigned char *input;
   char output[256];
 
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
   index = XX;
   j = 0;
 
-  for(i = 0; input[i] != Base64Pad && input[i] != 0 && i < 32768; ++i)
+  for(i = 0; input[i] != Base64Pad && input[i] != 0 && i < 65536; ++i)
   {
     index = Base64CharIndex[input[i]];
 
