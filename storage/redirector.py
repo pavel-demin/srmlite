@@ -2,6 +2,7 @@ from functools import lru_cache
 from http.server import BaseHTTPRequestHandler
 from os.path import normpath
 from random import choice
+from socket import AF_INET6
 from socketserver import TCPServer
 from ssl import wrap_socket
 
@@ -49,7 +50,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.redirect(302)
 
 
-httpd = TCPServer(("0.0.0.0", 443), RequestHandler)
+TCPServer.address_family = AF_INET6
+httpd = TCPServer(("", 1094), RequestHandler)
 httpd.socket = wrap_socket(
     httpd.socket,
     certfile="/etc/grid-security/xrd/xrdcert.pem",
