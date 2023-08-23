@@ -43,6 +43,9 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_COPY(self):
         self.redirect(307)
 
+    def do_POST(self):
+        self.redirect(307)
+
     def do_PUT(self):
         self.redirect(307)
 
