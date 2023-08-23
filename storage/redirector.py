@@ -1,51 +1,52 @@
+from functools import lru_cache
 from http.server import BaseHTTPRequestHandler
+from os.path import normpath
 from random import choice
 from socketserver import TCPServer
 from ssl import wrap_socket
 
-# list of servers for metadata operations
-meta = [
+servers = [
     "https://ingrid-se02.cism.ucl.ac.be:1094",
-]
-
-# list of servers for data transfer operations
-data = [
     "https://ingrid-se03.cism.ucl.ac.be:1094",
     "https://ingrid-se04.cism.ucl.ac.be:1094",
 ]
 
 
+@lru_cache(maxsize=1000)
+def location(path):
+    return choice(servers) + path
+
+
 class RequestHandler(BaseHTTPRequestHandler):
-    def redirect(self, code, servers):
-        location = choice(servers) + self.path
+    def redirect(self, code):
         self.send_response_only(code)
-        self.send_header("Server", self.version_string())
-        self.send_header("Location", location)
+        path = normpath(self.path).replace("//", "/")
+        self.send_header("Location", location(path))
         self.end_headers()
 
     def do_OPTIONS(self):
-        self.redirect(307, meta)
+        self.redirect(307)
 
     def do_HEAD(self):
-        self.redirect(307, meta)
+        self.redirect(307)
 
     def do_PROPFIND(self):
-        self.redirect(307, meta)
+        self.redirect(307)
 
     def do_MKCOL(self):
-        self.redirect(307, meta)
+        self.redirect(307)
 
     def do_DELETE(self):
-        self.redirect(307, meta)
+        self.redirect(307)
 
     def do_COPY(self):
-        self.redirect(307, meta)
+        self.redirect(307)
 
     def do_PUT(self):
-        self.redirect(307, data)
+        self.redirect(307)
 
     def do_GET(self):
-        self.redirect(302, data)
+        self.redirect(302)
 
 
 httpd = TCPServer(("0.0.0.0", 443), RequestHandler)
