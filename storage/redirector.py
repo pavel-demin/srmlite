@@ -4,7 +4,7 @@ from os.path import normpath
 from random import choice
 from socket import AF_INET6
 from socketserver import TCPServer
-from ssl import wrap_socket
+from ssl import SSLContext, PROTOCOL_TLS_SERVER
 
 servers = [
     "https://ingrid-se02.cism.ucl.ac.be:1094",
@@ -52,11 +52,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 TCPServer.address_family = AF_INET6
 httpd = TCPServer(("", 1094), RequestHandler)
-httpd.socket = wrap_socket(
-    httpd.socket,
-    certfile="/etc/grid-security/xrd/xrdcert.pem",
-    keyfile="/etc/grid-security/xrd/xrdkey.pem",
-    server_side=True,
-)
+context = SSLContext(PROTOCOL_TLS_SERVER)
+context.load_cert_chain("hostcert.pem", "hostkey.pem")
+httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
 
 httpd.serve_forever()
