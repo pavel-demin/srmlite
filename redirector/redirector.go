@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/hashicorp/golang-lru/v2"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -45,12 +44,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Usage: redirector redirector.json")
 		os.Exit(1)
 	}
-	buffer, err := ioutil.ReadFile(flag.Arg(0))
+	data, err := os.ReadFile(flag.Arg(0))
 	if err != nil {
 		panic(err)
 	}
 	cfg := Configuration{Addr: ":1094", Cert: "hostcert.pem", Key: "hostkey.pem"}
-	err = json.Unmarshal(buffer, &cfg)
+	err = json.Unmarshal(data, &cfg)
 	if err != nil {
 		panic(err)
 	}
