@@ -49,8 +49,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg := Configuration{Addr: ":1094", Cert: "hostcert.pem", Key: "hostkey.pem"}
-	err = json.Unmarshal(data, &cfg)
+	cfg := &Configuration{Addr: ":1094", Cert: "hostcert.pem", Key: "hostkey.pem"}
+	err = json.Unmarshal(data, cfg)
 	if err != nil {
 		log.Fatal("configuration file: ", err)
 	}
