@@ -42,7 +42,7 @@ func main() {
 	log.SetFlags(0)
 	flag.Parse()
 	if flag.NArg() != 1 {
-		log.Fatalln("Usage: redirector redirector.json")
+		log.Fatal("usage: redirector redirector.json")
 	}
 	data, err := os.ReadFile(flag.Arg(0))
 	if err != nil {
@@ -51,7 +51,10 @@ func main() {
 	cfg := Configuration{Addr: ":1094", Cert: "hostcert.pem", Key: "hostkey.pem"}
 	err = json.Unmarshal(data, &cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("configuration file: ", err)
+	}
+	if len(cfg.Servers) == 0 {
+		log.Fatal("configuration file: empty servers list")
 	}
 	cache, _ := lru.New[string, int](1024)
 	handler := &RedirectHandler{Cache: cache, Servers: cfg.Servers}
