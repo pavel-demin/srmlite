@@ -20,19 +20,18 @@ type Configuration struct {
 }
 
 type RedirectHandler struct {
-	Cache   *lru.Cache[string, string]
+	Cache   *lru.Cache[string, int]
 	Servers []string
 }
 
 func (rh *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := filepath.Clean(r.URL.Path)
-	host, ok := rh.Cache.Get(path)
+	index, ok := rh.Cache.Get(path)
 	if !ok {
-		i := rand.Intn(len(rh.Servers))
-		host = rh.Servers[i]
-		rh.Cache.Add(path, host)
+		index = rand.Intn(len(rh.Servers))
+		rh.Cache.Add(path, index)
 	}
-	url := host + path
+	url := rh.Servers[index] + path
 	if r.Method == http.MethodGet {
 		http.Redirect(w, r, url, 302)
 	} else {
@@ -55,7 +54,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cache, _ := lru.New[string, string](1024)
+	cache, _ := lru.New[string, int](1024)
 	handler := &RedirectHandler{Cache: cache, Servers: cfg.Servers}
 	server := http.Server{Addr: cfg.Addr, Handler: handler}
 	err = server.ListenAndServeTLS(cfg.Cert, cfg.Key)
