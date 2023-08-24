@@ -60,10 +60,11 @@ func main() {
 	cache, _ := lru.New[string, int](1024)
 	handler := &RedirectHandler{Cache: cache, Servers: cfg.Servers}
 	server := &http.Server{
-		Addr:         cfg.Addr,
-		Handler:      handler,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
+		Addr:           cfg.Addr,
+		Handler:        handler,
+		ReadTimeout:    3 * time.Second,
+		WriteTimeout:   3 * time.Second,
+		MaxHeaderBytes: 4096,
 	}
 	err = server.ListenAndServeTLS(cfg.Cert, cfg.Key)
 	if err != nil {
