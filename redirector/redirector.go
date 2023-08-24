@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"github.com/hashicorp/golang-lru/v2"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -39,25 +39,25 @@ func (rh *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	log.SetFlags(0)
 	flag.Parse()
 	if flag.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "Usage: redirector redirector.json")
-		os.Exit(1)
+		log.Fatalln("Usage: redirector redirector.json")
 	}
 	data, err := os.ReadFile(flag.Arg(0))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	cfg := Configuration{Addr: ":1094", Cert: "hostcert.pem", Key: "hostkey.pem"}
 	err = json.Unmarshal(data, &cfg)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	cache, _ := lru.New[string, int](1024)
 	handler := &RedirectHandler{Cache: cache, Servers: cfg.Servers}
 	server := http.Server{Addr: cfg.Addr, Handler: handler}
 	err = server.ListenAndServeTLS(cfg.Cert, cfg.Key)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
