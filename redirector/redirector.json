@@ -1,0 +1,11 @@
+{
+  "addr": ":1094",
+  "cert": "hostcert.pem",
+  "key": "hostkey.pem",
+  "servers": [
+    "https://ingrid-se03.cism.ucl.ac.be:1094",
+    "https://ingrid-se04.cism.ucl.ac.be:1094",
+    "https://ingrid-se05.cism.ucl.ac.be:1094",
+    "https://ingrid-se06.cism.ucl.ac.be:1094"
+  ]
+}
