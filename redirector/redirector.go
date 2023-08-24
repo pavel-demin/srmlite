@@ -9,7 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"path/filepath"
+	"path"
 )
 
 type Configuration struct {
@@ -25,7 +25,7 @@ type RedirectHandler struct {
 }
 
 func (rh *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := filepath.Clean(r.URL.Path)
+	path := path.Clean(r.URL.Path)
 	index, ok := rh.Cache.Get(path)
 	if !ok {
 		index = rand.Intn(len(rh.Servers))
