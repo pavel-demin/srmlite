@@ -3,13 +3,14 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"github.com/hashicorp/golang-lru/v2"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"path"
 	"time"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type Configuration struct {
@@ -33,9 +34,9 @@ func (rh *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	url := rh.Servers[index] + path
 	if r.Method == http.MethodGet {
-		http.Redirect(w, r, url, 302)
+		http.Redirect(w, r, url, http.StatusFound)
 	} else {
-		http.Redirect(w, r, url, 307)
+		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 	}
 }
 
