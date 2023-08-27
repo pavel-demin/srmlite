@@ -25,15 +25,15 @@ type RedirectHandler struct {
 	Servers []string
 }
 
-func (rh *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header()["Date"] = nil
 	path := path.Clean(r.URL.Path)
-	index, ok := rh.Cache.Get(path)
+	index, ok := h.Cache.Get(path)
 	if !ok {
-		index = rand.Intn(len(rh.Servers))
-		rh.Cache.Add(path, index)
+		index = rand.Intn(len(h.Servers))
+		h.Cache.Add(path, index)
 	}
-	url := rh.Servers[index] + path
+	url := h.Servers[index] + path
 	if r.Method == http.MethodGet {
 		http.Redirect(w, r, url, http.StatusFound)
 	} else {
