@@ -26,21 +26,16 @@ type RedirectHandler struct {
 }
 
 func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	header := w.Header()
-	header["Content-Type"] = nil
-	header["Date"] = nil
 	path := path.Clean(r.URL.Path)
 	index, ok := h.Cache.Get(path)
 	if !ok {
 		index = rand.Intn(len(h.Servers))
 		h.Cache.Add(path, index)
 	}
-	url := h.Servers[index] + path
-	if r.Method == http.MethodGet {
-		http.Redirect(w, r, url, http.StatusFound)
-	} else {
-		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-	}
+	header := w.Header()
+	header["Date"] = nil
+	header["Location"] = []string{h.Servers[index] + path}
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 func main() {
