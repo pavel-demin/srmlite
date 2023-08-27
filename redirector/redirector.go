@@ -26,7 +26,9 @@ type RedirectHandler struct {
 }
 
 func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header()["Date"] = nil
+	header := w.Header()
+	header["Content-Type"] = nil
+	header["Date"] = nil
 	path := path.Clean(r.URL.Path)
 	index, ok := h.Cache.Get(path)
 	if !ok {
