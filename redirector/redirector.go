@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"log"
 	"math/rand"
 	"net/http"
@@ -40,11 +39,10 @@ func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	log.SetFlags(0)
-	flag.Parse()
-	if flag.NArg() != 1 {
+	if len(os.Args) != 2 {
 		log.Fatal("usage: redirector redirector.json")
 	}
-	data, err := os.ReadFile(flag.Arg(0))
+	data, err := os.ReadFile(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
