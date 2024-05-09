@@ -174,48 +174,33 @@ static int xmp_makerealdir(const char *path, const char *real_prfx,
 
 static int xmp_makepath(const char *path, char *real_path, char *meta_path)
 {
-  int res;
+  int i, index, res;
   struct statvfs stvfs;
-  int last_ind;
-  int curr_ind;
-  int counter;
-  int found_free_space;
+  fsblkcnt_t spaces[MAX_STORAGE];
 
-  counter = 0;
-  found_free_space = 0;
+  index = 0;
 
   pthread_rwlock_rdlock(&rw_lock);
 
-  curr_ind = time(NULL)%(storage.nmounts - 1) + 1;
-  last_ind = curr_ind;
-
-  do
+  for(i = 1; i < storage.nmounts; ++i)
   {
-    res = statvfs(storage.mounts[curr_ind], &stvfs);
-
-    if(res == -1) continue;
-
-    if(stvfs.f_bavail > MIN_FREE_BLOCKS)
+    res = statvfs(storage.mounts[i], &stvfs);
+    if(res == 0 && stvfs.f_bavail > MIN_FREE_BLOCKS)
     {
-      found_free_space = 1;
-      break;
+      spaces[index] = i;
+      ++index;
     }
-
-    ++curr_ind;
-
-    if(curr_ind == storage.nmounts) curr_ind = 1;
-    if(curr_ind == last_ind) ++counter;
-
   }
-  while (counter < 5);
 
-  if(found_free_space == 0)
+  if(index == 0)
   {
     pthread_rwlock_unlock(&rw_lock);
     return -1;
   }
 
-  res = xmp_makerealdir(path, storage.mounts[curr_ind], storage.mounts[0], real_path, meta_path);
+  index = spaces[time(NULL) % index];
+
+  res = xmp_makerealdir(path, storage.mounts[index], storage.mounts[0], real_path, meta_path);
 
   pthread_rwlock_unlock(&rw_lock);
 
