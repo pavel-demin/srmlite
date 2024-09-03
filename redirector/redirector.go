@@ -59,8 +59,8 @@ func main() {
 	server := &http.Server{
 		Addr:           cfg.Addr,
 		Handler:        handler,
-		ReadTimeout:    3 * time.Second,
-		WriteTimeout:   3 * time.Second,
+		ReadTimeout:    60 * time.Second,
+		WriteTimeout:   60 * time.Second,
 		MaxHeaderBytes: 4096,
 	}
 	err = server.ListenAndServeTLS(cfg.Cert, cfg.Key)
