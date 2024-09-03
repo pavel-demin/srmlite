@@ -61,7 +61,7 @@ func main() {
 		Handler:        handler,
 		ReadTimeout:    60 * time.Second,
 		WriteTimeout:   60 * time.Second,
-		MaxHeaderBytes: 4096,
+		MaxHeaderBytes: 12288,
 	}
 	err = server.ListenAndServeTLS(cfg.Cert, cfg.Key)
 	if err != nil {
