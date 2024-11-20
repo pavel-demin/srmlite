@@ -115,10 +115,11 @@ static int xmp_makerealdir(const char *path, const char *real_prfx,
   char *meta_ptr;
   char *curr_dir;
   char *next_dir;
-  char copy_path[MAX_PATH];
+  char copy_path[MAX_PATH + 1];
 
   real_path[0] = '\0';
   meta_path[0] = '\0';
+  copy_path[MAX_PATH] = '\0';
 
   res = 0;
 
