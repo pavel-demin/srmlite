@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"time"
@@ -30,6 +31,10 @@ func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		index = rand.Intn(len(h.Servers))
 		h.Cache.Add(path, index)
+	}
+	authz, ok := r.Header["Authorization"]
+	if ok {
+		path += "?authz=" + url.PathEscape(authz[0])
 	}
 	header := w.Header()
 	header["Date"] = nil
