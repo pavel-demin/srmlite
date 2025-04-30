@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,7 +29,7 @@ func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := path.Clean(r.URL.Path)
 	index, ok := h.Cache.Get(path)
 	if !ok {
-		index = rand.Intn(len(h.Servers))
+		index = rand.IntN(len(h.Servers))
 		h.Cache.Add(path, index)
 	}
 	authz, ok := r.Header["Authorization"]
