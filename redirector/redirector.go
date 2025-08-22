@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"encoding/json"
 	"log"
 	"math/rand/v2"
@@ -8,9 +9,8 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"sync"
 	"time"
-
-	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type Configuration struct {
@@ -20,9 +20,49 @@ type Configuration struct {
 	Servers []string
 }
 
+type CacheEntry struct {
+	key   string
+	value int
+}
+
+type Cache struct {
+	elements map[string]*list.Element
+	list     *list.List
+	mutex    sync.RWMutex
+}
+
 type RedirectHandler struct {
-	Cache   *lru.Cache[string, int]
+	Cache   *Cache
 	Servers []string
+}
+
+func (c *Cache) Add(k string, v int) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.elements[k] = c.list.PushFront(&CacheEntry{key: k, value: v})
+
+	if c.list.Len() > 1024 {
+		element := c.list.Back()
+		delete(c.elements, element.Value.(*CacheEntry).key)
+		c.list.Remove(element)
+	}
+}
+
+func (c *Cache) Get(k string) (int, bool) {
+	c.mutex.RLock()
+	element, ok := c.elements[k]
+	c.mutex.RUnlock()
+
+	if !ok {
+		return 0, false
+	}
+
+	c.mutex.Lock()
+	c.list.MoveToFront(element)
+	c.mutex.Unlock()
+
+	return element.Value.(*CacheEntry).value, true
 }
 
 func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +99,10 @@ func main() {
 	if len(cfg.Servers) == 0 {
 		log.Fatal("configuration file: empty servers list")
 	}
-	cache, _ := lru.New[string, int](1024)
+	cache := &Cache{
+		elements: make(map[string]*list.Element),
+		list:     list.New(),
+	}
 	handler := &RedirectHandler{Cache: cache, Servers: cfg.Servers}
 	server := &http.Server{
 		Addr:           cfg.Addr,
