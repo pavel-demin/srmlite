@@ -80,9 +80,10 @@ func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		path += sep + "authz=" + url.PathEscape(authz)
 	}
+	location := h.Servers[index] + path
 	header := w.Header()
-	header["Date"] = nil
-	header["Location"] = []string{h.Servers[index] + path}
+	header.Del("Date")
+	header.Set("Location", location)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
