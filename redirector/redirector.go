@@ -72,9 +72,13 @@ func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		index = rand.IntN(len(h.Servers))
 		h.Cache.Add(path, index)
 	}
-	authz, ok := r.Header["Authorization"]
-	if ok {
-		path += "?authz=" + url.PathEscape(authz[0])
+	authz := r.Header.Get("Authorization")
+	if authz != "" {
+		sep := "?"
+		if r.URL.RawQuery != "" {
+			sep = "&"
+		}
+		path += sep + "authz=" + url.PathEscape(authz)
 	}
 	header := w.Header()
 	header["Date"] = nil
