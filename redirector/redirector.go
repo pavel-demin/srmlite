@@ -66,11 +66,11 @@ func (c *Cache) Get(k string) (int, bool) {
 }
 
 func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := path.Clean(r.URL.Path)
-	index, ok := h.Cache.Get(path)
+	rpath := path.Clean(r.URL.Path)
+	index, ok := h.Cache.Get(rpath)
 	if !ok {
 		index = rand.IntN(len(h.Servers))
-		h.Cache.Add(path, index)
+		h.Cache.Add(rpath, index)
 	}
 	authz := r.Header.Get("Authorization")
 	if authz != "" {
@@ -78,9 +78,9 @@ func (h *RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if r.URL.RawQuery != "" {
 			sep = "&"
 		}
-		path += sep + "authz=" + url.PathEscape(authz)
+		rpath += sep + "authz=" + url.PathEscape(authz)
 	}
-	location := h.Servers[index] + path
+	location := h.Servers[index] + rpath
 	header := w.Header()
 	header.Del("Date")
 	header.Set("Location", location)
