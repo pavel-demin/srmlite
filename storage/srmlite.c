@@ -589,7 +589,7 @@ static int xmp_chown(const char *path, uid_t uid, gid_t gid)
 
 static int xmp_statfs(const char *path, struct statvfs *stbuf)
 {
-  static struct statvfs st;
+  struct statvfs st;
   int bfac;
   int i;
   int res;
@@ -600,12 +600,12 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
   pthread_rwlock_rdlock(&rw_lock);
 
   stbuf->f_namemax = 0;
-  stbuf->f_bsize =   0;
-  stbuf->f_blocks =  0;
-  stbuf->f_bavail =  0;
-  stbuf->f_bfree =   0;
-  stbuf->f_files  =  0;
-  stbuf->f_ffree  =  0;
+  stbuf->f_bsize   = 0;
+  stbuf->f_blocks  = 0;
+  stbuf->f_bavail  = 0;
+  stbuf->f_bfree   = 0;
+  stbuf->f_files   = 0;
+  stbuf->f_ffree   = 0;
 
   for(i = 1; i < storage.nmounts; ++i)
   {
@@ -613,9 +613,9 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
 
     if(res == -1) continue;
 
-    if(st.f_bsize != 32768)
+    if(st.f_bsize != 1048576)
     {
-      bfac = 32768/st.f_bsize;
+      bfac = 1048576 / st.f_bsize;
 
       if(bfac == 0) break;
 
@@ -623,7 +623,7 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
       st.f_bavail /= bfac;
       st.f_bfree  /= bfac;
 
-      st.f_bsize = 32768;
+      st.f_bsize = 1048576;
     }
 
     stbuf->f_blocks += st.f_blocks;
@@ -642,6 +642,7 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
   }
 
   pthread_rwlock_unlock(&rw_lock);
+
   return ret;
 }
 
