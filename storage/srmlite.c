@@ -754,8 +754,7 @@ static struct fuse_operations xmp_oper = {
   .release    = xmp_release
 };
 
-static int
-get_config(const char *cfile)
+static int get_config(const char *cfile)
 {
   FILE *fp;
   char temp[132];
