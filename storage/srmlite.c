@@ -3,7 +3,7 @@
   strip srmlite
 */
 
-#define FUSE_USE_VERSION 26
+#define FUSE_USE_VERSION 29
 
 #ifdef linux
 /* For pread()/pwrite() */
