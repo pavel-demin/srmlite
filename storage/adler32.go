@@ -11,13 +11,13 @@ import (
 
 func main() {
 
-	listener, err := net.Listen("tcp", ":9500")
+	l, err := net.Listen("tcp", ":9500")
 	if err != nil {
 		panic(err)
 	}
 
 	for {
-		conn, err := listener.Accept()
+		conn, err := l.Accept()
 		if err != nil {
 			continue
 		}
@@ -31,24 +31,25 @@ func handle(conn net.Conn) {
 
 	s := bufio.NewScanner(conn)
 
-	for s.Scan() {
-		data := s.Text()
-
-		f, err := os.Open(data)
-		if err != nil {
-			return
-		}
-
-		defer f.Close()
-
-		h := adler32.New()
-
-		_, err = io.Copy(h, f)
-		if err != nil {
-			return
-		}
-
-		conn.Write([]byte(fmt.Sprintf("%08x", h.Sum(nil))))
+	if !s.Scan() {
 		return
 	}
+
+	data := s.Text()
+
+	f, err := os.Open(data)
+	if err != nil {
+		return
+	}
+
+	defer f.Close()
+
+	h := adler32.New()
+
+	_, err = io.Copy(h, f)
+	if err != nil {
+		return
+	}
+
+	fmt.Fprintf(conn, "%08x", h.Sum32())
 }
