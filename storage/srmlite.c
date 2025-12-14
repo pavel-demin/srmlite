@@ -6,8 +6,8 @@
 #define FUSE_USE_VERSION 29
 
 #ifdef linux
-/* For pread()/pwrite() */
-#define _XOPEN_SOURCE 500
+/* For pread()/pwrite()/utimensat() */
+#define _XOPEN_SOURCE 700
 #endif
 
 #include <fuse.h>
@@ -22,7 +22,7 @@
 #include <syslog.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <sys/time.h>
+#include <sys/stat.h>
 #include <sys/fsuid.h>
 
 #define MIN_FREE_BLOCKS 2048000
@@ -649,7 +649,6 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
 static int xmp_utimens(const char *path, const struct timespec ts[2])
 {
   int res;
-  struct timeval tv[2];
   char real_path[MAX_PATH];
   char meta_path[MAX_PATH];
 
@@ -659,12 +658,8 @@ static int xmp_utimens(const char *path, const struct timespec ts[2])
 
   xmp_setfsid();
 
-  tv[0].tv_sec = ts[0].tv_sec;
-  tv[0].tv_usec = ts[0].tv_nsec / 1000;
-  tv[1].tv_sec = ts[1].tv_sec;
-  tv[1].tv_usec = ts[1].tv_nsec / 1000;
+  res = utimensat(AT_FDCWD, real_path, ts, 0);
 
-  res = utimes(real_path, tv);
   if(res == -1) return -errno;
 
   return 0;
