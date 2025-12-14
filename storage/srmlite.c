@@ -726,6 +726,15 @@ static int xmp_release(const char *path, struct fuse_file_info *fi)
   return 0;
 }
 
+static int xmp_fsync(const char *path, int isdatasync, struct fuse_file_info *fi)
+{
+  int res;
+  (void) path;
+  res = isdatasync ? fdatasync(fi->fh) : fsync(fi->fh);
+  if(res == -1) return -errno;
+  return 0;
+}
+
 static struct fuse_operations xmp_oper = {
   .getattr    = xmp_getattr,
   .access     = xmp_access,
@@ -747,7 +756,8 @@ static struct fuse_operations xmp_oper = {
   .read       = xmp_read,
   .write      = xmp_write,
   .flush      = xmp_flush,
-  .release    = xmp_release
+  .release    = xmp_release,
+  .fsync      = xmp_fsync
 };
 
 static int get_config(const char *cfile)
