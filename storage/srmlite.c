@@ -615,9 +615,11 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
 
     if(st.f_bsize != 1048576)
     {
+      if(st.f_bsize == 0) continue;
+
       bfac = 1048576 / st.f_bsize;
 
-      if(bfac == 0) break;
+      if(bfac == 0) continue;
 
       st.f_blocks /= bfac;
       st.f_bavail /= bfac;
