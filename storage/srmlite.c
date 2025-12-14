@@ -658,7 +658,7 @@ static int xmp_utimens(const char *path, const struct timespec ts[2])
 
   xmp_setfsid();
 
-  res = utimensat(AT_FDCWD, real_path, ts, 0);
+  res = utimensat(0, real_path, ts, AT_SYMLINK_NOFOLLOW);
 
   if(res == -1) return -errno;
 
